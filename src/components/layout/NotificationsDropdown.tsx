@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotificationsContext } from "@/contexts/NotificationsContext";
 
 const iconMap = {
   repair: Wrench,
@@ -30,7 +30,7 @@ export function NotificationsDropdown() {
     markAsRead,
     markAllAsRead,
     clearAllNotifications,
-  } = useNotifications();
+  } = useNotificationsContext();
 
   return (
     <DropdownMenu>

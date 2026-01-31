@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ShopSettingsProvider } from "@/contexts/ShopSettingsContext";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Dashboard from "./pages/Dashboard";
@@ -39,7 +40,9 @@ const App = () => (
             <Route element={
               <ProtectedRoute>
                 <ShopSettingsProvider>
-                  <MainLayout />
+                  <NotificationsProvider>
+                    <MainLayout />
+                  </NotificationsProvider>
                 </ShopSettingsProvider>
               </ProtectedRoute>
             }>

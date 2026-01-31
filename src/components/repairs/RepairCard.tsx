@@ -1,0 +1,164 @@
+import { Phone, Wrench as WrenchIcon, Calendar, MoreHorizontal } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { formatCurrency } from "@/lib/currency";
+import { cn } from "@/lib/utils";
+import { statusConfig, type RepairStatus } from "./RepairStatusSelect";
+
+export interface Repair {
+  id: string;
+  customer: string;
+  phone: string;
+  device: string;
+  imei?: string;
+  issue: string;
+  diagnosis?: string;
+  status: RepairStatus;
+  depositDate: string;
+  estimatedDate?: string;
+  deliveredDate?: string;
+  parts: { name: string; cost: number }[];
+  labor: number;
+  total: number;
+  paid: number;
+}
+
+interface RepairCardProps {
+  repair: Repair;
+  onViewDetails: (repair: Repair) => void;
+  onEdit: (repair: Repair) => void;
+  onPrint: (repair: Repair) => void;
+  onCancel: (repair: Repair) => void;
+  onStatusChange: (repair: Repair, newStatus: RepairStatus) => void;
+}
+
+export function RepairCard({
+  repair,
+  onViewDetails,
+  onEdit,
+  onPrint,
+  onCancel,
+  onStatusChange,
+}: RepairCardProps) {
+  const status = statusConfig[repair.status];
+  const StatusIcon = status.icon;
+  const remaining = repair.total - repair.paid;
+
+  return (
+    <Card className="hover:shadow-soft transition-shadow">
+      <CardContent className="p-4">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-muted-foreground">
+                {repair.id}
+              </span>
+              <Badge className={cn("text-xs", status.className)}>
+                <StatusIcon className="h-3 w-3 mr-1" />
+                {status.label}
+              </Badge>
+            </div>
+            <h3 className="font-semibold mt-1">{repair.customer}</h3>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onViewDetails(repair)}>
+                Voir détails
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEdit(repair)}>
+                Modifier
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPrint(repair)}>
+                Imprimer fiche
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={repair.status === "pending"}
+                onClick={() => onStatusChange(repair, "pending")}
+              >
+                → En attente
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={repair.status === "in_progress"}
+                onClick={() => onStatusChange(repair, "in_progress")}
+              >
+                → En cours
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={repair.status === "completed"}
+                onClick={() => onStatusChange(repair, "completed")}
+              >
+                → Terminé
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={repair.status === "delivered"}
+                onClick={() => onStatusChange(repair, "delivered")}
+              >
+                → Livré
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => onCancel(repair)}
+              >
+                Annuler
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Device Info */}
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <span>{repair.device}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <WrenchIcon className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{repair.issue}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">
+              Dépôt: {new Date(repair.depositDate).toLocaleDateString("fr-TN")}
+            </span>
+          </div>
+        </div>
+
+        {/* Pricing */}
+        <div className="flex items-center justify-between pt-3 border-t border-border">
+          <div>
+            <span className="text-sm text-muted-foreground">Total: </span>
+            <span className="font-bold font-mono-numbers">
+              {formatCurrency(repair.total)}
+            </span>
+          </div>
+          {remaining > 0 && (
+            <Badge variant="destructive" className="text-xs">
+              Reste: {formatCurrency(remaining)}
+            </Badge>
+          )}
+          {remaining === 0 && repair.paid > 0 && (
+            <Badge className="bg-success/10 text-success border-success/20 text-xs">
+              Payé
+            </Badge>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

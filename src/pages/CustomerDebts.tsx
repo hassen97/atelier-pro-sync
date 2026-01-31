@@ -30,82 +30,155 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { useCustomers, useUpdateCustomer, Customer } from "@/hooks/useCustomers";
+import { useRepairs } from "@/hooks/useRepairs";
+import { useSales } from "@/hooks/useSales";
+import { toast } from "sonner";
 
-// Mock customer debts data
-const customerDebts = [
-  {
-    id: "1",
-    customer: "Ahmed Ben Ali",
-    phone: "98 765 432",
-    type: "Réparation",
-    reference: "REP-001",
-    totalAmount: 260.000,
-    paidAmount: 100.000,
-    dueDate: "2024-01-20",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    customer: "Mohamed Khelifi",
-    phone: "22 456 789",
-    type: "Réparation",
-    reference: "REP-003",
-    totalAmount: 65.000,
-    paidAmount: 0,
-    dueDate: "2024-01-22",
-    createdAt: "2024-01-16",
-  },
-  {
-    id: "3",
-    customer: "Karim Mejri",
-    phone: "20 987 654",
-    type: "Réparation",
-    reference: "REP-005",
-    totalAmount: 120.000,
-    paidAmount: 50.000,
-    dueDate: "2024-01-25",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "4",
-    customer: "Ali Mansour",
-    phone: "55 444 333",
-    type: "Vente",
-    reference: "VEN-042",
-    totalAmount: 450.000,
-    paidAmount: 200.000,
-    dueDate: "2024-01-18",
-    createdAt: "2024-01-10",
-  },
-  {
-    id: "5",
-    customer: "Nadia Ferchichi",
-    phone: "97 222 111",
-    type: "Vente",
-    reference: "VEN-045",
-    totalAmount: 180.000,
-    paidAmount: 80.000,
-    dueDate: "2024-01-28",
-    createdAt: "2024-01-14",
-  },
-];
+interface DebtItem {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  type: "Réparation" | "Vente";
+  reference: string;
+  totalAmount: number;
+  paidAmount: number;
+  createdAt: string;
+}
 
 export default function CustomerDebts() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
 
-  const filteredDebts = customerDebts.filter(
+  const { data: customers = [] } = useCustomers();
+  const { data: repairs = [] } = useRepairs();
+  const { data: sales = [] } = useSales();
+  const updateCustomer = useUpdateCustomer();
+
+  // Build debts list from repairs and sales with partial payments
+  const debts: DebtItem[] = [];
+
+  // Add repairs with unpaid balances
+  repairs.forEach((repair) => {
+    const remaining = Number(repair.total_cost) - Number(repair.amount_paid);
+    if (remaining > 0) {
+      const customer = customers.find((c) => c.id === repair.customer_id);
+      debts.push({
+        id: repair.id,
+        customerId: repair.customer_id || "",
+        customerName: customer?.name || "Client inconnu",
+        customerPhone: customer?.phone || "",
+        type: "Réparation",
+        reference: `REP-${repair.id.slice(0, 8).toUpperCase()}`,
+        totalAmount: Number(repair.total_cost),
+        paidAmount: Number(repair.amount_paid),
+        createdAt: repair.created_at,
+      });
+    }
+  });
+
+  // Add sales with unpaid balances
+  sales.forEach((sale) => {
+    const remaining = Number(sale.total_amount) - Number(sale.amount_paid);
+    if (remaining > 0) {
+      const customer = customers.find((c) => c.id === sale.customer_id);
+      debts.push({
+        id: sale.id,
+        customerId: sale.customer_id || "",
+        customerName: customer?.name || "Client passager",
+        customerPhone: customer?.phone || "",
+        type: "Vente",
+        reference: `VEN-${sale.id.slice(0, 8).toUpperCase()}`,
+        totalAmount: Number(sale.total_amount),
+        paidAmount: Number(sale.amount_paid),
+        createdAt: sale.created_at,
+      });
+    }
+  });
+
+  // Also add customers with positive balance (they owe money)
+  customers.forEach((customer) => {
+    if (Number(customer.balance) > 0) {
+      // Check if we already have this customer's debt from repairs/sales
+      const existingDebt = debts.find((d) => d.customerId === customer.id);
+      if (!existingDebt) {
+        debts.push({
+          id: customer.id,
+          customerId: customer.id,
+          customerName: customer.name,
+          customerPhone: customer.phone || "",
+          type: "Vente",
+          reference: `CLI-${customer.id.slice(0, 8).toUpperCase()}`,
+          totalAmount: Number(customer.balance),
+          paidAmount: 0,
+          createdAt: customer.created_at,
+        });
+      }
+    }
+  });
+
+  const filteredDebts = debts.filter(
     (debt) =>
-      debt.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      debt.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       debt.reference.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalDebts = customerDebts.reduce((sum, d) => sum + (d.totalAmount - d.paidAmount), 0);
-  const overdueDebts = customerDebts.filter(
-    (d) => new Date(d.dueDate) < new Date() && d.paidAmount < d.totalAmount
-  );
-  const overdueAmount = overdueDebts.reduce((sum, d) => sum + (d.totalAmount - d.paidAmount), 0);
+  const totalDebts = debts.reduce((sum, d) => sum + (d.totalAmount - d.paidAmount), 0);
+  const debtorsCount = new Set(debts.map((d) => d.customerId)).size;
+
+  const handlePayment = (debt: DebtItem) => {
+    setSelectedDebt(debt);
+    setPaymentAmount("");
+    setPaymentDialogOpen(true);
+  };
+
+  const submitPayment = async () => {
+    if (!selectedDebt || !paymentAmount) return;
+
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Montant invalide");
+      return;
+    }
+
+    const remaining = selectedDebt.totalAmount - selectedDebt.paidAmount;
+    if (amount > remaining) {
+      toast.error("Le montant dépasse la dette restante");
+      return;
+    }
+
+    try {
+      // Update customer balance
+      const customer = customers.find((c) => c.id === selectedDebt.customerId);
+      if (customer) {
+        const newBalance = Math.max(0, Number(customer.balance) - amount);
+        await updateCustomer.mutateAsync({
+          id: customer.id,
+          balance: newBalance,
+        });
+      }
+      
+      toast.success("Paiement enregistré");
+      setPaymentDialogOpen(false);
+      setSelectedDebt(null);
+      setPaymentAmount("");
+    } catch (error) {
+      console.error("Error recording payment:", error);
+      toast.error("Erreur lors de l'enregistrement");
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -124,14 +197,13 @@ export default function CustomerDebts() {
         />
         <StatCard
           title="Clients débiteurs"
-          value={customerDebts.length}
+          value={debtorsCount}
           icon={User}
           variant="default"
         />
         <StatCard
-          title="Montant en retard"
-          value={formatCurrency(overdueAmount)}
-          subtitle={`${overdueDebts.length} créance(s) en retard`}
+          title="Transactions non soldées"
+          value={debts.length}
           icon={CreditCard}
           variant="destructive"
         />
@@ -148,10 +220,6 @@ export default function CustomerDebts() {
             className="pl-9"
           />
         </div>
-        <Button variant="outline">
-          <Filter className="h-4 w-4 mr-2" />
-          Filtres
-        </Button>
       </div>
 
       {/* Debts Table */}
@@ -166,85 +234,139 @@ export default function CustomerDebts() {
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-center">Progression</TableHead>
                 <TableHead className="text-right">Reste à payer</TableHead>
-                <TableHead>Échéance</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredDebts.map((debt) => {
-                const remaining = debt.totalAmount - debt.paidAmount;
-                const progress = (debt.paidAmount / debt.totalAmount) * 100;
-                const isOverdue = new Date(debt.dueDate) < new Date() && remaining > 0;
+              {filteredDebts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    Aucune dette en cours
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredDebts.map((debt) => {
+                  const remaining = debt.totalAmount - debt.paidAmount;
+                  const progress = debt.totalAmount > 0 ? (debt.paidAmount / debt.totalAmount) * 100 : 0;
 
-                return (
-                  <TableRow key={debt.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{debt.customer}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {debt.phone}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{debt.type}</Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {debt.reference}
-                    </TableCell>
-                    <TableCell className="text-right font-mono-numbers">
-                      {formatCurrency(debt.totalAmount)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="w-24 mx-auto">
-                        <Progress value={progress} className="h-2" />
-                        <p className="text-xs text-center text-muted-foreground mt-1">
-                          {progress.toFixed(0)}%
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-mono-numbers font-medium text-destructive">
-                      {formatCurrency(remaining)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className={cn(isOverdue && "text-destructive font-medium")}>
-                          {new Date(debt.dueDate).toLocaleDateString("fr-TN")}
-                        </span>
-                        {isOverdue && (
-                          <Badge variant="destructive" className="text-xs">
-                            En retard
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Banknote className="h-4 w-4 mr-2" />
-                            Enregistrer paiement
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Voir détails</DropdownMenuItem>
-                          <DropdownMenuItem>Contacter client</DropdownMenuItem>
-                          <DropdownMenuItem>Imprimer rappel</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                  return (
+                    <TableRow key={`${debt.type}-${debt.id}`}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{debt.customerName}</p>
+                          {debt.customerPhone && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {debt.customerPhone}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{debt.type}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {debt.reference}
+                      </TableCell>
+                      <TableCell className="text-right font-mono-numbers">
+                        {formatCurrency(debt.totalAmount)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="w-24 mx-auto">
+                          <Progress value={progress} className="h-2" />
+                          <p className="text-xs text-center text-muted-foreground mt-1">
+                            {progress.toFixed(0)}%
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-mono-numbers font-medium text-destructive">
+                        {formatCurrency(remaining)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(debt.createdAt).toLocaleDateString("fr-TN")}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handlePayment(debt)}>
+                              <Banknote className="h-4 w-4 mr-2" />
+                              Enregistrer paiement
+                            </DropdownMenuItem>
+                            {debt.customerPhone && (
+                              <DropdownMenuItem onClick={() => window.open(`tel:${debt.customerPhone}`)}>
+                                <Phone className="h-4 w-4 mr-2" />
+                                Contacter client
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* Payment Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Enregistrer un paiement</DialogTitle>
+          </DialogHeader>
+
+          {selectedDebt && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="font-medium">{selectedDebt.customerName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedDebt.reference}
+                </p>
+                <p className="text-sm mt-2">
+                  Reste à payer:{" "}
+                  <span className="text-destructive font-medium">
+                    {formatCurrency(selectedDebt.totalAmount - selectedDebt.paidAmount)}
+                  </span>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment">Montant du paiement (DT)</Label>
+                <Input
+                  id="payment"
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  max={selectedDebt.totalAmount - selectedDebt.paidAmount}
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0.000"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={submitPayment} disabled={updateCustomer.isPending}>
+                  Enregistrer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

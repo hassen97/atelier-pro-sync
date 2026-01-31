@@ -30,87 +30,154 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-
-// Mock invoices data
-const invoices = [
-  {
-    id: "FAC-2024-001",
-    customer: "Ahmed Ben Ali",
-    date: "2024-01-15",
-    type: "Réparation",
-    items: 2,
-    total: 260.000,
-    status: "paid",
-  },
-  {
-    id: "FAC-2024-002",
-    customer: "Fatma Trabelsi",
-    date: "2024-01-15",
-    type: "Réparation",
-    items: 1,
-    total: 85.000,
-    status: "paid",
-  },
-  {
-    id: "FAC-2024-003",
-    customer: "Mohamed Khelifi",
-    date: "2024-01-16",
-    type: "Vente",
-    items: 3,
-    total: 125.000,
-    status: "pending",
-  },
-  {
-    id: "FAC-2024-004",
-    customer: "Sarra Bouazizi",
-    date: "2024-01-14",
-    type: "Réparation",
-    items: 1,
-    total: 150.000,
-    status: "paid",
-  },
-  {
-    id: "FAC-2024-005",
-    customer: "Karim Mejri",
-    date: "2024-01-13",
-    type: "Vente",
-    items: 5,
-    total: 89.000,
-    status: "paid",
-  },
-  {
-    id: "FAC-2024-006",
-    customer: "Ali Mansour",
-    date: "2024-01-12",
-    type: "Réparation",
-    items: 2,
-    total: 320.000,
-    status: "partial",
-  },
-];
+import { useInvoices, useUpdateInvoice, useDeleteInvoice, InvoiceWithRelations } from "@/hooks/useInvoices";
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { toast } from "sonner";
 
 const statusConfig = {
   paid: { label: "Payée", className: "bg-success/10 text-success border-success/20" },
   pending: { label: "En attente", className: "bg-warning/10 text-warning border-warning/20" },
   partial: { label: "Partielle", className: "bg-accent/10 text-accent border-accent/20" },
+  cancelled: { label: "Annulée", className: "bg-muted text-muted-foreground border-muted" },
 };
 
 export default function Invoices() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceWithRelations | null>(null);
+
+  const { data: invoices = [], isLoading } = useInvoices();
+  const updateInvoice = useUpdateInvoice();
+  const deleteInvoice = useDeleteInvoice();
+  const { settings } = useShopSettingsContext();
 
   const filteredInvoices = invoices.filter(
     (invoice) =>
-      invoice.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.id.toLowerCase().includes(searchQuery.toLowerCase())
+      invoice.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const totalInvoices = invoices.length;
-  const totalAmount = invoices.reduce((sum, i) => sum + i.total, 0);
+  const totalAmount = invoices.reduce((sum, i) => sum + Number(i.total_amount), 0);
   const paidAmount = invoices
     .filter((i) => i.status === "paid")
-    .reduce((sum, i) => sum + i.total, 0);
+    .reduce((sum, i) => sum + Number(i.total_amount), 0);
+
+  const handleView = (invoice: InvoiceWithRelations) => {
+    setSelectedInvoice(invoice);
+    setViewDialogOpen(true);
+  };
+
+  const handlePrint = (invoice: InvoiceWithRelations) => {
+    setSelectedInvoice(invoice);
+    setViewDialogOpen(true);
+    setTimeout(() => window.print(), 500);
+  };
+
+  const handleDownloadPDF = (invoice: InvoiceWithRelations) => {
+    // Generate PDF content
+    const content = `
+FACTURE: ${invoice.invoice_number}
+${settings.shop_name}
+================================
+Date: ${new Date(invoice.created_at).toLocaleDateString("fr-TN")}
+Client: ${invoice.customer?.name || "Client passager"}
+${invoice.customer?.phone ? `Tél: ${invoice.customer.phone}` : ""}
+================================
+${invoice.repair ? `Réparation: ${invoice.repair.device_model}` : ""}
+${invoice.sale ? `Vente - Montant: ${formatCurrency(invoice.sale.total_amount)}` : ""}
+================================
+TOTAL: ${formatCurrency(Number(invoice.total_amount))}
+Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || invoice.status}
+================================
+    `.trim();
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${invoice.invoice_number}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Facture téléchargée");
+  };
+
+  const handleCancel = async (invoice: InvoiceWithRelations) => {
+    try {
+      await updateInvoice.mutateAsync({
+        id: invoice.id,
+        status: "cancelled",
+      });
+      toast.success("Facture annulée");
+    } catch (error) {
+      toast.error("Erreur lors de l'annulation");
+    }
+  };
+
+  const handleMarkAsPaid = async (invoice: InvoiceWithRelations) => {
+    try {
+      await updateInvoice.mutateAsync({
+        id: invoice.id,
+        status: "paid",
+      });
+      toast.success("Facture marquée comme payée");
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
+
+  const handleExportExcel = () => {
+    const headers = ["N° Facture", "Client", "Date", "Type", "Total", "Statut"];
+    const rows = filteredInvoices.map((inv) => [
+      inv.invoice_number,
+      inv.customer?.name || "Client passager",
+      new Date(inv.created_at).toLocaleDateString("fr-TN"),
+      inv.repair ? "Réparation" : "Vente",
+      Number(inv.total_amount).toFixed(3),
+      statusConfig[inv.status as keyof typeof statusConfig]?.label || inv.status,
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `factures_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Export Excel téléchargé");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -118,13 +185,9 @@ export default function Invoices() {
         title="Factures"
         description="Gestion et historique des factures"
       >
-        <Button variant="outline">
+        <Button variant="outline" onClick={handleExportExcel}>
           <Download className="h-4 w-4 mr-2" />
           Exporter Excel
-        </Button>
-        <Button className="bg-gradient-primary hover:opacity-90">
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle facture
         </Button>
       </PageHeader>
 
@@ -171,76 +234,160 @@ export default function Invoices() {
                 <TableHead>Client</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead className="text-center">Articles</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInvoices.map((invoice) => {
-                const status = statusConfig[invoice.status as keyof typeof statusConfig];
+              {filteredInvoices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Aucune facture trouvée
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredInvoices.map((invoice) => {
+                  const status = statusConfig[invoice.status as keyof typeof statusConfig] || statusConfig.pending;
+                  const type = invoice.repair ? "Réparation" : "Vente";
 
-                return (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-mono text-sm font-medium">
-                      {invoice.id}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        {invoice.customer}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        {new Date(invoice.date).toLocaleDateString("fr-TN")}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{invoice.type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">{invoice.items}</TableCell>
-                    <TableCell className="text-right font-mono-numbers font-medium">
-                      {formatCurrency(invoice.total)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={status.className}>{status.label}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Voir
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Download className="h-4 w-4 mr-2" />
-                            Télécharger PDF
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Printer className="h-4 w-4 mr-2" />
-                            Imprimer
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Annuler
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                  return (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-mono text-sm font-medium">
+                        {invoice.invoice_number}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          {invoice.customer?.name || "Client passager"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(invoice.created_at).toLocaleDateString("fr-TN")}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{type}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono-numbers font-medium">
+                        {formatCurrency(Number(invoice.total_amount))}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={status.className}>{status.label}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleView(invoice)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Voir
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadPDF(invoice)}>
+                              <Download className="h-4 w-4 mr-2" />
+                              Télécharger
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handlePrint(invoice)}>
+                              <Printer className="h-4 w-4 mr-2" />
+                              Imprimer
+                            </DropdownMenuItem>
+                            {invoice.status === "pending" && (
+                              <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice)}>
+                                Marquer payée
+                              </DropdownMenuItem>
+                            )}
+                            {invoice.status !== "cancelled" && (
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => handleCancel(invoice)}
+                              >
+                                Annuler
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* View Invoice Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-md print:max-w-full print:m-0">
+          <DialogHeader>
+            <DialogTitle>Facture {selectedInvoice?.invoice_number}</DialogTitle>
+          </DialogHeader>
+
+          {selectedInvoice && (
+            <div className="space-y-4">
+              <div className="text-center pb-4 border-b">
+                <h2 className="text-xl font-bold">{settings.shop_name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(selectedInvoice.created_at).toLocaleDateString("fr-TN")}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Client:</span>
+                  <span className="font-medium">{selectedInvoice.customer?.name || "Client passager"}</span>
+                </div>
+                {selectedInvoice.customer?.phone && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Téléphone:</span>
+                    <span>{selectedInvoice.customer.phone}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Type:</span>
+                  <span>{selectedInvoice.repair ? "Réparation" : "Vente"}</span>
+                </div>
+                {selectedInvoice.repair && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Appareil:</span>
+                    <span>{selectedInvoice.repair.device_model}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t">
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total:</span>
+                  <span>{formatCurrency(Number(selectedInvoice.total_amount))}</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-muted-foreground">Statut:</span>
+                  <Badge className={statusConfig[selectedInvoice.status as keyof typeof statusConfig]?.className}>
+                    {statusConfig[selectedInvoice.status as keyof typeof statusConfig]?.label}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 print:hidden">
+                <Button variant="outline" className="flex-1" onClick={() => handleDownloadPDF(selectedInvoice)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger
+                </Button>
+                <Button className="flex-1" onClick={() => window.print()}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   Wrench,
   CreditCard,
   MoreHorizontal,
+  Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -23,86 +24,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-
-// Mock customer data
-const customers = [
-  {
-    id: "1",
-    name: "Ahmed Ben Ali",
-    phone: "98 765 432",
-    email: "ahmed.benali@email.com",
-    totalPurchases: 1250.000,
-    totalRepairs: 8,
-    balance: -180.000, // negative = owes money
-    lastVisit: "2024-01-15",
-  },
-  {
-    id: "2",
-    name: "Fatma Trabelsi",
-    phone: "55 123 456",
-    email: "fatma.t@email.com",
-    totalPurchases: 890.000,
-    totalRepairs: 5,
-    balance: 0,
-    lastVisit: "2024-01-14",
-  },
-  {
-    id: "3",
-    name: "Mohamed Khelifi",
-    phone: "22 456 789",
-    totalPurchases: 450.000,
-    totalRepairs: 3,
-    balance: -65.000,
-    lastVisit: "2024-01-16",
-  },
-  {
-    id: "4",
-    name: "Sarra Bouazizi",
-    phone: "97 654 321",
-    email: "sarra.b@email.com",
-    totalPurchases: 2100.000,
-    totalRepairs: 12,
-    balance: 0,
-    lastVisit: "2024-01-13",
-  },
-  {
-    id: "5",
-    name: "Karim Mejri",
-    phone: "20 987 654",
-    totalPurchases: 780.000,
-    totalRepairs: 4,
-    balance: -70.000,
-    lastVisit: "2024-01-15",
-  },
-  {
-    id: "6",
-    name: "Leila Gharbi",
-    phone: "50 111 222",
-    email: "leila.g@email.com",
-    totalPurchases: 1560.000,
-    totalRepairs: 6,
-    balance: 0,
-    lastVisit: "2024-01-12",
-  },
-];
+import { useCustomers, useDeleteCustomer } from "@/hooks/useCustomers";
+import { toast } from "sonner";
 
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: customers = [], isLoading } = useCustomers();
+  const deleteCustomer = useDeleteCustomer();
 
   const filteredCustomers = customers.filter(
     (customer) =>
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.includes(searchQuery)
+      (customer.phone?.includes(searchQuery) ?? false)
   );
 
   const totalCustomers = customers.length;
   const totalDebts = customers.reduce(
-    (sum, c) => sum + Math.abs(Math.min(0, c.balance)),
+    (sum, c) => sum + Math.abs(Math.min(0, Number(c.balance) || 0)),
     0
   );
-  const customersWithDebts = customers.filter((c) => c.balance < 0).length;
+  const customersWithDebts = customers.filter((c) => Number(c.balance) < 0).length;
 
   const getInitials = (name: string) => {
     return name
@@ -113,13 +57,43 @@ export default function Customers() {
       .slice(0, 2);
   };
 
+  const handleDelete = (id: string, name: string) => {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
+      deleteCustomer.mutate(id);
+    }
+  };
+
+  const handleNewCustomer = () => {
+    toast.info("Nouveau client", {
+      description: "Formulaire de création à venir",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Gestion des Clients" description="Fiches clients et historique" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-48" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Gestion des Clients"
         description="Fiches clients et historique"
       >
-        <Button className="bg-gradient-primary hover:opacity-90">
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleNewCustomer}>
           <Plus className="h-4 w-4 mr-2" />
           Nouveau client
         </Button>
@@ -173,10 +147,12 @@ export default function Customers() {
                   </Avatar>
                   <div>
                     <h3 className="font-semibold">{customer.name}</h3>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Phone className="h-3 w-3" />
-                      {customer.phone}
-                    </p>
+                    {customer.phone && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {customer.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <DropdownMenu>
@@ -186,11 +162,19 @@ export default function Customers() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Voir profil</DropdownMenuItem>
-                    <DropdownMenuItem>Modifier</DropdownMenuItem>
-                    <DropdownMenuItem>Historique achats</DropdownMenuItem>
-                    <DropdownMenuItem>Historique réparations</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem onClick={() => toast.info("Voir profil", { description: "Fonctionnalité à venir" })}>
+                      Voir profil
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast.info("Modifier", { description: "Fonctionnalité à venir" })}>
+                      Modifier
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast.info("Historique", { description: "Fonctionnalité à venir" })}>
+                      Historique achats
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDelete(customer.id, customer.name)}
+                    >
                       Supprimer
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -205,38 +189,18 @@ export default function Customers() {
                 </div>
               )}
 
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                    <ShoppingBag className="h-3 w-3" />
-                    Achats
-                  </div>
-                  <p className="font-semibold font-mono-numbers">
-                    {formatCurrency(customer.totalPurchases)}
-                  </p>
-                </div>
-                <div className="p-2 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                    <Wrench className="h-3 w-3" />
-                    Réparations
-                  </div>
-                  <p className="font-semibold">{customer.totalRepairs}</p>
-                </div>
-              </div>
-
               {/* Balance */}
               <div className="flex items-center justify-between pt-3 border-t border-border">
                 <span className="text-sm text-muted-foreground">Solde</span>
                 <Badge
                   className={cn(
-                    customer.balance < 0
+                    Number(customer.balance) < 0
                       ? "bg-destructive/10 text-destructive border-destructive/20"
                       : "bg-success/10 text-success border-success/20"
                   )}
                 >
-                  {customer.balance < 0
-                    ? `Doit: ${formatCurrency(Math.abs(customer.balance))}`
+                  {Number(customer.balance) < 0
+                    ? `Doit: ${formatCurrency(Math.abs(Number(customer.balance)))}`
                     : "À jour"}
                 </Badge>
               </div>
@@ -245,9 +209,11 @@ export default function Customers() {
         ))}
       </div>
 
-      {filteredCustomers.length === 0 && (
+      {filteredCustomers.length === 0 && !isLoading && (
         <div className="text-center py-12 text-muted-foreground">
-          Aucun client trouvé
+          {customers.length === 0
+            ? "Aucun client enregistré. Cliquez sur 'Nouveau client' pour commencer."
+            : "Aucun client trouvé"}
         </div>
       )}
     </div>

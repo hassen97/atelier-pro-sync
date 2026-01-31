@@ -1,102 +1,77 @@
 import { useState } from "react";
-import { Search, Plus, Filter } from "lucide-react";
+import { Search, Plus, Filter, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { RepairCard, type Repair } from "@/components/repairs/RepairCard";
+import { RepairCard } from "@/components/repairs/RepairCard";
 import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
 import { CancelRepairDialog } from "@/components/repairs/CancelRepairDialog";
 import { RepairReceiptDialog } from "@/components/repairs/RepairReceiptDialog";
+import { useRepairs, useUpdateRepairStatus, useDeleteRepair } from "@/hooks/useRepairs";
+import { formatCurrency } from "@/lib/currency";
 
-// Mock repair data
-const initialRepairs: Repair[] = [
-  {
-    id: "REP-001",
-    customer: "Ahmed Ben Ali",
-    phone: "98 765 432",
-    device: "iPhone 14 Pro",
-    imei: "352345678901234",
-    issue: "Écran cassé",
-    diagnosis: "Remplacement écran complet nécessaire",
-    status: "in_progress",
-    depositDate: "2024-01-15",
-    estimatedDate: "2024-01-17",
-    parts: [{ name: "Écran iPhone 14 Pro", cost: 220.0 }],
-    labor: 40.0,
-    total: 260.0,
-    paid: 100.0,
-  },
-  {
-    id: "REP-002",
-    customer: "Fatma Trabelsi",
-    phone: "55 123 456",
-    device: "Samsung Galaxy S23",
-    imei: "356789012345678",
-    issue: "Batterie ne charge plus",
-    diagnosis: "Batterie défectueuse - à remplacer",
-    status: "completed",
-    depositDate: "2024-01-14",
-    estimatedDate: "2024-01-15",
-    deliveredDate: "2024-01-15",
-    parts: [{ name: "Batterie Samsung S23", cost: 55.0 }],
-    labor: 30.0,
-    total: 85.0,
-    paid: 85.0,
-  },
-  {
-    id: "REP-003",
-    customer: "Mohamed Khelifi",
-    phone: "22 456 789",
-    device: "Huawei P30 Pro",
-    issue: "Port de charge défectueux",
-    status: "pending",
-    depositDate: "2024-01-16",
-    parts: [],
-    labor: 0,
-    total: 65.0,
-    paid: 0,
-  },
-  {
-    id: "REP-004",
-    customer: "Sarra Bouazizi",
-    phone: "97 654 321",
-    device: "iPhone 13",
-    issue: "Caméra arrière floue",
-    diagnosis: "Module caméra à remplacer",
-    status: "completed",
-    depositDate: "2024-01-13",
-    deliveredDate: "2024-01-16",
-    parts: [{ name: "Caméra arrière iPhone 13", cost: 120.0 }],
-    labor: 30.0,
-    total: 150.0,
-    paid: 150.0,
-  },
-  {
-    id: "REP-005",
-    customer: "Karim Mejri",
-    phone: "20 987 654",
-    device: "Xiaomi 12",
-    issue: "Écran + vitre tactile",
-    diagnosis: "Chute - remplacement complet",
-    status: "in_progress",
-    depositDate: "2024-01-15",
-    estimatedDate: "2024-01-18",
-    parts: [{ name: "Écran Xiaomi 12", cost: 90.0 }],
-    labor: 30.0,
-    total: 120.0,
-    paid: 50.0,
-  },
-];
+// Type for the repair with customer relation
+interface RepairWithCustomer {
+  id: string;
+  device_model: string;
+  problem_description: string;
+  diagnosis: string | null;
+  status: string;
+  deposit_date: string;
+  delivery_date: string | null;
+  imei: string | null;
+  labor_cost: number;
+  parts_cost: number;
+  total_cost: number;
+  amount_paid: number;
+  customer: {
+    id: string;
+    name: string;
+    phone: string | null;
+    email: string | null;
+  } | null;
+}
+
+// Transform database repair to UI repair format
+function transformRepair(dbRepair: RepairWithCustomer) {
+  return {
+    id: dbRepair.id,
+    customer: dbRepair.customer?.name || "Client anonyme",
+    phone: dbRepair.customer?.phone || "",
+    device: dbRepair.device_model,
+    imei: dbRepair.imei || undefined,
+    issue: dbRepair.problem_description,
+    diagnosis: dbRepair.diagnosis || undefined,
+    status: dbRepair.status as RepairStatus,
+    depositDate: dbRepair.deposit_date?.split("T")[0] || "",
+    estimatedDate: undefined,
+    deliveredDate: dbRepair.delivery_date?.split("T")[0],
+    parts: [] as { name: string; cost: number }[],
+    labor: Number(dbRepair.labor_cost) || 0,
+    total: Number(dbRepair.total_cost) || 0,
+    paid: Number(dbRepair.amount_paid) || 0,
+  };
+}
 
 export default function Repairs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const [repairs, setRepairs] = useState<Repair[]>(initialRepairs);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
-  const [selectedRepair, setSelectedRepair] = useState<Repair | null>(null);
+  const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
+
+  const { data: rawRepairs = [], isLoading } = useRepairs();
+  const updateStatus = useUpdateRepairStatus();
+  const deleteRepair = useDeleteRepair();
+
+  // Transform repairs for UI
+  const repairs = (rawRepairs as unknown as RepairWithCustomer[]).map(transformRepair);
+  const selectedRepair = selectedRepairId
+    ? repairs.find((r) => r.id === selectedRepairId) || null
+    : null;
 
   const filteredRepairs = repairs.filter((repair) => {
     const matchesSearch =
@@ -116,65 +91,59 @@ export default function Repairs() {
 
   const counts = getStatusCounts();
 
-  const handleViewDetails = (repair: Repair) => {
-    toast.info(`Affichage des détails de ${repair.id}`, {
+  const handleViewDetails = (repair: ReturnType<typeof transformRepair>) => {
+    toast.info(`Affichage des détails`, {
       description: `Client: ${repair.customer} - ${repair.device}`,
     });
   };
 
-  const handleEdit = (repair: Repair) => {
-    toast.info(`Modification de ${repair.id}`, {
+  const handleEdit = (repair: ReturnType<typeof transformRepair>) => {
+    toast.info(`Modification`, {
       description: "Fonctionnalité à venir",
     });
   };
 
-  const handlePrint = (repair: Repair) => {
-    setSelectedRepair(repair);
+  const handlePrint = (repair: ReturnType<typeof transformRepair>) => {
+    setSelectedRepairId(repair.id);
     setReceiptDialogOpen(true);
   };
 
-  const handleCancel = (repair: Repair) => {
-    setSelectedRepair(repair);
+  const handleCancel = (repair: ReturnType<typeof transformRepair>) => {
+    setSelectedRepairId(repair.id);
     setCancelDialogOpen(true);
   };
 
   const confirmCancel = () => {
-    if (selectedRepair) {
-      setRepairs((prev) => prev.filter((r) => r.id !== selectedRepair.id));
-      toast.success(`Réparation ${selectedRepair.id} annulée`, {
-        description: `La réparation pour ${selectedRepair.customer} a été supprimée.`,
+    if (selectedRepairId) {
+      deleteRepair.mutate(selectedRepairId, {
+        onSuccess: () => {
+          setCancelDialogOpen(false);
+          setSelectedRepairId(null);
+        },
       });
-      setCancelDialogOpen(false);
-      setSelectedRepair(null);
     }
   };
 
-  const handleStatusChange = (repair: Repair, newStatus: RepairStatus) => {
-    setRepairs((prev) =>
-      prev.map((r) =>
-        r.id === repair.id
-          ? {
-              ...r,
-              status: newStatus,
-              deliveredDate:
-                newStatus === "delivered"
-                  ? new Date().toISOString().split("T")[0]
-                  : r.deliveredDate,
-            }
-          : r
-      )
+  const handleStatusChange = (
+    repair: ReturnType<typeof transformRepair>,
+    newStatus: RepairStatus
+  ) => {
+    updateStatus.mutate(
+      { id: repair.id, status: newStatus },
+      {
+        onSuccess: () => {
+          const statusLabels: Record<RepairStatus, string> = {
+            pending: "En attente",
+            in_progress: "En cours",
+            completed: "Terminé",
+            delivered: "Livré",
+          };
+          toast.success(`Statut mis à jour`, {
+            description: `→ ${statusLabels[newStatus]}`,
+          });
+        },
+      }
     );
-    
-    const statusLabels: Record<RepairStatus, string> = {
-      pending: "En attente",
-      in_progress: "En cours",
-      completed: "Terminé",
-      delivered: "Livré",
-    };
-    
-    toast.success(`Statut mis à jour`, {
-      description: `${repair.id} → ${statusLabels[newStatus]}`,
-    });
   };
 
   const handleNewRepair = () => {
@@ -182,6 +151,22 @@ export default function Repairs() {
       description: "Fonctionnalité à venir",
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader
+          title="Gestion des Réparations"
+          description="Suivi et gestion des fiches de réparation"
+        />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-64" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -241,7 +226,9 @@ export default function Repairs() {
 
           {filteredRepairs.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              Aucune réparation trouvée
+              {repairs.length === 0
+                ? "Aucune réparation enregistrée. Cliquez sur 'Nouvelle réparation' pour commencer."
+                : "Aucune réparation trouvée"}
             </div>
           )}
         </TabsContent>

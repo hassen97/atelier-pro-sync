@@ -2,20 +2,19 @@ import { useState } from "react";
 import {
   Search,
   Plus,
-  Filter,
   Package,
   AlertTriangle,
-  ArrowUpDown,
   MoreHorizontal,
   Download,
   Upload,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -39,39 +38,91 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-
-// Mock inventory data
-const inventory = [
-  { id: "1", name: "Écran iPhone 14 Pro", category: "Écrans", sku: "ECR-IP14P", cost: 220.000, price: 280.000, stock: 5, threshold: 5 },
-  { id: "2", name: "Écran iPhone 13", category: "Écrans", sku: "ECR-IP13", cost: 140.000, price: 180.000, stock: 8, threshold: 5 },
-  { id: "3", name: "Écran iPhone 12", category: "Écrans", sku: "ECR-IP12", cost: 120.000, price: 160.000, stock: 12, threshold: 5 },
-  { id: "4", name: "Batterie iPhone 14", category: "Batteries", sku: "BAT-IP14", cost: 35.000, price: 55.000, stock: 15, threshold: 10 },
-  { id: "5", name: "Batterie iPhone 13", category: "Batteries", sku: "BAT-IP13", cost: 30.000, price: 45.000, stock: 18, threshold: 10 },
-  { id: "6", name: "Batterie Samsung S23", category: "Batteries", sku: "BAT-SS23", cost: 40.000, price: 55.000, stock: 1, threshold: 5 },
-  { id: "7", name: "Connecteur charge iPhone", category: "Connecteurs", sku: "CON-IPC", cost: 15.000, price: 35.000, stock: 25, threshold: 10 },
-  { id: "8", name: "Connecteur charge USB-C", category: "Connecteurs", sku: "CON-USBC", cost: 8.000, price: 25.000, stock: 3, threshold: 10 },
-  { id: "9", name: "Protection écran", category: "Accessoires", sku: "ACC-PE", cost: 5.000, price: 15.000, stock: 50, threshold: 20 },
-  { id: "10", name: "Coque silicone", category: "Accessoires", sku: "ACC-CS", cost: 4.000, price: 12.000, stock: 40, threshold: 15 },
-];
-
-const categories = ["Tous", "Écrans", "Batteries", "Connecteurs", "Accessoires"];
+import { useProducts, useDeleteProduct, useUpdateProductStock } from "@/hooks/useProducts";
+import { toast } from "sonner";
 
 export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tous");
+  
+  const { data: rawProducts = [], isLoading } = useProducts();
+  const deleteProduct = useDeleteProduct();
+  const updateStock = useUpdateProductStock();
 
-  const filteredInventory = inventory.filter((item) => {
-    const matchesSearch = 
+  // Transform products to include category name
+  const products = rawProducts.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    category: p.category?.name || "Non catégorisé",
+    sku: p.sku || "",
+    cost: Number(p.cost_price) || 0,
+    price: Number(p.sell_price) || 0,
+    stock: p.quantity || 0,
+    threshold: p.min_quantity || 5,
+  }));
+
+  // Get unique categories
+  const categories = ["Tous", ...new Set(products.map((p) => p.category))];
+
+  const filteredInventory = products.filter((item) => {
+    const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "Tous" || item.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === "Tous" || item.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const totalItems = inventory.length;
-  const totalValue = inventory.reduce((sum, item) => sum + item.cost * item.stock, 0);
-  const lowStockItems = inventory.filter((item) => item.stock <= item.threshold).length;
-  const outOfStockItems = inventory.filter((item) => item.stock === 0).length;
+  const totalItems = products.length;
+  const totalValue = products.reduce(
+    (sum, item) => sum + item.cost * item.stock,
+    0
+  );
+  const lowStockItems = products.filter(
+    (item) => item.stock <= item.threshold
+  ).length;
+  const outOfStockItems = products.filter((item) => item.stock === 0).length;
+
+  const handleDelete = (id: string, name: string) => {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
+      deleteProduct.mutate(id);
+    }
+  };
+
+  const handleAdjustStock = (id: string, name: string, currentStock: number) => {
+    const newStock = prompt(`Nouveau stock pour ${name}:`, String(currentStock));
+    if (newStock !== null) {
+      const qty = parseInt(newStock);
+      if (!isNaN(qty) && qty >= 0) {
+        updateStock.mutate({ id, quantity: qty });
+      } else {
+        toast.error("Quantité invalide");
+      }
+    }
+  };
+
+  const handleNewProduct = () => {
+    toast.info("Nouveau produit", {
+      description: "Formulaire de création à venir",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader
+          title="Gestion du Stock"
+          description="Inventaire des produits, pièces et accessoires"
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -83,7 +134,7 @@ export default function Inventory() {
           <Download className="h-4 w-4 mr-2" />
           Exporter
         </Button>
-        <Button className="bg-gradient-primary hover:opacity-90">
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleNewProduct}>
           <Plus className="h-4 w-4 mr-2" />
           Nouveau produit
         </Button>
@@ -164,63 +215,95 @@ export default function Inventory() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInventory.map((item) => {
-                const margin = ((item.price - item.cost) / item.cost) * 100;
-                const isLowStock = item.stock <= item.threshold;
-                const isOutOfStock = item.stock === 0;
+              {filteredInventory.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                    {products.length === 0
+                      ? "Aucun produit enregistré. Cliquez sur 'Nouveau produit' pour commencer."
+                      : "Aucun produit trouvé"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredInventory.map((item) => {
+                  const margin =
+                    item.cost > 0
+                      ? ((item.price - item.cost) / item.cost) * 100
+                      : 0;
+                  const isLowStock = item.stock <= item.threshold;
+                  const isOutOfStock = item.stock === 0;
 
-                return (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {item.sku}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{item.category}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono-numbers">
-                      {formatCurrency(item.cost)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono-numbers">
-                      {formatCurrency(item.price)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="text-success font-medium">
-                        +{margin.toFixed(0)}%
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge
-                        className={cn(
-                          "font-mono",
-                          isOutOfStock && "bg-destructive/10 text-destructive border-destructive/20",
-                          isLowStock && !isOutOfStock && "bg-warning/10 text-warning border-warning/20",
-                          !isLowStock && "bg-success/10 text-success border-success/20"
-                        )}
-                      >
-                        {item.stock}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Modifier</DropdownMenuItem>
-                          <DropdownMenuItem>Ajuster stock</DropdownMenuItem>
-                          <DropdownMenuItem>Historique</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {item.sku || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{item.category}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono-numbers">
+                        {formatCurrency(item.cost)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono-numbers">
+                        {formatCurrency(item.price)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-success font-medium">
+                          +{margin.toFixed(0)}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          className={cn(
+                            "font-mono",
+                            isOutOfStock &&
+                              "bg-destructive/10 text-destructive border-destructive/20",
+                            isLowStock &&
+                              !isOutOfStock &&
+                              "bg-warning/10 text-warning border-warning/20",
+                            !isLowStock &&
+                              "bg-success/10 text-success border-success/20"
+                          )}
+                        >
+                          {item.stock}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => toast.info("Modifier", { description: "Fonctionnalité à venir" })}
+                            >
+                              Modifier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleAdjustStock(item.id, item.name, item.stock)}
+                            >
+                              Ajuster stock
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => toast.info("Historique", { description: "Fonctionnalité à venir" })}
+                            >
+                              Historique
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDelete(item.id, item.name)}
+                            >
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>

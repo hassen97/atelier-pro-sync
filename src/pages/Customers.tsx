@@ -5,11 +5,8 @@ import {
   Phone,
   Mail,
   User,
-  ShoppingBag,
-  Wrench,
   CreditCard,
   MoreHorizontal,
-  Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -27,12 +24,23 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-import { useCustomers, useDeleteCustomer } from "@/hooks/useCustomers";
-import { toast } from "sonner";
+import {
+  useCustomers,
+  useCreateCustomer,
+  useUpdateCustomer,
+  useDeleteCustomer,
+  type Customer,
+} from "@/hooks/useCustomers";
+import { CustomerDialog } from "@/components/customers/CustomerDialog";
 
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+
   const { data: customers = [], isLoading } = useCustomers();
+  const createCustomer = useCreateCustomer();
+  const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
 
   const filteredCustomers = customers.filter(
@@ -57,16 +65,36 @@ export default function Customers() {
       .slice(0, 2);
   };
 
+  const handleCreate = () => {
+    setEditingCustomer(null);
+    setDialogOpen(true);
+  };
+
+  const handleEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setDialogOpen(true);
+  };
+
   const handleDelete = (id: string, name: string) => {
     if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
       deleteCustomer.mutate(id);
     }
   };
 
-  const handleNewCustomer = () => {
-    toast.info("Nouveau client", {
-      description: "Formulaire de création à venir",
-    });
+  const handleSubmit = async (data: {
+    name: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    notes?: string;
+  }) => {
+    if (editingCustomer) {
+      await updateCustomer.mutateAsync({ id: editingCustomer.id, ...data });
+    } else {
+      await createCustomer.mutateAsync(data);
+    }
+    setDialogOpen(false);
+    setEditingCustomer(null);
   };
 
   if (isLoading) {
@@ -93,7 +121,7 @@ export default function Customers() {
         title="Gestion des Clients"
         description="Fiches clients et historique"
       >
-        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleNewCustomer}>
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Nouveau client
         </Button>
@@ -162,14 +190,8 @@ export default function Customers() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => toast.info("Voir profil", { description: "Fonctionnalité à venir" })}>
-                      Voir profil
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toast.info("Modifier", { description: "Fonctionnalité à venir" })}>
+                    <DropdownMenuItem onClick={() => handleEdit(customer)}>
                       Modifier
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toast.info("Historique", { description: "Fonctionnalité à venir" })}>
-                      Historique achats
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
@@ -216,6 +238,15 @@ export default function Customers() {
             : "Aucun client trouvé"}
         </div>
       )}
+
+      {/* Customer Dialog */}
+      <CustomerDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        customer={editingCustomer}
+        onSubmit={handleSubmit}
+        isLoading={createCustomer.isPending || updateCustomer.isPending}
+      />
     </div>
   );
 }

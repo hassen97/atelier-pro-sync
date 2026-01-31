@@ -2,11 +2,11 @@ import { useState } from "react";
 import {
   Search,
   Plus,
-  Filter,
   Receipt,
   Calendar,
   Building,
   MoreHorizontal,
+  Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -35,36 +35,106 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/currency";
-import { cn } from "@/lib/utils";
+import {
+  useExpenses,
+  useCreateExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+  type ExpenseWithSupplier,
+} from "@/hooks/useExpenses";
+import { ExpenseDialog } from "@/components/expenses/ExpenseDialog";
 
-// Mock expenses data
-const expenses = [
-  { id: "1", date: "2024-01-15", description: "Loyer local", category: "Loyer", supplier: null, amount: 1200.000 },
-  { id: "2", date: "2024-01-14", description: "Facture STEG", category: "Électricité", supplier: null, amount: 180.000 },
-  { id: "3", date: "2024-01-13", description: "Achat écrans iPhone", category: "Stock", supplier: "TechParts Tunisia", amount: 2200.000 },
-  { id: "4", date: "2024-01-12", description: "Publicité Facebook", category: "Marketing", supplier: null, amount: 150.000 },
-  { id: "5", date: "2024-01-11", description: "Facture Ooredoo", category: "Télécom", supplier: null, amount: 89.000 },
-  { id: "6", date: "2024-01-10", description: "Achat batteries", category: "Stock", supplier: "Battery Plus", amount: 850.000 },
-  { id: "7", date: "2024-01-09", description: "Fournitures bureau", category: "Fournitures", supplier: null, amount: 65.000 },
-  { id: "8", date: "2024-01-08", description: "Entretien climatisation", category: "Maintenance", supplier: null, amount: 120.000 },
+const CATEGORIES = [
+  "Toutes",
+  "Loyer",
+  "Électricité",
+  "Stock",
+  "Marketing",
+  "Télécom",
+  "Fournitures",
+  "Maintenance",
+  "Salaires",
+  "Transport",
+  "Autre",
 ];
-
-const categories = ["Toutes", "Loyer", "Électricité", "Stock", "Marketing", "Télécom", "Fournitures", "Maintenance"];
 
 export default function Expenses() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Toutes");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseWithSupplier | null>(null);
+
+  const { data: expenses = [], isLoading } = useExpenses();
+  const createExpense = useCreateExpense();
+  const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
 
   const filteredExpenses = expenses.filter((expense) => {
-    const matchesSearch = expense.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "Toutes" || expense.category === selectedCategory;
+    const matchesSearch =
+      expense.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      expense.category.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "Toutes" || expense.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const stockExpenses = expenses.filter((e) => e.category === "Stock").reduce((sum, e) => sum + e.amount, 0);
-  const fixedExpenses = expenses.filter((e) => ["Loyer", "Électricité", "Télécom"].includes(e.category)).reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const stockExpenses = expenses
+    .filter((e) => e.category === "Stock")
+    .reduce((sum, e) => sum + Number(e.amount), 0);
+  const fixedExpenses = expenses
+    .filter((e) => ["Loyer", "Électricité", "Télécom"].includes(e.category))
+    .reduce((sum, e) => sum + Number(e.amount), 0);
+
+  const handleCreate = () => {
+    setEditingExpense(null);
+    setDialogOpen(true);
+  };
+
+  const handleEdit = (expense: ExpenseWithSupplier) => {
+    setEditingExpense(expense);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cette dépense ?")) {
+      deleteExpense.mutate(id);
+    }
+  };
+
+  const handleSubmit = async (data: {
+    expense_date: string;
+    category: string;
+    description?: string;
+    amount: number;
+  }) => {
+    if (editingExpense) {
+      await updateExpense.mutateAsync({ id: editingExpense.id, ...data });
+    } else {
+      await createExpense.mutateAsync(data);
+    }
+    setDialogOpen(false);
+    setEditingExpense(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader
+          title="Gestion des Dépenses"
+          description="Suivi des dépenses fixes et variables"
+        />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -72,7 +142,7 @@ export default function Expenses() {
         title="Gestion des Dépenses"
         description="Suivi des dépenses fixes et variables"
       >
-        <Button className="bg-gradient-primary hover:opacity-90">
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Nouvelle dépense
         </Button>
@@ -116,7 +186,7 @@ export default function Expenses() {
             <SelectValue placeholder="Catégorie" />
           </SelectTrigger>
           <SelectContent>
-            {categories.map((cat) => (
+            {CATEGORIES.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
               </SelectItem>
@@ -140,52 +210,78 @@ export default function Expenses() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredExpenses.map((expense) => (
-                <TableRow key={expense.id}>
-                  <TableCell className="text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {new Date(expense.date).toLocaleDateString("fr-TN")}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{expense.description}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{expense.category}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {expense.supplier ? (
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        <span>{expense.supplier}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-mono-numbers font-medium text-destructive">
-                    -{formatCurrency(expense.amount)}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Modifier</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          Supprimer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {filteredExpenses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    {expenses.length === 0
+                      ? "Aucune dépense enregistrée. Cliquez sur 'Nouvelle dépense' pour commencer."
+                      : "Aucune dépense trouvée"}
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredExpenses.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell className="text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(expense.expense_date).toLocaleDateString("fr-TN")}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {expense.description || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{expense.category}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {expense.supplier ? (
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4 text-muted-foreground" />
+                          <span>{expense.supplier.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-mono-numbers font-medium text-destructive">
+                      -{formatCurrency(expense.amount)}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(expense)}>
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDelete(expense.id)}
+                          >
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* Expense Dialog */}
+      <ExpenseDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        expense={editingExpense}
+        onSubmit={handleSubmit}
+        isLoading={createExpense.isPending || updateExpense.isPending}
+      />
     </div>
   );
 }

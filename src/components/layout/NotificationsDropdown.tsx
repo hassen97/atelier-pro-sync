@@ -1,5 +1,4 @@
-import { Bell, Check, Wrench, AlertTriangle, Package } from "lucide-react";
-import { useState } from "react";
+import { Bell, Check, Wrench, AlertTriangle, Package, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,42 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-
-interface Notification {
-  id: string;
-  type: "repair" | "stock" | "alert";
-  title: string;
-  description: string;
-  time: string;
-  read: boolean;
-}
-
-const initialNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "repair",
-    title: "Réparation terminée",
-    description: "iPhone 14 Pro - REP-001 est prêt",
-    time: "Il y a 5 min",
-    read: false,
-  },
-  {
-    id: "2",
-    type: "stock",
-    title: "Stock faible",
-    description: "Écran Samsung S23 - 2 restants",
-    time: "Il y a 1h",
-    read: false,
-  },
-  {
-    id: "3",
-    type: "alert",
-    title: "Paiement en attente",
-    description: "3 réparations avec solde impayé",
-    time: "Il y a 2h",
-    read: true,
-  },
-];
+import { useNotifications } from "@/hooks/useNotifications";
 
 const iconMap = {
   repair: Wrench,
@@ -60,19 +24,13 @@ const colorMap = {
 };
 
 export function NotificationsDropdown() {
-  const [notifications, setNotifications] = useState(initialNotifications);
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    clearAllNotifications,
+  } = useNotifications();
 
   return (
     <DropdownMenu>
@@ -89,17 +47,36 @@ export function NotificationsDropdown() {
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto py-1 px-2 text-xs"
-              onClick={markAllAsRead}
-            >
-              <Check className="h-3 w-3 mr-1" />
-              Tout marquer lu
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto py-1 px-2 text-xs"
+                onClick={(e) => {
+                  e.preventDefault();
+                  markAllAsRead();
+                }}
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Tout lu
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto py-1 px-2 text-xs text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  e.preventDefault();
+                  clearAllNotifications();
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Effacer
+              </Button>
+            )}
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {notifications.length === 0 ? (
@@ -107,7 +84,7 @@ export function NotificationsDropdown() {
             Aucune notification
           </div>
         ) : (
-          notifications.map((notification) => {
+          notifications.slice(0, 10).map((notification) => {
             const Icon = iconMap[notification.type];
             return (
               <DropdownMenuItem
@@ -146,10 +123,14 @@ export function NotificationsDropdown() {
             );
           })
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-center justify-center text-sm text-primary">
-          Voir toutes les notifications
-        </DropdownMenuItem>
+        {notifications.length > 10 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-center justify-center text-sm text-primary">
+              +{notifications.length - 10} autres notifications
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

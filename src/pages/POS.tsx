@@ -1,68 +1,86 @@
 import { useState } from "react";
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, User } from "lucide-react";
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, User, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-
-// Mock products
-const products = [
-  { id: "1", name: "Écran iPhone 14 Pro", category: "Écrans", price: 280.000, stock: 5 },
-  { id: "2", name: "Écran iPhone 13", category: "Écrans", price: 180.000, stock: 8 },
-  { id: "3", name: "Batterie iPhone 12", category: "Batteries", price: 45.000, stock: 15 },
-  { id: "4", name: "Batterie Samsung S23", category: "Batteries", price: 55.000, stock: 10 },
-  { id: "5", name: "Protection écran", category: "Accessoires", price: 15.000, stock: 50 },
-  { id: "6", name: "Coque silicone", category: "Accessoires", price: 12.000, stock: 40 },
-  { id: "7", name: "Chargeur rapide 20W", category: "Accessoires", price: 25.000, stock: 25 },
-  { id: "8", name: "Câble USB-C", category: "Accessoires", price: 8.000, stock: 60 },
-];
+import { useProducts } from "@/hooks/useProducts";
+import { useCreateSale } from "@/hooks/useSales";
+import { useCustomers } from "@/hooks/useCustomers";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
 interface CartItem {
   id: string;
   name: string;
   price: number;
   quantity: number;
+  maxStock: number;
 }
 
 export default function POS() {
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  const categories = [...new Set(products.map((p) => p.category))];
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   
-  const filteredProducts = products.filter((p) => {
+  const { data: products = [], isLoading: productsLoading } = useProducts();
+  const { data: customers = [], isLoading: customersLoading } = useCustomers();
+  const createSale = useCreateSale();
+
+  // Extract unique categories from products
+  const categories = [...new Set(products.map((p: any) => p.category?.name).filter(Boolean))];
+  
+  const filteredProducts = products.filter((p: any) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || p.category === selectedCategory;
+    const matchesCategory = !selectedCategory || p.category?.name === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const addToCart = (product: typeof products[0]) => {
+  const addToCart = (product: any) => {
+    if (product.quantity <= 0) return;
+    
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
+        if (existing.quantity >= product.quantity) {
+          return prev; // Can't add more than stock
+        }
         return prev.map((item) =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
+      return [...prev, { 
+        id: product.id, 
+        name: product.name, 
+        price: product.sell_price, 
+        quantity: 1,
+        maxStock: product.quantity
+      }];
     });
   };
 
   const updateQuantity = (id: string, delta: number) => {
     setCart((prev) =>
       prev
-        .map((item) =>
-          item.id === id
-            ? { ...item, quantity: Math.max(0, item.quantity + delta) }
-            : item
-        )
+        .map((item) => {
+          if (item.id !== id) return item;
+          const newQuantity = item.quantity + delta;
+          if (newQuantity > item.maxStock) return item; // Can't exceed stock
+          return { ...item, quantity: Math.max(0, newQuantity) };
+        })
         .filter((item) => item.quantity > 0)
     );
   };
@@ -76,6 +94,44 @@ export default function POS() {
   const total = subtotal + tax;
 
   const clearCart = () => setCart([]);
+
+  const handlePayment = async (paymentMethod: string) => {
+    if (cart.length === 0) return;
+
+    await createSale.mutateAsync({
+      customer_id: selectedCustomerId || null,
+      payment_method: paymentMethod,
+      total_amount: total,
+      amount_paid: total,
+      items: cart.map((item) => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.price,
+      })),
+    });
+
+    clearCart();
+    setSelectedCustomerId("");
+  };
+
+  if (productsLoading) {
+    return (
+      <div className="h-[calc(100vh-8rem)] animate-fade-in">
+        <PageHeader title="Point de Vente" description="Encaissement et ventes" />
+        <div className="grid gap-6 lg:grid-cols-3 h-[calc(100%-5rem)]">
+          <div className="lg:col-span-2">
+            <Skeleton className="h-10 w-full mb-4" />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-24" />
+              ))}
+            </div>
+          </div>
+          <Skeleton className="h-96" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-8rem)] animate-fade-in">
@@ -121,37 +177,47 @@ export default function POS() {
 
           {/* Products Grid */}
           <div className="flex-1 overflow-auto">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredProducts.map((product) => (
-                <Card
-                  key={product.id}
-                  className={cn(
-                    "cursor-pointer transition-all hover:shadow-soft hover:border-primary/30",
-                    product.stock < 3 && "border-warning/50"
-                  )}
-                  onClick={() => addToCart(product)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium text-sm leading-tight">{product.name}</h3>
-                      {product.stock < 3 && (
-                        <Badge variant="destructive" className="text-[10px] shrink-0 ml-2">
-                          {product.stock}
+            {filteredProducts.length === 0 ? (
+              <div className="flex items-center justify-center h-32 text-muted-foreground">
+                {products.length === 0 
+                  ? "Aucun produit dans l'inventaire. Ajoutez des produits dans la page Stock."
+                  : "Aucun produit trouvé pour cette recherche."}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredProducts.map((product: any) => (
+                  <Card
+                    key={product.id}
+                    className={cn(
+                      "cursor-pointer transition-all hover:shadow-soft hover:border-primary/30",
+                      product.quantity <= product.min_quantity && "border-warning/50",
+                      product.quantity <= 0 && "opacity-50 cursor-not-allowed"
+                    )}
+                    onClick={() => addToCart(product)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-medium text-sm leading-tight">{product.name}</h3>
+                        <Badge 
+                          variant={product.quantity <= 0 ? "destructive" : product.quantity <= product.min_quantity ? "secondary" : "outline"} 
+                          className="text-[10px] shrink-0 ml-2"
+                        >
+                          {product.quantity}
                         </Badge>
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <Badge variant="secondary" className="text-xs">
-                        {product.category}
-                      </Badge>
-                      <span className="font-bold font-mono-numbers text-primary">
-                        {formatCurrency(product.price)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <Badge variant="secondary" className="text-xs">
+                          {product.category?.name || "Sans catégorie"}
+                        </Badge>
+                        <span className="font-bold font-mono-numbers text-primary">
+                          {formatCurrency(product.sell_price)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -173,10 +239,23 @@ export default function POS() {
 
           <CardContent className="flex-1 flex flex-col min-h-0 p-4 pt-0">
             {/* Customer Selection */}
-            <Button variant="outline" size="sm" className="w-full mb-3 justify-start">
-              <User className="h-4 w-4 mr-2" />
-              Sélectionner client (optionnel)
-            </Button>
+            <Select
+              value={selectedCustomerId || "__none__"}
+              onValueChange={(value) => setSelectedCustomerId(value === "__none__" ? "" : value)}
+            >
+              <SelectTrigger className="w-full mb-3">
+                <User className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Sélectionner client (optionnel)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Client anonyme</SelectItem>
+                {customers.map((customer: any) => (
+                  <SelectItem key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {/* Cart Items */}
             <div className="flex-1 overflow-auto space-y-2 min-h-0">
@@ -213,6 +292,7 @@ export default function POS() {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => updateQuantity(item.id, 1)}
+                        disabled={item.quantity >= item.maxStock}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
@@ -249,13 +329,34 @@ export default function POS() {
 
               {/* Payment Buttons */}
               <div className="grid grid-cols-2 gap-2 pt-2">
-                <Button variant="outline" className="h-12" disabled={cart.length === 0}>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Carte
+                <Button 
+                  variant="outline" 
+                  className="h-12" 
+                  disabled={cart.length === 0 || createSale.isPending}
+                  onClick={() => handlePayment("card")}
+                >
+                  {createSale.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Carte
+                    </>
+                  )}
                 </Button>
-                <Button className="h-12 bg-gradient-success hover:opacity-90" disabled={cart.length === 0}>
-                  <Banknote className="h-4 w-4 mr-2" />
-                  Espèces
+                <Button 
+                  className="h-12 bg-gradient-success hover:opacity-90" 
+                  disabled={cart.length === 0 || createSale.isPending}
+                  onClick={() => handlePayment("cash")}
+                >
+                  {createSale.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Banknote className="h-4 w-4 mr-2" />
+                      Espèces
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

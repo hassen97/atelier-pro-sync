@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ShoppingCart,
   Wrench,
@@ -11,6 +12,7 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -21,8 +23,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { useDashboardStats, useRecentRepairs, useLowStockAlerts } from "@/hooks/useDashboard";
+import { useCreateRepair } from "@/hooks/useRepairs";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { RepairDialog } from "@/components/repairs/RepairDialog";
 
 const statusConfig = {
   pending: { label: "En attente", icon: Clock, className: "bg-warning/10 text-warning border-warning/20" },
@@ -36,6 +40,9 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: recentRepairs = [], isLoading: repairsLoading } = useRecentRepairs(5);
   const { data: stockAlerts = [], isLoading: alertsLoading } = useLowStockAlerts(5);
+  const createRepair = useCreateRepair();
+  
+  const [repairDialogOpen, setRepairDialogOpen] = useState(false);
 
   const isLoading = statsLoading || repairsLoading || alertsLoading;
 
@@ -61,10 +68,33 @@ export default function Dashboard() {
     );
   }
 
-  const handleNewRepair = () => {
-    toast.info("Nouvelle réparation", {
-      description: "Fonctionnalité à venir",
-    });
+  const handleExport = () => {
+    // Create CSV content for dashboard data
+    const csvContent = [
+      ["Rapport Dashboard", new Date().toLocaleDateString("fr-FR")],
+      [],
+      ["Statistiques"],
+      ["Ventes du mois", stats?.salesTotal || 0],
+      ["Réparations en cours", stats?.repairsInProgress || 0],
+      ["Réparations terminées", stats?.repairsCompleted || 0],
+      ["Alertes stock", stats?.stockAlerts || 0],
+      ["Total produits", stats?.totalProducts || 0],
+      ["Total clients", stats?.totalCustomers || 0],
+      ["Dettes clients", stats?.customerDebts || 0],
+      ["Dettes fournisseurs", stats?.supplierDebts || 0],
+    ].map(row => row.join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `dashboard_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Rapport exporté avec succès");
   };
 
   return (
@@ -73,10 +103,11 @@ export default function Dashboard() {
         title="Tableau de bord"
         description="Vue d'ensemble de votre activité"
       >
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleExport}>
+          <Download className="h-4 w-4 mr-2" />
           Exporter
         </Button>
-        <Button size="sm" className="bg-gradient-primary hover:opacity-90" onClick={handleNewRepair}>
+        <Button size="sm" className="bg-gradient-primary hover:opacity-90" onClick={() => setRepairDialogOpen(true)}>
           + Nouvelle réparation
         </Button>
       </PageHeader>
@@ -246,6 +277,27 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Repair Dialog */}
+      <RepairDialog
+        open={repairDialogOpen}
+        onOpenChange={setRepairDialogOpen}
+        onSubmit={async (data) => {
+          await createRepair.mutateAsync({
+            device_model: data.device_model || "",
+            problem_description: data.problem_description || "",
+            customer_id: data.customer_id || null,
+            imei: data.imei,
+            diagnosis: data.diagnosis,
+            labor_cost: data.labor_cost,
+            parts_cost: data.parts_cost,
+            amount_paid: data.amount_paid,
+            notes: data.notes,
+          });
+          setRepairDialogOpen(false);
+        }}
+        isLoading={createRepair.isPending}
+      />
     </div>
   );
 }

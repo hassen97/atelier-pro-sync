@@ -2,7 +2,6 @@ import {
   ShoppingCart,
   Wrench,
   Package,
-  Users,
   TrendingUp,
   AlertTriangle,
   CreditCard,
@@ -18,51 +17,56 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-
-// Mock data for demonstration
-const stats = {
-  salesTotal: 15847.500,
-  salesTrend: 12.5,
-  repairsInProgress: 8,
-  repairsCompleted: 45,
-  stockAlerts: 3,
-  customerDebts: 2450.000,
-  supplierDebts: 8920.000,
-  profit: 4235.750,
-  profitTrend: 8.3,
-};
-
-const recentRepairs = [
-  { id: "REP-001", customer: "Ahmed Ben Ali", device: "iPhone 14 Pro", issue: "Écran cassé", status: "in_progress", amount: 180.000 },
-  { id: "REP-002", customer: "Fatma Trabelsi", device: "Samsung S23", issue: "Batterie", status: "completed", amount: 85.000 },
-  { id: "REP-003", customer: "Mohamed Khelifi", device: "Huawei P30", issue: "Port charge", status: "pending", amount: 65.000 },
-  { id: "REP-004", customer: "Sarra Bouazizi", device: "iPhone 13", issue: "Caméra", status: "completed", amount: 150.000 },
-  { id: "REP-005", customer: "Karim Mejri", device: "Xiaomi 12", issue: "Écran + vitre", status: "in_progress", amount: 120.000 },
-];
-
-const stockAlerts = [
-  { name: "Écran iPhone 14 Pro", quantity: 2, threshold: 5 },
-  { name: "Batterie Samsung S23", quantity: 1, threshold: 3 },
-  { name: "Connecteur charge USB-C", quantity: 3, threshold: 10 },
-];
-
-const topProducts = [
-  { name: "Écran iPhone 13", sales: 24, revenue: 4320.000 },
-  { name: "Batterie iPhone 12", sales: 18, revenue: 1620.000 },
-  { name: "Protection écran", sales: 45, revenue: 675.000 },
-  { name: "Coque silicone", sales: 38, revenue: 570.000 },
-];
+import { useDashboardStats, useRecentRepairs, useLowStockAlerts } from "@/hooks/useDashboard";
+import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 const statusConfig = {
   pending: { label: "En attente", icon: Clock, className: "bg-warning/10 text-warning border-warning/20" },
   in_progress: { label: "En cours", icon: Loader2, className: "bg-primary/10 text-primary border-primary/20" },
   completed: { label: "Terminé", icon: CheckCircle2, className: "bg-success/10 text-success border-success/20" },
+  delivered: { label: "Livré", icon: CheckCircle2, className: "bg-success/10 text-success border-success/20" },
   cancelled: { label: "Annulé", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
 export default function Dashboard() {
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: recentRepairs = [], isLoading: repairsLoading } = useRecentRepairs(5);
+  const { data: stockAlerts = [], isLoading: alertsLoading } = useLowStockAlerts(5);
+
+  const isLoading = statsLoading || repairsLoading || alertsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Tableau de bord" description="Vue d'ensemble de votre activité" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[...Array(2)].map((_, i) => (
+            <Skeleton key={i} className="h-20" />
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Skeleton className="lg:col-span-2 h-80" />
+          <Skeleton className="h-80" />
+        </div>
+      </div>
+    );
+  }
+
+  const handleNewRepair = () => {
+    toast.info("Nouvelle réparation", {
+      description: "Fonctionnalité à venir",
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
@@ -72,7 +76,7 @@ export default function Dashboard() {
         <Button variant="outline" size="sm">
           Exporter
         </Button>
-        <Button size="sm" className="bg-gradient-primary hover:opacity-90">
+        <Button size="sm" className="bg-gradient-primary hover:opacity-90" onClick={handleNewRepair}>
           + Nouvelle réparation
         </Button>
       </PageHeader>
@@ -81,31 +85,30 @@ export default function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Ventes du mois"
-          value={formatCurrency(stats.salesTotal)}
+          value={formatCurrency(stats?.salesTotal || 0)}
           icon={ShoppingCart}
-          trend={{ value: stats.salesTrend, label: "vs mois dernier" }}
           variant="success"
         />
         <StatCard
           title="Réparations en cours"
-          value={stats.repairsInProgress}
-          subtitle={`${stats.repairsCompleted} terminées ce mois`}
+          value={stats?.repairsInProgress || 0}
+          subtitle={`${stats?.repairsCompleted || 0} terminées`}
           icon={Wrench}
           variant="accent"
         />
         <StatCard
           title="Alertes stock"
-          value={stats.stockAlerts}
+          value={stats?.stockAlerts || 0}
           subtitle="Produits en rupture imminente"
           icon={AlertTriangle}
           variant="warning"
         />
         <StatCard
-          title="Profit net"
-          value={formatCurrency(stats.profit)}
-          icon={TrendingUp}
-          trend={{ value: stats.profitTrend, label: "vs mois dernier" }}
-          variant="success"
+          title="Total produits"
+          value={stats?.totalProducts || 0}
+          subtitle={`${stats?.totalCustomers || 0} clients`}
+          icon={Package}
+          variant="default"
         />
       </div>
 
@@ -117,7 +120,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Dettes clients</p>
                 <p className="mt-1 text-xl font-bold font-mono-numbers text-warning">
-                  {formatCurrency(stats.customerDebts)}
+                  {formatCurrency(stats?.customerDebts || 0)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -133,7 +136,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Dettes fournisseurs</p>
                 <p className="mt-1 text-xl font-bold font-mono-numbers text-destructive">
-                  {formatCurrency(stats.supplierDebts)}
+                  {formatCurrency(stats?.supplierDebts || 0)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -155,43 +158,51 @@ export default function Dashboard() {
                 <CardTitle className="text-base">Réparations récentes</CardTitle>
                 <CardDescription>Dernières fiches de réparation</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" className="text-primary">
-                Voir tout →
+              <Button variant="ghost" size="sm" className="text-primary" asChild>
+                <Link to="/repairs">Voir tout →</Link>
               </Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border">
-              {recentRepairs.map((repair) => {
-                const status = statusConfig[repair.status as keyof typeof statusConfig];
-                const StatusIcon = status.icon;
-                return (
-                  <div
-                    key={repair.id}
-                    className="flex items-center justify-between px-6 py-3 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", status.className)}>
-                        <StatusIcon className="w-4 h-4" />
+              {recentRepairs.length === 0 ? (
+                <div className="px-6 py-8 text-center text-muted-foreground">
+                  Aucune réparation récente
+                </div>
+              ) : (
+                recentRepairs.map((repair: any) => {
+                  const status = statusConfig[repair.status as keyof typeof statusConfig] || statusConfig.pending;
+                  const StatusIcon = status.icon;
+                  return (
+                    <div
+                      key={repair.id}
+                      className="flex items-center justify-between px-6 py-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", status.className)}>
+                          <StatusIcon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {repair.customer?.name || "Client anonyme"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {repair.device_model} • {repair.problem_description}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{repair.customer}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {repair.device} • {repair.issue}
-                        </p>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <Badge variant="secondary" className={status.className}>
+                          {status.label}
+                        </Badge>
+                        <span className="text-sm font-medium font-mono-numbers">
+                          {formatCurrency(Number(repair.total_cost) || 0)}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <Badge variant="secondary" className={status.className}>
-                        {status.label}
-                      </Badge>
-                      <span className="text-sm font-medium font-mono-numbers">
-                        {formatCurrency(repair.amount)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
@@ -206,51 +217,31 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {stockAlerts.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-3 rounded-lg bg-warning/5 border border-warning/20"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Seuil: {item.threshold} unités
-                    </p>
-                  </div>
-                  <Badge variant="destructive" className="shrink-0">
-                    {item.quantity} restant{item.quantity > 1 ? "s" : ""}
-                  </Badge>
+              {stockAlerts.length === 0 ? (
+                <div className="py-4 text-center text-muted-foreground text-sm">
+                  Aucune alerte de stock
                 </div>
-              ))}
-              <Button variant="outline" size="sm" className="w-full mt-2">
-                Commander stock
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Top Products */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Meilleures ventes</CardTitle>
-              <CardDescription>Ce mois</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {topProducts.map((product, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                      {i + 1}
-                    </span>
+              ) : (
+                stockAlerts.map((item: any) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-warning/5 border border-warning/20"
+                  >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">{product.sales} ventes</p>
+                      <p className="text-sm font-medium truncate">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Seuil: {item.min_quantity} unités
+                      </p>
                     </div>
+                    <Badge variant="destructive" className="shrink-0">
+                      {item.quantity} restant{item.quantity > 1 ? "s" : ""}
+                    </Badge>
                   </div>
-                  <span className="text-sm font-medium font-mono-numbers shrink-0">
-                    {formatCurrency(product.revenue)}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
+              <Button variant="outline" size="sm" className="w-full mt-2" asChild>
+                <Link to="/inventory">Voir l'inventaire</Link>
+              </Button>
             </CardContent>
           </Card>
         </div>

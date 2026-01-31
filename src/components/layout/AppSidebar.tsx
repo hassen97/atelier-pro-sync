@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -16,7 +15,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Smartphone,
-  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 
 const navigation = [
   { name: "Tableau de bord", href: "/", icon: LayoutDashboard },
@@ -54,6 +53,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: AppSidebarProps) {
   const location = useLocation();
+  const { settings } = useShopSettingsContext();
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
@@ -116,7 +116,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
               <Smartphone className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="flex flex-col">
-              <span className="font-semibold text-sidebar-foreground text-sm">RepairPro</span>
+              <span className="font-semibold text-sidebar-foreground text-sm truncate max-w-[140px]">{settings.shop_name}</span>
               <span className="text-[10px] text-sidebar-foreground/60">Tunisie</span>
             </div>
           </div>

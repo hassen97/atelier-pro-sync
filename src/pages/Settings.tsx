@@ -24,16 +24,26 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useShopSettings } from "@/hooks/useShopSettings";
+import { useNotificationSettings } from "@/hooks/useNotificationSettings";
+import { useBackup } from "@/hooks/useBackup";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettings();
+  const { settings: notifSettings, saveSettings: saveNotifSettings } = useNotificationSettings();
+  const { 
+    settings: backupSettings, 
+    syncing, 
+    saveSettings: saveBackupSettings, 
+    exportJSON, 
+    exportSQL, 
+    restoreFromFile, 
+    syncNow 
+  } = useBackup();
   
   const [shopName, setShopName] = useState("");
   const [taxRate, setTaxRate] = useState("");
   const [stockThreshold, setStockThreshold] = useState("");
-  const [autoBackup, setAutoBackup] = useState(true);
-  const [cloudSync, setCloudSync] = useState(true);
 
   // Sync local state with loaded settings
   useEffect(() => {
@@ -50,6 +60,19 @@ export default function Settings() {
       tax_rate: parseFloat(taxRate) || 19,
       stock_alert_threshold: parseInt(stockThreshold) || 5,
     });
+  };
+
+  const formatLastSyncTime = (time: string | null) => {
+    if (!time) return "Jamais";
+    const date = new Date(time);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return "À l'instant";
+    if (diffMins < 60) return `Il y a ${diffMins} minute${diffMins > 1 ? "s" : ""}`;
+    if (diffMins < 1440) return `Il y a ${Math.floor(diffMins / 60)} heure${Math.floor(diffMins / 60) > 1 ? "s" : ""}`;
+    return date.toLocaleDateString("fr-FR");
   };
 
   if (loading) {
@@ -155,7 +178,10 @@ export default function Settings() {
                     Recevoir une notification quand le stock est bas
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={notifSettings.lowStockAlerts}
+                  onCheckedChange={(checked) => saveNotifSettings({ lowStockAlerts: checked })}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -165,7 +191,10 @@ export default function Settings() {
                     Notification pour les créances clients
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={notifSettings.paymentReminders}
+                  onCheckedChange={(checked) => saveNotifSettings({ paymentReminders: checked })}
+                />
               </div>
             </CardContent>
           </Card>
@@ -194,21 +223,21 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={autoBackup}
-                    onCheckedChange={setAutoBackup}
+                    checked={backupSettings.autoBackup}
+                    onCheckedChange={(checked) => saveBackupSettings({ autoBackup: checked })}
                   />
                 </div>
                 <Separator />
                 <div className="space-y-3">
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full" onClick={exportJSON}>
                     <Download className="h-4 w-4 mr-2" />
                     Télécharger sauvegarde (JSON)
                   </Button>
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full" onClick={exportSQL}>
                     <Download className="h-4 w-4 mr-2" />
                     Télécharger sauvegarde (SQL)
                   </Button>
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full" onClick={restoreFromFile}>
                     <Upload className="h-4 w-4 mr-2" />
                     Restaurer depuis fichier
                   </Button>
@@ -224,8 +253,8 @@ export default function Settings() {
                     <Cloud className="h-5 w-5 text-primary" />
                     Sauvegarde Cloud
                   </CardTitle>
-                  <Badge className="bg-success/10 text-success border-success/20">
-                    Connecté
+                  <Badge className={backupSettings.cloudSync ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground"}>
+                    {backupSettings.cloudSync ? "Activé" : "Désactivé"}
                   </Badge>
                 </div>
                 <CardDescription>
@@ -237,77 +266,45 @@ export default function Settings() {
                   <div>
                     <p className="font-medium">Synchronisation auto</p>
                     <p className="text-sm text-muted-foreground">
-                      Sync en temps réel avec le cloud
+                      Sync toutes les 5 minutes
                     </p>
                   </div>
                   <Switch
-                    checked={cloudSync}
-                    onCheckedChange={setCloudSync}
+                    checked={backupSettings.cloudSync}
+                    onCheckedChange={(checked) => saveBackupSettings({ cloudSync: checked })}
                   />
                 </div>
                 <Separator />
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-muted-foreground">Dernière sync:</span>
-                    <span className="font-medium">Il y a 2 minutes</span>
+                    <span className="font-medium">{formatLastSyncTime(backupSettings.lastSyncTime)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Statut:</span>
-                    <span className="text-success font-medium flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                      Synchronisé
+                    <span className={`font-medium flex items-center gap-1 ${backupSettings.cloudSync ? "text-success" : "text-muted-foreground"}`}>
+                      {backupSettings.cloudSync && (
+                        <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                      )}
+                      {backupSettings.cloudSync ? "Auto-sync activé" : "Manuel uniquement"}
                     </span>
                   </div>
                 </div>
-                <Button className="w-full bg-gradient-primary hover:opacity-90">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Synchroniser maintenant
+                <Button 
+                  className="w-full bg-gradient-primary hover:opacity-90"
+                  onClick={syncNow}
+                  disabled={syncing}
+                >
+                  {syncing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  {syncing ? "Synchronisation..." : "Synchroniser maintenant"}
                 </Button>
               </CardContent>
             </Card>
           </div>
-
-          {/* Backup History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Historique des sauvegardes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  { date: "2024-01-16 10:30", type: "Cloud", size: "2.4 MB", status: "success" },
-                  { date: "2024-01-15 22:00", type: "Auto", size: "2.3 MB", status: "success" },
-                  { date: "2024-01-15 14:15", type: "Manuel", size: "2.3 MB", status: "success" },
-                  { date: "2024-01-14 22:00", type: "Auto", size: "2.2 MB", status: "success" },
-                ].map((backup, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                  >
-                    <div className="flex items-center gap-3">
-                      {backup.type === "Cloud" ? (
-                        <Cloud className="h-4 w-4 text-primary" />
-                      ) : (
-                        <HardDrive className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium">{backup.date}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {backup.type} • {backup.size}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      Restaurer
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Users Settings */}

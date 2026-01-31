@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -7,6 +8,7 @@ import {
   Receipt,
   ArrowUpRight,
   ArrowDownRight,
+  Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -22,47 +24,93 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-
-// Mock profit data
-const profitData = {
-  revenue: {
-    sales: 12450.000,
-    repairs: 8750.000,
-    total: 21200.000,
-  },
-  expenses: {
-    stock: 8500.000,
-    fixed: 2500.000,
-    other: 850.000,
-    total: 11850.000,
-  },
-  profit: 9350.000,
-  profitMargin: 44.1,
-};
-
-const productMargins = [
-  { name: "Écran iPhone 14 Pro", cost: 220.000, price: 280.000, margin: 27.3, sales: 8 },
-  { name: "Écran iPhone 13", cost: 140.000, price: 180.000, margin: 28.6, sales: 12 },
-  { name: "Batterie iPhone 12", cost: 30.000, price: 45.000, margin: 50.0, sales: 18 },
-  { name: "Protection écran", cost: 5.000, price: 15.000, margin: 200.0, sales: 45 },
-  { name: "Coque silicone", cost: 4.000, price: 12.000, margin: 200.0, sales: 38 },
-];
-
-const repairMargins = [
-  { type: "Remplacement écran iPhone", avgRevenue: 200.000, avgCost: 160.000, margin: 25.0, count: 15 },
-  { type: "Remplacement batterie", avgRevenue: 60.000, avgCost: 35.000, margin: 71.4, count: 22 },
-  { type: "Réparation port charge", avgRevenue: 45.000, avgCost: 15.000, margin: 200.0, count: 12 },
-  { type: "Réparation caméra", avgRevenue: 120.000, avgCost: 85.000, margin: 41.2, count: 8 },
-];
+import { useProfit } from "@/hooks/useProfit";
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { toast } from "sonner";
 
 export default function Profit() {
+  const [period, setPeriod] = useState("month");
+  const { data: profitData, isLoading } = useProfit(period);
+  const { settings } = useShopSettingsContext();
+
+  const handleExport = () => {
+    if (!profitData) {
+      toast.error("Aucune donnée à exporter");
+      return;
+    }
+
+    const content = `
+RAPPORT PROFIT & COMPTABILITÉ - ${settings.shop_name}
+Période: ${period === "week" ? "Cette semaine" : period === "month" ? "Ce mois" : period === "quarter" ? "Ce trimestre" : "Cette année"}
+Date: ${new Date().toLocaleDateString("fr-TN")}
+================================
+
+REVENUS
+-------
+Ventes produits: ${formatCurrency(profitData.revenue.sales)}
+Réparations: ${formatCurrency(profitData.revenue.repairs)}
+Total revenus: ${formatCurrency(profitData.revenue.total)}
+
+DÉPENSES
+--------
+Achats stock: ${formatCurrency(profitData.expenses.stock)}
+Charges fixes: ${formatCurrency(profitData.expenses.fixed)}
+Autres dépenses: ${formatCurrency(profitData.expenses.other)}
+Total dépenses: ${formatCurrency(profitData.expenses.total)}
+
+RÉSULTAT
+--------
+Bénéfice net: ${formatCurrency(profitData.profit)}
+Marge bénéficiaire: ${profitData.profitMargin.toFixed(1)}%
+
+MARGES PAR PRODUIT
+------------------
+${profitData.productMargins.map((p) => `${p.name}: ${p.margin.toFixed(0)}% (${p.sales} ventes)`).join("\n")}
+
+MARGES PAR RÉPARATION
+---------------------
+${profitData.repairMargins.map((r) => `${r.type}: ${r.margin.toFixed(0)}% (${r.count} interventions)`).join("\n")}
+
+================================
+Généré le ${new Date().toLocaleString("fr-TN")}
+    `.trim();
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `profit_${period}_${new Date().toISOString().split("T")[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Rapport exporté");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const data = profitData || {
+    revenue: { sales: 0, repairs: 0, total: 0 },
+    expenses: { stock: 0, fixed: 0, other: 0, total: 0 },
+    profit: 0,
+    profitMargin: 0,
+    revenueTrend: 0,
+    profitTrend: 0,
+    productMargins: [],
+    repairMargins: [],
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Profit & Comptabilité"
         description="Analyse des revenus, dépenses et marges"
       >
-        <Select defaultValue="month">
+        <Select value={period} onValueChange={setPeriod}>
           <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
@@ -73,33 +121,37 @@ export default function Profit() {
             <SelectItem value="year">Cette année</SelectItem>
           </SelectContent>
         </Select>
+        <Button variant="outline" onClick={handleExport}>
+          <Download className="h-4 w-4 mr-2" />
+          Exporter
+        </Button>
       </PageHeader>
 
       {/* Main Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Chiffre d'affaires"
-          value={formatCurrency(profitData.revenue.total)}
+          value={formatCurrency(data.revenue.total)}
           icon={TrendingUp}
-          trend={{ value: 15.2, label: "vs mois dernier" }}
+          trend={data.revenueTrend !== 0 ? { value: Math.round(data.revenueTrend * 10) / 10, label: "vs période précédente" } : undefined}
           variant="success"
         />
         <StatCard
           title="Dépenses totales"
-          value={formatCurrency(profitData.expenses.total)}
+          value={formatCurrency(data.expenses.total)}
           icon={TrendingDown}
           variant="destructive"
         />
         <StatCard
           title="Bénéfice net"
-          value={formatCurrency(profitData.profit)}
+          value={formatCurrency(data.profit)}
           icon={DollarSign}
-          trend={{ value: 12.8, label: "vs mois dernier" }}
-          variant="success"
+          trend={data.profitTrend !== 0 ? { value: Math.round(data.profitTrend * 10) / 10, label: "vs période précédente" } : undefined}
+          variant={data.profit >= 0 ? "success" : "destructive"}
         />
         <StatCard
           title="Marge bénéficiaire"
-          value={`${profitData.profitMargin}%`}
+          value={`${data.profitMargin.toFixed(1)}%`}
           icon={TrendingUp}
           variant="accent"
         />
@@ -125,7 +177,7 @@ export default function Profit() {
                 </div>
               </div>
               <span className="font-bold font-mono-numbers text-success">
-                +{formatCurrency(profitData.revenue.sales)}
+                +{formatCurrency(data.revenue.sales)}
               </span>
             </div>
             <div className="flex items-center justify-between p-4 rounded-lg bg-success/5 border border-success/20">
@@ -137,14 +189,14 @@ export default function Profit() {
                 </div>
               </div>
               <span className="font-bold font-mono-numbers text-success">
-                +{formatCurrency(profitData.revenue.repairs)}
+                +{formatCurrency(data.revenue.repairs)}
               </span>
             </div>
             <div className="pt-3 border-t">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Total revenus</span>
                 <span className="font-bold font-mono-numbers text-lg text-success">
-                  {formatCurrency(profitData.revenue.total)}
+                  {formatCurrency(data.revenue.total)}
                 </span>
               </div>
             </div>
@@ -169,7 +221,7 @@ export default function Profit() {
                 </div>
               </div>
               <span className="font-bold font-mono-numbers text-destructive">
-                -{formatCurrency(profitData.expenses.stock)}
+                -{formatCurrency(data.expenses.stock)}
               </span>
             </div>
             <div className="flex items-center justify-between p-4 rounded-lg bg-destructive/5 border border-destructive/20">
@@ -181,7 +233,7 @@ export default function Profit() {
                 </div>
               </div>
               <span className="font-bold font-mono-numbers text-destructive">
-                -{formatCurrency(profitData.expenses.fixed)}
+                -{formatCurrency(data.expenses.fixed)}
               </span>
             </div>
             <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
@@ -193,14 +245,14 @@ export default function Profit() {
                 </div>
               </div>
               <span className="font-bold font-mono-numbers">
-                -{formatCurrency(profitData.expenses.other)}
+                -{formatCurrency(data.expenses.other)}
               </span>
             </div>
             <div className="pt-3 border-t">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Total dépenses</span>
                 <span className="font-bold font-mono-numbers text-lg text-destructive">
-                  {formatCurrency(profitData.expenses.total)}
+                  {formatCurrency(data.expenses.total)}
                 </span>
               </div>
             </div>
@@ -214,34 +266,40 @@ export default function Profit() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Marges par produit</CardTitle>
-            <CardDescription>Top 5 produits vendus</CardDescription>
+            <CardDescription>Top produits vendus</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {productMargins.map((product, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{product.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatCurrency(product.cost)} → {formatCurrency(product.price)} • {product.sales} ventes
-                  </p>
-                </div>
-                <Badge
-                  className={cn(
-                    "shrink-0 ml-3",
-                    product.margin >= 100
-                      ? "bg-success/10 text-success border-success/20"
-                      : product.margin >= 50
-                      ? "bg-accent/10 text-accent border-accent/20"
-                      : "bg-warning/10 text-warning border-warning/20"
-                  )}
+            {data.productMargins.length > 0 ? (
+              data.productMargins.map((product, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                 >
-                  +{product.margin.toFixed(0)}%
-                </Badge>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{product.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(product.cost)} → {formatCurrency(product.price)} • {product.sales} ventes
+                    </p>
+                  </div>
+                  <Badge
+                    className={cn(
+                      "shrink-0 ml-3",
+                      product.margin >= 100
+                        ? "bg-success/10 text-success border-success/20"
+                        : product.margin >= 50
+                        ? "bg-accent/10 text-accent border-accent/20"
+                        : "bg-warning/10 text-warning border-warning/20"
+                    )}
+                  >
+                    +{product.margin.toFixed(0)}%
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                Aucune vente enregistrée
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 
@@ -252,31 +310,37 @@ export default function Profit() {
             <CardDescription>Analyse de rentabilité</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {repairMargins.map((repair, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{repair.type}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Moy: {formatCurrency(repair.avgRevenue)} • Coût: {formatCurrency(repair.avgCost)} • {repair.count} réparations
-                  </p>
-                </div>
-                <Badge
-                  className={cn(
-                    "shrink-0 ml-3",
-                    repair.margin >= 100
-                      ? "bg-success/10 text-success border-success/20"
-                      : repair.margin >= 50
-                      ? "bg-accent/10 text-accent border-accent/20"
-                      : "bg-warning/10 text-warning border-warning/20"
-                  )}
+            {data.repairMargins.length > 0 ? (
+              data.repairMargins.map((repair, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                 >
-                  +{repair.margin.toFixed(0)}%
-                </Badge>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{repair.type}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Moy: {formatCurrency(repair.avgRevenue)} • Coût: {formatCurrency(repair.avgCost)} • {repair.count} réparations
+                    </p>
+                  </div>
+                  <Badge
+                    className={cn(
+                      "shrink-0 ml-3",
+                      repair.margin >= 100
+                        ? "bg-success/10 text-success border-success/20"
+                        : repair.margin >= 50
+                        ? "bg-accent/10 text-accent border-accent/20"
+                        : "bg-warning/10 text-warning border-warning/20"
+                    )}
+                  >
+                    +{repair.margin.toFixed(0)}%
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                Aucune réparation enregistrée
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
       </div>

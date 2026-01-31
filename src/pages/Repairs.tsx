@@ -1,33 +1,15 @@
 import { useState } from "react";
-import {
-  Search,
-  Plus,
-  Filter,
-  MoreHorizontal,
-  Clock,
-  CheckCircle2,
-  Loader2,
-  Phone,
-  Wrench as WrenchIcon,
-  Calendar,
-} from "lucide-react";
+import { Search, Plus, Filter } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { formatCurrency } from "@/lib/currency";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { RepairCard, type Repair } from "@/components/repairs/RepairCard";
+import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
 
 // Mock repair data
-const repairs = [
+const initialRepairs: Repair[] = [
   {
     id: "REP-001",
     customer: "Ahmed Ben Ali",
@@ -39,10 +21,10 @@ const repairs = [
     status: "in_progress",
     depositDate: "2024-01-15",
     estimatedDate: "2024-01-17",
-    parts: [{ name: "Écran iPhone 14 Pro", cost: 220.000 }],
-    labor: 40.000,
-    total: 260.000,
-    paid: 100.000,
+    parts: [{ name: "Écran iPhone 14 Pro", cost: 220.0 }],
+    labor: 40.0,
+    total: 260.0,
+    paid: 100.0,
   },
   {
     id: "REP-002",
@@ -56,10 +38,10 @@ const repairs = [
     depositDate: "2024-01-14",
     estimatedDate: "2024-01-15",
     deliveredDate: "2024-01-15",
-    parts: [{ name: "Batterie Samsung S23", cost: 55.000 }],
-    labor: 30.000,
-    total: 85.000,
-    paid: 85.000,
+    parts: [{ name: "Batterie Samsung S23", cost: 55.0 }],
+    labor: 30.0,
+    total: 85.0,
+    paid: 85.0,
   },
   {
     id: "REP-003",
@@ -71,7 +53,7 @@ const repairs = [
     depositDate: "2024-01-16",
     parts: [],
     labor: 0,
-    total: 65.000,
+    total: 65.0,
     paid: 0,
   },
   {
@@ -84,10 +66,10 @@ const repairs = [
     status: "completed",
     depositDate: "2024-01-13",
     deliveredDate: "2024-01-16",
-    parts: [{ name: "Caméra arrière iPhone 13", cost: 120.000 }],
-    labor: 30.000,
-    total: 150.000,
-    paid: 150.000,
+    parts: [{ name: "Caméra arrière iPhone 13", cost: 120.0 }],
+    labor: 30.0,
+    total: 150.0,
+    paid: 150.0,
   },
   {
     id: "REP-005",
@@ -99,48 +81,24 @@ const repairs = [
     status: "in_progress",
     depositDate: "2024-01-15",
     estimatedDate: "2024-01-18",
-    parts: [{ name: "Écran Xiaomi 12", cost: 90.000 }],
-    labor: 30.000,
-    total: 120.000,
-    paid: 50.000,
+    parts: [{ name: "Écran Xiaomi 12", cost: 90.0 }],
+    labor: 30.0,
+    total: 120.0,
+    paid: 50.0,
   },
 ];
-
-const statusConfig = {
-  pending: {
-    label: "En attente",
-    icon: Clock,
-    className: "bg-warning/10 text-warning border-warning/20",
-  },
-  in_progress: {
-    label: "En cours",
-    icon: Loader2,
-    className: "bg-primary/10 text-primary border-primary/20",
-  },
-  completed: {
-    label: "Terminé",
-    icon: CheckCircle2,
-    className: "bg-success/10 text-success border-success/20",
-  },
-  delivered: {
-    label: "Livré",
-    icon: CheckCircle2,
-    className: "bg-accent/10 text-accent border-accent/20",
-  },
-};
 
 export default function Repairs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [repairs, setRepairs] = useState<Repair[]>(initialRepairs);
 
   const filteredRepairs = repairs.filter((repair) => {
     const matchesSearch =
       repair.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       repair.device.toLowerCase().includes(searchQuery.toLowerCase()) ||
       repair.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTab =
-      activeTab === "all" ||
-      repair.status === activeTab;
+    const matchesTab = activeTab === "all" || repair.status === activeTab;
     return matchesSearch && matchesTab;
   });
 
@@ -153,13 +111,76 @@ export default function Repairs() {
 
   const counts = getStatusCounts();
 
+  const handleViewDetails = (repair: Repair) => {
+    toast.info(`Affichage des détails de ${repair.id}`, {
+      description: `Client: ${repair.customer} - ${repair.device}`,
+    });
+  };
+
+  const handleEdit = (repair: Repair) => {
+    toast.info(`Modification de ${repair.id}`, {
+      description: "Fonctionnalité à venir",
+    });
+  };
+
+  const handlePrint = (repair: Repair) => {
+    toast.info(`Impression de la fiche ${repair.id}`, {
+      description: "Préparation de l'impression...",
+    });
+    // In a real app, this would open a print dialog
+    window.print();
+  };
+
+  const handleCancel = (repair: Repair) => {
+    toast.error(`Annulation de ${repair.id}`, {
+      description: "Êtes-vous sûr de vouloir annuler cette réparation?",
+    });
+  };
+
+  const handleStatusChange = (repair: Repair, newStatus: RepairStatus) => {
+    setRepairs((prev) =>
+      prev.map((r) =>
+        r.id === repair.id
+          ? {
+              ...r,
+              status: newStatus,
+              deliveredDate:
+                newStatus === "delivered"
+                  ? new Date().toISOString().split("T")[0]
+                  : r.deliveredDate,
+            }
+          : r
+      )
+    );
+    
+    const statusLabels: Record<RepairStatus, string> = {
+      pending: "En attente",
+      in_progress: "En cours",
+      completed: "Terminé",
+      delivered: "Livré",
+    };
+    
+    toast.success(`Statut mis à jour`, {
+      description: `${repair.id} → ${statusLabels[newStatus]}`,
+    });
+  };
+
+  const handleNewRepair = () => {
+    toast.info("Nouvelle réparation", {
+      description: "Fonctionnalité à venir",
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Gestion des Réparations"
         description="Suivi et gestion des fiches de réparation"
       >
-        <Button className="bg-gradient-primary hover:opacity-90">
+        <Button
+          className="bg-gradient-primary hover:opacity-90"
+          onClick={handleNewRepair}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nouvelle réparation
         </Button>
@@ -185,102 +206,25 @@ export default function Repairs() {
       {/* Status Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="all">
-            Toutes ({counts.all})
-          </TabsTrigger>
-          <TabsTrigger value="pending">
-            En attente ({counts.pending})
-          </TabsTrigger>
-          <TabsTrigger value="in_progress">
-            En cours ({counts.in_progress})
-          </TabsTrigger>
-          <TabsTrigger value="completed">
-            Terminées ({counts.completed})
-          </TabsTrigger>
+          <TabsTrigger value="all">Toutes ({counts.all})</TabsTrigger>
+          <TabsTrigger value="pending">En attente ({counts.pending})</TabsTrigger>
+          <TabsTrigger value="in_progress">En cours ({counts.in_progress})</TabsTrigger>
+          <TabsTrigger value="completed">Terminées ({counts.completed})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filteredRepairs.map((repair) => {
-              const status = statusConfig[repair.status as keyof typeof statusConfig];
-              const StatusIcon = status.icon;
-              const remaining = repair.total - repair.paid;
-
-              return (
-                <Card key={repair.id} className="hover:shadow-soft transition-shadow">
-                  <CardContent className="p-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {repair.id}
-                          </span>
-                          <Badge className={cn("text-xs", status.className)}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {status.label}
-                          </Badge>
-                        </div>
-                        <h3 className="font-semibold mt-1">{repair.customer}</h3>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Voir détails</DropdownMenuItem>
-                          <DropdownMenuItem>Modifier</DropdownMenuItem>
-                          <DropdownMenuItem>Imprimer fiche</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Annuler
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Device Info */}
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{repair.device}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <WrenchIcon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">{repair.issue}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          Dépôt: {new Date(repair.depositDate).toLocaleDateString("fr-TN")}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Pricing */}
-                    <div className="flex items-center justify-between pt-3 border-t border-border">
-                      <div>
-                        <span className="text-sm text-muted-foreground">Total: </span>
-                        <span className="font-bold font-mono-numbers">
-                          {formatCurrency(repair.total)}
-                        </span>
-                      </div>
-                      {remaining > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          Reste: {formatCurrency(remaining)}
-                        </Badge>
-                      )}
-                      {remaining === 0 && repair.paid > 0 && (
-                        <Badge className="bg-success/10 text-success border-success/20 text-xs">
-                          Payé
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {filteredRepairs.map((repair) => (
+              <RepairCard
+                key={repair.id}
+                repair={repair}
+                onViewDetails={handleViewDetails}
+                onEdit={handleEdit}
+                onPrint={handlePrint}
+                onCancel={handleCancel}
+                onStatusChange={handleStatusChange}
+              />
+            ))}
           </div>
 
           {filteredRepairs.length === 0 && (

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
-import { Menu, Search, User, Moon, Sun, LogOut } from "lucide-react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { Menu, Search, User, Moon, Sun, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppSidebar } from "./AppSidebar";
 import { NotificationsDropdown } from "./NotificationsDropdown";
@@ -22,6 +22,7 @@ export function MainLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -119,8 +120,10 @@ export function MainLayout() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Profil</DropdownMenuItem>
-                <DropdownMenuItem>Paramètres</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Paramètres
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   className="text-destructive cursor-pointer"

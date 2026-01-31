@@ -21,6 +21,7 @@ export interface Repair {
   imei?: string;
   issue: string;
   diagnosis?: string;
+  notes?: string;
   status: RepairStatus;
   depositDate: string;
   estimatedDate?: string;
@@ -137,6 +138,11 @@ export function RepairCard({
               Dépôt: {new Date(repair.depositDate).toLocaleDateString("fr-TN")}
             </span>
           </div>
+          {repair.notes && (
+            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded italic">
+              📝 {repair.notes}
+            </div>
+          )}
         </div>
 
         {/* Pricing */}

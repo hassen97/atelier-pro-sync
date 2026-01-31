@@ -26,6 +26,8 @@ import { Badge } from "@/components/ui/badge";
 import { useShopSettings } from "@/hooks/useShopSettings";
 import { useNotificationSettings } from "@/hooks/useNotificationSettings";
 import { useBackup } from "@/hooks/useBackup";
+import { useSecuritySettings } from "@/hooks/useSecuritySettings";
+import { ResetDataDialog } from "@/components/settings/ResetDataDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Settings() {
@@ -40,6 +42,13 @@ export default function Settings() {
     restoreFromFile, 
     syncNow 
   } = useBackup();
+
+  const {
+    settings: securitySettings,
+    resetting,
+    saveSettings: saveSecuritySettings,
+    resetAllData,
+  } = useSecuritySettings();
   
   const [shopName, setShopName] = useState("");
   const [taxRate, setTaxRate] = useState("");
@@ -351,7 +360,10 @@ export default function Settings() {
                     Protéger les sauvegardes avec un mot de passe
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={securitySettings.encryptBackups}
+                  onCheckedChange={(checked) => saveSecuritySettings({ encryptBackups: checked })}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -361,7 +373,10 @@ export default function Settings() {
                     Enregistrer toutes les actions utilisateurs
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={securitySettings.activityLog}
+                  onCheckedChange={(checked) => saveSecuritySettings({ activityLog: checked })}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -371,7 +386,10 @@ export default function Settings() {
                     Fonctionnement sans connexion internet
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={securitySettings.offlineMode}
+                  onCheckedChange={(checked) => saveSecuritySettings({ offlineMode: checked })}
+                />
               </div>
             </CardContent>
           </Card>
@@ -383,12 +401,10 @@ export default function Settings() {
                 <div>
                   <p className="font-medium text-warning">Zone dangereuse</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Ces actions sont irréversibles
+                    Cette action est irréversible et supprimera toutes vos données (produits, clients, réparations, ventes, factures, etc.)
                   </p>
                   <div className="flex gap-2 mt-3">
-                    <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
-                      Réinitialiser les données
-                    </Button>
+                    <ResetDataDialog onConfirm={resetAllData} isResetting={resetting} />
                   </div>
                 </div>
               </div>

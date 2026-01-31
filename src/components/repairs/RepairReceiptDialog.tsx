@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/currency";
 import type { Repair } from "./RepairCard";
 import { statusConfig } from "./RepairStatusSelect";
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 
 interface RepairReceiptDialogProps {
   repair: Repair | null;
@@ -24,6 +25,7 @@ export function RepairReceiptDialog({
   onOpenChange,
 }: RepairReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const { settings } = useShopSettingsContext();
 
   const handlePrint = () => {
     if (receiptRef.current) {
@@ -103,7 +105,7 @@ export function RepairReceiptDialog({
 
         <div ref={receiptRef} className="receipt">
           <div className="header text-center mb-4">
-            <div className="title text-2xl font-bold">RepairPro</div>
+            <div className="title text-2xl font-bold">{settings.shop_name}</div>
             <div className="subtitle text-muted-foreground text-sm">
               Fiche de Réparation
             </div>
@@ -236,7 +238,7 @@ export function RepairReceiptDialog({
 
           <div className="footer text-center mt-6 text-xs text-muted-foreground">
             <p>Merci pour votre confiance !</p>
-            <p className="mt-1">RepairPro Tunisie</p>
+            <p className="mt-1">{settings.shop_name} Tunisie</p>
           </div>
         </div>
       </DialogContent>

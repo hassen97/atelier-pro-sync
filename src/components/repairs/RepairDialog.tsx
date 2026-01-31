@@ -127,8 +127,10 @@ export function RepairDialog({
     form.reset();
   };
 
-  const laborCost = form.watch("labor_cost") || 0;
-  const partsCost = form.watch("parts_cost") || 0;
+  const laborCostWatch = form.watch("labor_cost");
+  const partsCostWatch = form.watch("parts_cost");
+  const laborCost = Number(laborCostWatch) || 0;
+  const partsCost = Number(partsCostWatch) || 0;
   const totalCost = laborCost + partsCost;
 
   return (

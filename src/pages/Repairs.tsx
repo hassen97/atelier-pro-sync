@@ -1,21 +1,28 @@
 import { useState } from "react";
-import { Search, Plus, Filter, Loader2 } from "lucide-react";
+import { Search, Plus, Filter } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
 import { RepairCard } from "@/components/repairs/RepairCard";
 import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
 import { CancelRepairDialog } from "@/components/repairs/CancelRepairDialog";
 import { RepairReceiptDialog } from "@/components/repairs/RepairReceiptDialog";
-import { useRepairs, useUpdateRepairStatus, useDeleteRepair } from "@/hooks/useRepairs";
-import { formatCurrency } from "@/lib/currency";
+import { RepairDialog } from "@/components/repairs/RepairDialog";
+import {
+  useRepairs,
+  useCreateRepair,
+  useUpdateRepair,
+  useUpdateRepairStatus,
+  useDeleteRepair,
+} from "@/hooks/useRepairs";
+import { toast } from "sonner";
 
 // Type for the repair with customer relation
 interface RepairWithCustomer {
   id: string;
+  customer_id: string | null;
   device_model: string;
   problem_description: string;
   diagnosis: string | null;
@@ -27,6 +34,7 @@ interface RepairWithCustomer {
   parts_cost: number;
   total_cost: number;
   amount_paid: number;
+  notes: string | null;
   customer: {
     id: string;
     name: string;
@@ -39,6 +47,7 @@ interface RepairWithCustomer {
 function transformRepair(dbRepair: RepairWithCustomer) {
   return {
     id: dbRepair.id,
+    customer_id: dbRepair.customer_id,
     customer: dbRepair.customer?.name || "Client anonyme",
     phone: dbRepair.customer?.phone || "",
     device: dbRepair.device_model,
@@ -51,8 +60,12 @@ function transformRepair(dbRepair: RepairWithCustomer) {
     deliveredDate: dbRepair.delivery_date?.split("T")[0],
     parts: [] as { name: string; cost: number }[],
     labor: Number(dbRepair.labor_cost) || 0,
+    parts_cost: Number(dbRepair.parts_cost) || 0,
     total: Number(dbRepair.total_cost) || 0,
     paid: Number(dbRepair.amount_paid) || 0,
+    notes: dbRepair.notes,
+    // Original data for editing
+    _original: dbRepair,
   };
 }
 
@@ -61,9 +74,13 @@ export default function Repairs() {
   const [activeTab, setActiveTab] = useState("all");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
+  const [editingRepair, setEditingRepair] = useState<RepairWithCustomer | null>(null);
 
   const { data: rawRepairs = [], isLoading } = useRepairs();
+  const createRepair = useCreateRepair();
+  const updateRepair = useUpdateRepair();
   const updateStatus = useUpdateRepairStatus();
   const deleteRepair = useDeleteRepair();
 
@@ -91,6 +108,11 @@ export default function Repairs() {
 
   const counts = getStatusCounts();
 
+  const handleNewRepair = () => {
+    setEditingRepair(null);
+    setRepairDialogOpen(true);
+  };
+
   const handleViewDetails = (repair: ReturnType<typeof transformRepair>) => {
     toast.info(`Affichage des détails`, {
       description: `Client: ${repair.customer} - ${repair.device}`,
@@ -98,9 +120,8 @@ export default function Repairs() {
   };
 
   const handleEdit = (repair: ReturnType<typeof transformRepair>) => {
-    toast.info(`Modification`, {
-      description: "Fonctionnalité à venir",
-    });
+    setEditingRepair(repair._original);
+    setRepairDialogOpen(true);
   };
 
   const handlePrint = (repair: ReturnType<typeof transformRepair>) => {
@@ -146,10 +167,37 @@ export default function Repairs() {
     );
   };
 
-  const handleNewRepair = () => {
-    toast.info("Nouvelle réparation", {
-      description: "Fonctionnalité à venir",
-    });
+  const handleRepairSubmit = async (data: {
+    customer_id?: string;
+    device_model: string;
+    imei?: string;
+    problem_description: string;
+    diagnosis?: string;
+    labor_cost: number;
+    parts_cost: number;
+    amount_paid: number;
+    notes?: string;
+  }) => {
+    const repairData = {
+      customer_id: data.customer_id || null,
+      device_model: data.device_model,
+      imei: data.imei || null,
+      problem_description: data.problem_description,
+      diagnosis: data.diagnosis || null,
+      labor_cost: data.labor_cost,
+      parts_cost: data.parts_cost,
+      total_cost: data.labor_cost + data.parts_cost,
+      amount_paid: data.amount_paid,
+      notes: data.notes || null,
+    };
+
+    if (editingRepair) {
+      await updateRepair.mutateAsync({ id: editingRepair.id, ...repairData });
+    } else {
+      await createRepair.mutateAsync(repairData);
+    }
+    setRepairDialogOpen(false);
+    setEditingRepair(null);
   };
 
   if (isLoading) {
@@ -245,6 +293,14 @@ export default function Repairs() {
         repair={selectedRepair}
         open={receiptDialogOpen}
         onOpenChange={setReceiptDialogOpen}
+      />
+
+      <RepairDialog
+        open={repairDialogOpen}
+        onOpenChange={setRepairDialogOpen}
+        repair={editingRepair}
+        onSubmit={handleRepairSubmit}
+        isLoading={createRepair.isPending || updateRepair.isPending}
       />
     </div>
   );

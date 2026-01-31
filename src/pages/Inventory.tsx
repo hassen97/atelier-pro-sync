@@ -38,19 +38,42 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-import { useProducts, useDeleteProduct, useUpdateProductStock } from "@/hooks/useProducts";
+import {
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  useUpdateProductStock,
+} from "@/hooks/useProducts";
+import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { toast } from "sonner";
+
+interface ProductWithCategory {
+  id: string;
+  name: string;
+  sku: string | null;
+  description: string | null;
+  cost_price: number;
+  sell_price: number;
+  quantity: number;
+  min_quantity: number;
+  category?: { id: string; name: string } | null;
+}
 
 export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tous");
-  
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductWithCategory | null>(null);
+
   const { data: rawProducts = [], isLoading } = useProducts();
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const updateStock = useUpdateProductStock();
 
   // Transform products to include category name
-  const products = rawProducts.map((p: any) => ({
+  const products = (rawProducts as ProductWithCategory[]).map((p) => ({
     id: p.id,
     name: p.name,
     category: p.category?.name || "Non catégorisé",
@@ -59,6 +82,7 @@ export default function Inventory() {
     price: Number(p.sell_price) || 0,
     stock: p.quantity || 0,
     threshold: p.min_quantity || 5,
+    _original: p,
   }));
 
   // Get unique categories
@@ -83,6 +107,16 @@ export default function Inventory() {
   ).length;
   const outOfStockItems = products.filter((item) => item.stock === 0).length;
 
+  const handleNewProduct = () => {
+    setEditingProduct(null);
+    setDialogOpen(true);
+  };
+
+  const handleEdit = (product: ProductWithCategory) => {
+    setEditingProduct(product);
+    setDialogOpen(true);
+  };
+
   const handleDelete = (id: string, name: string) => {
     if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
       deleteProduct.mutate(id);
@@ -101,10 +135,22 @@ export default function Inventory() {
     }
   };
 
-  const handleNewProduct = () => {
-    toast.info("Nouveau produit", {
-      description: "Formulaire de création à venir",
-    });
+  const handleSubmit = async (data: {
+    name: string;
+    sku?: string;
+    description?: string;
+    cost_price: number;
+    sell_price: number;
+    quantity: number;
+    min_quantity: number;
+  }) => {
+    if (editingProduct) {
+      await updateProduct.mutateAsync({ id: editingProduct.id, ...data });
+    } else {
+      await createProduct.mutateAsync(data);
+    }
+    setDialogOpen(false);
+    setEditingProduct(null);
   };
 
   if (isLoading) {
@@ -277,7 +323,7 @@ export default function Inventory() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => toast.info("Modifier", { description: "Fonctionnalité à venir" })}
+                              onClick={() => handleEdit(item._original)}
                             >
                               Modifier
                             </DropdownMenuItem>
@@ -285,11 +331,6 @@ export default function Inventory() {
                               onClick={() => handleAdjustStock(item.id, item.name, item.stock)}
                             >
                               Ajuster stock
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => toast.info("Historique", { description: "Fonctionnalité à venir" })}
-                            >
-                              Historique
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
@@ -308,6 +349,15 @@ export default function Inventory() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Product Dialog */}
+      <ProductDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        product={editingProduct}
+        onSubmit={handleSubmit}
+        isLoading={createProduct.isPending || updateProduct.isPending}
+      />
     </div>
   );
 }

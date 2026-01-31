@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Store,
   Save,
@@ -12,6 +12,7 @@ import {
   HardDrive,
   RefreshCw,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,14 +23,45 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { useShopSettings } from "@/hooks/useShopSettings";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Settings() {
-  const [shopName, setShopName] = useState("RepairPro Tunisie");
-  const [taxRate, setTaxRate] = useState("19");
-  const [stockThreshold, setStockThreshold] = useState("5");
+  const { settings, loading, saving, saveSettings } = useShopSettings();
+  
+  const [shopName, setShopName] = useState("");
+  const [taxRate, setTaxRate] = useState("");
+  const [stockThreshold, setStockThreshold] = useState("");
   const [autoBackup, setAutoBackup] = useState(true);
   const [cloudSync, setCloudSync] = useState(true);
+
+  // Sync local state with loaded settings
+  useEffect(() => {
+    if (!loading) {
+      setShopName(settings.shop_name);
+      setTaxRate(String(settings.tax_rate));
+      setStockThreshold(String(settings.stock_alert_threshold));
+    }
+  }, [loading, settings]);
+
+  const handleSaveGeneralSettings = async () => {
+    await saveSettings({
+      shop_name: shopName,
+      tax_rate: parseFloat(taxRate) || 19,
+      stock_alert_threshold: parseInt(stockThreshold) || 5,
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader title="Paramètres" description="Configuration du système" />
+        <div className="space-y-6">
+          <Skeleton className="h-[400px] w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -93,9 +125,17 @@ export default function Settings() {
                   />
                 </div>
               </div>
-              <Button className="bg-gradient-primary hover:opacity-90">
-                <Save className="h-4 w-4 mr-2" />
-                Enregistrer
+              <Button 
+                className="bg-gradient-primary hover:opacity-90"
+                onClick={handleSaveGeneralSettings}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {saving ? "Enregistrement..." : "Enregistrer"}
               </Button>
             </CardContent>
           </Card>
@@ -285,11 +325,10 @@ export default function Settings() {
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">Authentification requise</p>
+                <p className="font-medium">Fonctionnalité bientôt disponible</p>
                 <p className="text-sm mt-1">
-                  Connectez-vous pour gérer les utilisateurs
+                  La gestion des utilisateurs sera disponible prochainement
                 </p>
-                <Button className="mt-4">Se connecter</Button>
               </div>
             </CardContent>
           </Card>

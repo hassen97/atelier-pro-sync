@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import { Menu, X, Bell, Search, User, Moon, Sun, LogOut } from "lucide-react";
+import { Menu, Search, User, Moon, Sun, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppSidebar } from "./AppSidebar";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -98,10 +99,7 @@ export function MainLayout() {
               )}
             </Button>
 
-            <Button variant="ghost" size="icon" className="h-9 w-9 relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-            </Button>
+            <NotificationsDropdown />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

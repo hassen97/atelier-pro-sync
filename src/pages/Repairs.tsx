@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { RepairCard, type Repair } from "@/components/repairs/RepairCard";
 import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
+import { CancelRepairDialog } from "@/components/repairs/CancelRepairDialog";
+import { RepairReceiptDialog } from "@/components/repairs/RepairReceiptDialog";
 
 // Mock repair data
 const initialRepairs: Repair[] = [
@@ -92,6 +94,9 @@ export default function Repairs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [repairs, setRepairs] = useState<Repair[]>(initialRepairs);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [selectedRepair, setSelectedRepair] = useState<Repair | null>(null);
 
   const filteredRepairs = repairs.filter((repair) => {
     const matchesSearch =
@@ -124,17 +129,24 @@ export default function Repairs() {
   };
 
   const handlePrint = (repair: Repair) => {
-    toast.info(`Impression de la fiche ${repair.id}`, {
-      description: "Préparation de l'impression...",
-    });
-    // In a real app, this would open a print dialog
-    window.print();
+    setSelectedRepair(repair);
+    setReceiptDialogOpen(true);
   };
 
   const handleCancel = (repair: Repair) => {
-    toast.error(`Annulation de ${repair.id}`, {
-      description: "Êtes-vous sûr de vouloir annuler cette réparation?",
-    });
+    setSelectedRepair(repair);
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancel = () => {
+    if (selectedRepair) {
+      setRepairs((prev) => prev.filter((r) => r.id !== selectedRepair.id));
+      toast.success(`Réparation ${selectedRepair.id} annulée`, {
+        description: `La réparation pour ${selectedRepair.customer} a été supprimée.`,
+      });
+      setCancelDialogOpen(false);
+      setSelectedRepair(null);
+    }
   };
 
   const handleStatusChange = (repair: Repair, newStatus: RepairStatus) => {
@@ -234,6 +246,19 @@ export default function Repairs() {
           )}
         </TabsContent>
       </Tabs>
+
+      <CancelRepairDialog
+        repair={selectedRepair}
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        onConfirm={confirmCancel}
+      />
+
+      <RepairReceiptDialog
+        repair={selectedRepair}
+        open={receiptDialogOpen}
+        onOpenChange={setReceiptDialogOpen}
+      />
     </div>
   );
 }

@@ -4,42 +4,49 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
-export type Customer = Tables<"customers">;
-export type CustomerInsert = TablesInsert<"customers">;
-export type CustomerUpdate = TablesUpdate<"customers">;
+export type Expense = Tables<"expenses">;
+export type ExpenseInsert = TablesInsert<"expenses">;
+export type ExpenseUpdate = TablesUpdate<"expenses">;
 
-export function useCustomers() {
+export type ExpenseWithSupplier = Expense & {
+  supplier?: { id: string; name: string } | null;
+};
+
+export function useExpenses() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["customers", user?.id],
+    queryKey: ["expenses", user?.id],
     queryFn: async () => {
       if (!user) return [];
       
       const { data, error } = await supabase
-        .from("customers")
-        .select("*")
+        .from("expenses")
+        .select(`
+          *,
+          supplier:suppliers(id, name)
+        `)
         .eq("user_id", user.id)
-        .order("name", { ascending: true });
+        .order("expense_date", { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as ExpenseWithSupplier[];
     },
     enabled: !!user,
   });
 }
 
-export function useCreateCustomer() {
+export function useCreateExpense() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (customer: Omit<CustomerInsert, "user_id">) => {
+    mutationFn: async (expense: Omit<ExpenseInsert, "user_id">) => {
       if (!user) throw new Error("Non authentifié");
 
       const { data, error } = await supabase
-        .from("customers")
-        .insert({ ...customer, user_id: user.id })
+        .from("expenses")
+        .insert({ ...expense, user_id: user.id })
         .select()
         .single();
 
@@ -47,24 +54,24 @@ export function useCreateCustomer() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      toast.success("Client créé avec succès");
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success("Dépense créée avec succès");
     },
     onError: (error) => {
-      console.error("Error creating customer:", error);
+      console.error("Error creating expense:", error);
       toast.error("Erreur lors de la création");
     },
   });
 }
 
-export function useUpdateCustomer() {
+export function useUpdateExpense() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: CustomerUpdate & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: ExpenseUpdate & { id: string }) => {
       const { data, error } = await supabase
-        .from("customers")
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .from("expenses")
+        .update(updates)
         .eq("id", id)
         .select()
         .single();
@@ -73,34 +80,34 @@ export function useUpdateCustomer() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      toast.success("Client mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success("Dépense mise à jour");
     },
     onError: (error) => {
-      console.error("Error updating customer:", error);
+      console.error("Error updating expense:", error);
       toast.error("Erreur lors de la mise à jour");
     },
   });
 }
 
-export function useDeleteCustomer() {
+export function useDeleteExpense() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("customers")
+        .from("expenses")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      toast.success("Client supprimé");
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success("Dépense supprimée");
     },
     onError: (error) => {
-      console.error("Error deleting customer:", error);
+      console.error("Error deleting expense:", error);
       toast.error("Erreur lors de la suppression");
     },
   });

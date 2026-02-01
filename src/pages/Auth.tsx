@@ -73,7 +73,7 @@ export default function Auth() {
     if (error) {
       setError(error.message);
     } else {
-      setSuccess("Compte créé ! Vérifiez votre email pour confirmer votre inscription.");
+      setSuccess("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
       setRegisterEmail("");
       setRegisterPassword("");
       setRegisterFullName("");

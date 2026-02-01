@@ -3,7 +3,6 @@ import {
   ShoppingCart,
   Wrench,
   Package,
-  TrendingUp,
   AlertTriangle,
   CreditCard,
   ArrowUpRight,
@@ -24,6 +23,7 @@ import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { useDashboardStats, useRecentRepairs, useLowStockAlerts } from "@/hooks/useDashboard";
 import { useCreateRepair } from "@/hooks/useRepairs";
+import { useDashboardRealtime } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
@@ -41,6 +41,9 @@ export default function Dashboard() {
   const { data: recentRepairs = [], isLoading: repairsLoading } = useRecentRepairs(5);
   const { data: stockAlerts = [], isLoading: alertsLoading } = useLowStockAlerts(5);
   const createRepair = useCreateRepair();
+  
+  // Enable realtime updates for dashboard data
+  useDashboardRealtime();
   
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
 

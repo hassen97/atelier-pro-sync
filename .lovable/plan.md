@@ -1,61 +1,57 @@
 
-# Fix SPA Routing 404 Error on Page Refresh
+# Fix Duplicate Notifications on Page Refresh
 
 ## Problem
-When refreshing the page on any route (like `/settings`) or accessing it directly without being logged in, the hosting provider returns a 404 error instead of letting React Router handle the route.
-
-This happens because:
-1. SPAs use client-side routing (React Router)
-2. When you refresh, the browser requests `/settings` from the server
-3. The server doesn't have a `/settings` file, so it returns 404
-4. The server needs to be told to serve `index.html` for ALL routes
+Notifications reappear after being marked as read or deleted because:
+- The tracking sets (`notifiedLowStock`, `notifiedCompletedRepairs`) use `useRef` which resets on page refresh
+- On each page load, the system thinks it hasn't notified about low stock/completed repairs yet
+- Result: Same notifications are created again and again
 
 ## Solution
-Add configuration files for the hosting provider to redirect all routes to `index.html`, allowing React Router to handle routing.
+Persist the "already notified" tracking in localStorage alongside the notifications, so the system remembers which items have already triggered notifications even after page refresh.
 
-## Files to Create
+## Files to Modify
 
-### 1. `public/_redirects` (for Netlify-style hosting)
-```text
-/*    /index.html   200
-```
+### 1. `src/hooks/useNotifications.ts`
+Add tracking for notified items:
+- Store `notifiedProductIds` and `notifiedRepairIds` in localStorage
+- Export functions to add/check/clear notified items
+- Load notified items on mount
 
-### 2. `public/vercel.json` (for Vercel hosting)
-```json
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
-
-### 3. `vercel.json` (root level - primary for Vercel deployments)
-```json
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
-
-## Why Multiple Files?
-Different hosting providers use different configuration files:
-- **Lovable hosting**: Usually handles this automatically
-- **Netlify**: Uses `_redirects` file in public folder
-- **Vercel**: Uses `vercel.json` at root level
-- **Custom hosting**: May need server configuration (nginx, Apache)
+### 2. `src/contexts/NotificationsContext.tsx`
+Use persisted tracking instead of useRef:
+- Replace `useRef<Set>` with persisted state from the hook
+- Check against persisted notified IDs before creating notifications
+- Clear notified IDs when appropriate (e.g., when stock is replenished)
 
 ## Technical Details
 
-| File | Location | Purpose |
-|------|----------|---------|
-| `_redirects` | `public/` | Netlify SPA routing |
-| `vercel.json` | root | Vercel SPA routing |
+### Updated useNotifications Hook
+```typescript
+const NOTIFIED_PRODUCTS_KEY = "notified_low_stock_products";
+const NOTIFIED_REPAIRS_KEY = "notified_completed_repairs";
 
-The `/*` or `(.*)` pattern matches all routes and serves `index.html` with a 200 status, allowing React Router to take over client-side routing.
+// Add to hook:
+const [notifiedProductIds, setNotifiedProductIds] = useState<Set<string>>(() => {
+  const stored = localStorage.getItem(NOTIFIED_PRODUCTS_KEY);
+  return stored ? new Set(JSON.parse(stored)) : new Set();
+});
 
-## After Implementation
-- Refreshing on `/settings` will load the app correctly
-- React Router will then either:
-  - Show the login page (if not authenticated)
-  - Show the settings page (if authenticated)
+// Persist on change
+useEffect(() => {
+  localStorage.setItem(NOTIFIED_PRODUCTS_KEY, JSON.stringify([...notifiedProductIds]));
+}, [notifiedProductIds]);
+```
+
+### Updated NotificationsContext Logic
+- Check `notifiedProductIds.has(product.id)` before adding notification
+- Add ID to set after notification is created
+- Remove ID when stock is replenished above threshold
+
+## Expected Behavior After Fix
+| Action | Before Fix | After Fix |
+|--------|------------|-----------|
+| Refresh page | Duplicate notifications appear | No new duplicates |
+| Mark as read | Reappears on refresh | Stays read |
+| Delete notification | Reappears on refresh | Stays deleted |
+| Stock replenished then drops | May duplicate | Only notifies once |

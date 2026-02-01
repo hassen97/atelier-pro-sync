@@ -17,6 +17,7 @@ import {
   useUpdateRepairStatus,
   useDeleteRepair,
 } from "@/hooks/useRepairs";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 
 // Type for the repair with customer relation
@@ -83,6 +84,12 @@ export default function Repairs() {
   const updateRepair = useUpdateRepair();
   const updateStatus = useUpdateRepairStatus();
   const deleteRepair = useDeleteRepair();
+
+  // Enable realtime updates for repairs
+  useRealtimeSubscription({
+    tables: ["repairs"],
+    queryKeys: [["repairs"], ["recent-repairs"], ["dashboard-stats"]],
+  });
 
   // Transform repairs for UI
   const repairs = (rawRepairs as unknown as RepairWithCustomer[]).map(transformRepair);

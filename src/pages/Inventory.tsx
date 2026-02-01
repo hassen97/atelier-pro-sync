@@ -45,6 +45,7 @@ import {
   useDeleteProduct,
   useUpdateProductStock,
 } from "@/hooks/useProducts";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { toast } from "sonner";
 
@@ -71,6 +72,12 @@ export default function Inventory() {
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const updateStock = useUpdateProductStock();
+
+  // Enable realtime updates for products
+  useRealtimeSubscription({
+    tables: ["products"],
+    queryKeys: [["products"], ["low-stock-alerts"], ["dashboard-stats"]],
+  });
 
   // Transform products to include category name
   const products = (rawProducts as ProductWithCategory[]).map((p) => ({

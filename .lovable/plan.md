@@ -1,41 +1,64 @@
 
-# Enable Auto-Confirm & Fix Login Issues
+# Switch to Username-Based Authentication
 
-## Problem Summary
-1. **Email rate limits**: Supabase limits confirmation emails (~4/hour), causing signup failures
-2. **Unconfirmed accounts**: Users who hit rate limits have accounts created but unconfirmed
-3. **Login fails**: Unconfirmed accounts return "Invalid login credentials"
+## Why This Solves Your Problem
+- No emails = no rate limits
+- Users create a simple username + password
+- No need for email verification at all
 
-## Solution
+## How It Works
+Since the backend authentication system still requires an email internally, we'll use a clever approach:
+- Users enter a **username** (e.g., "ahmed123")
+- System generates a fake internal email: `ahmed123@repairpro.local`
+- Users never see or need to know about this internal email
 
-### Step 1: Enable Auto-Confirm for Email Signups
-Use the configure-auth tool to enable automatic email confirmation. This means:
-- New users can log in immediately after signup
-- No confirmation email needed
-- Bypasses rate limit issues completely
+## Database Changes
 
-### Step 2: Confirm Existing Unconfirmed Users
-Run a database migration to confirm all existing unconfirmed users so they can log in immediately:
-
+### Add username column to profiles table
 ```sql
-UPDATE auth.users 
-SET email_confirmed_at = NOW() 
-WHERE email_confirmed_at IS NULL;
+ALTER TABLE public.profiles ADD COLUMN username TEXT UNIQUE;
+CREATE INDEX idx_profiles_username ON public.profiles(username);
 ```
 
-## Impact
-| Before | After |
-|--------|-------|
-| Users must verify email | Users can log in immediately |
-| Rate limits block signups | No email sending needed |
-| Unconfirmed users can't log in | All users can log in |
+### Update the handle_new_user trigger
+Store the username from the signup metadata into the profiles table.
 
-## Security Note
-Disabling email verification is a trade-off:
-- **Pro**: Better user experience, no email delivery issues
-- **Con**: Anyone can sign up with any email address
+## Code Changes
 
-This is acceptable for most internal/business apps. If email ownership verification becomes important later, you can re-enable it.
+### 1. AuthContext.tsx
+- Update `signUp` to accept username instead of email
+- Generate internal email from username: `${username}@repairpro.local`
+- Update `signIn` to do the same lookup
 
-## Files Changed
-- No code changes needed - this is a backend configuration change only
+### 2. Auth.tsx (Login/Signup Page)
+- Replace email fields with username fields
+- Update labels and placeholders in French
+- Add username validation (alphanumeric, 3-20 chars)
+
+## Updated Forms
+
+**Signup:**
+- Nom d'utilisateur (username) - NEW
+- Nom complet (full name)
+- Mot de passe
+- Confirmer mot de passe
+
+**Login:**
+- Nom d'utilisateur (username) - replaces email
+- Mot de passe
+
+## Validation Rules
+- Username: 3-20 characters, letters, numbers, underscores only
+- Must be unique
+- Case-insensitive (stored lowercase)
+
+## Migration for Existing Users
+Existing users who signed up with real emails will need to:
+- Either keep using their email to login (we can support both)
+- Or be assigned a username based on their email prefix
+
+## Files to Modify
+1. `src/contexts/AuthContext.tsx` - Update signUp/signIn logic
+2. `src/pages/Auth.tsx` - Update form fields
+3. Database migration - Add username column
+4. Update `handle_new_user` trigger to store username

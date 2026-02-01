@@ -7,16 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Wrench, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp, user } = useAuth();
   
-  const [loginEmail, setLoginEmail] = useState("");
+  const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerUsername, setRegisterUsername] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerFullName, setRegisterFullName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -32,16 +32,24 @@ export default function Auth() {
     return null;
   }
 
+  // Validate username: 3-20 chars, alphanumeric and underscores only
+  const validateUsername = (username: string): string | null => {
+    if (username.length < 3) return "Le nom d'utilisateur doit contenir au moins 3 caractères";
+    if (username.length > 20) return "Le nom d'utilisateur ne peut pas dépasser 20 caractères";
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return "Le nom d'utilisateur ne peut contenir que des lettres, chiffres et underscores";
+    return null;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const { error } = await signIn(loginEmail, loginPassword);
+    const { error } = await signIn(loginUsername, loginPassword);
     
     if (error) {
       setError(error.message === "Invalid login credentials" 
-        ? "Email ou mot de passe incorrect" 
+        ? "Nom d'utilisateur ou mot de passe incorrect" 
         : error.message);
     } else {
       const from = (location.state as { from?: Location })?.from?.pathname || "/";
@@ -56,6 +64,13 @@ export default function Auth() {
     setError(null);
     setSuccess(null);
 
+    // Validate username
+    const usernameError = validateUsername(registerUsername);
+    if (usernameError) {
+      setError(usernameError);
+      return;
+    }
+
     if (registerPassword !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas");
       return;
@@ -68,13 +83,17 @@ export default function Auth() {
 
     setLoading(true);
 
-    const { error } = await signUp(registerEmail, registerPassword, registerFullName);
+    const { error } = await signUp(registerUsername, registerPassword, registerFullName);
     
     if (error) {
-      setError(error.message);
+      if (error.message.includes("already registered")) {
+        setError("Ce nom d'utilisateur est déjà pris");
+      } else {
+        setError(error.message);
+      }
     } else {
       setSuccess("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
-      setRegisterEmail("");
+      setRegisterUsername("");
       setRegisterPassword("");
       setRegisterFullName("");
       setConfirmPassword("");
@@ -123,15 +142,15 @@ export default function Auth() {
               <TabsContent value="login" className="mt-0">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-username">Nom d'utilisateur</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="votre@email.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
+                        id="login-username"
+                        type="text"
+                        placeholder="ahmed123"
+                        value={loginUsername}
+                        onChange={(e) => setLoginUsername(e.target.value)}
                         className="pl-10"
                         required
                         disabled={loading}
@@ -177,6 +196,24 @@ export default function Auth() {
               <TabsContent value="register" className="mt-0">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
+                    <Label htmlFor="register-username">Nom d'utilisateur</Label>
+                    <div className="relative">
+                      <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-username"
+                        type="text"
+                        placeholder="ahmed123"
+                        value={registerUsername}
+                        onChange={(e) => setRegisterUsername(e.target.value)}
+                        className="pl-10"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">3-20 caractères, lettres, chiffres et underscores</p>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="register-name">Nom complet</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -186,23 +223,6 @@ export default function Auth() {
                         placeholder="Ahmed Ben Ali"
                         value={registerFullName}
                         onChange={(e) => setRegisterFullName(e.target.value)}
-                        className="pl-10"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-email"
-                        type="email"
-                        placeholder="votre@email.com"
-                        value={registerEmail}
-                        onChange={(e) => setRegisterEmail(e.target.value)}
                         className="pl-10"
                         required
                         disabled={loading}

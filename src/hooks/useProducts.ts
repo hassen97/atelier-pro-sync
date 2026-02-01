@@ -76,6 +76,8 @@ export function useCreateProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Produit créé avec succès");
     },
     onError: (error) => {
@@ -103,6 +105,8 @@ export function useUpdateProduct() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["product", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Produit mis à jour");
     },
     onError: (error) => {
@@ -129,6 +133,8 @@ export function useUpdateProductStock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Stock mis à jour");
     },
     onError: (error) => {
@@ -152,6 +158,8 @@ export function useDeleteProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Produit supprimé");
     },
     onError: (error) => {

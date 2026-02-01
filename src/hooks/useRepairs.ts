@@ -79,6 +79,8 @@ export function useCreateRepair() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["repairs"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-repairs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Réparation créée avec succès");
     },
     onError: (error) => {
@@ -106,6 +108,8 @@ export function useUpdateRepair() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["repairs"] });
       queryClient.invalidateQueries({ queryKey: ["repair", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["recent-repairs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Réparation mise à jour");
     },
     onError: (error) => {
@@ -142,6 +146,8 @@ export function useUpdateRepairStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["repairs"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-repairs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (error) => {
       console.error("Error updating repair status:", error);
@@ -164,6 +170,8 @@ export function useDeleteRepair() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["repairs"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-repairs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Réparation supprimée");
     },
     onError: (error) => {

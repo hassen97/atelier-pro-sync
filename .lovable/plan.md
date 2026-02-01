@@ -1,57 +1,41 @@
 
-# Fix Duplicate Notifications on Page Refresh
+# Enable Auto-Confirm & Fix Login Issues
 
-## Problem
-Notifications reappear after being marked as read or deleted because:
-- The tracking sets (`notifiedLowStock`, `notifiedCompletedRepairs`) use `useRef` which resets on page refresh
-- On each page load, the system thinks it hasn't notified about low stock/completed repairs yet
-- Result: Same notifications are created again and again
+## Problem Summary
+1. **Email rate limits**: Supabase limits confirmation emails (~4/hour), causing signup failures
+2. **Unconfirmed accounts**: Users who hit rate limits have accounts created but unconfirmed
+3. **Login fails**: Unconfirmed accounts return "Invalid login credentials"
 
 ## Solution
-Persist the "already notified" tracking in localStorage alongside the notifications, so the system remembers which items have already triggered notifications even after page refresh.
 
-## Files to Modify
+### Step 1: Enable Auto-Confirm for Email Signups
+Use the configure-auth tool to enable automatic email confirmation. This means:
+- New users can log in immediately after signup
+- No confirmation email needed
+- Bypasses rate limit issues completely
 
-### 1. `src/hooks/useNotifications.ts`
-Add tracking for notified items:
-- Store `notifiedProductIds` and `notifiedRepairIds` in localStorage
-- Export functions to add/check/clear notified items
-- Load notified items on mount
+### Step 2: Confirm Existing Unconfirmed Users
+Run a database migration to confirm all existing unconfirmed users so they can log in immediately:
 
-### 2. `src/contexts/NotificationsContext.tsx`
-Use persisted tracking instead of useRef:
-- Replace `useRef<Set>` with persisted state from the hook
-- Check against persisted notified IDs before creating notifications
-- Clear notified IDs when appropriate (e.g., when stock is replenished)
-
-## Technical Details
-
-### Updated useNotifications Hook
-```typescript
-const NOTIFIED_PRODUCTS_KEY = "notified_low_stock_products";
-const NOTIFIED_REPAIRS_KEY = "notified_completed_repairs";
-
-// Add to hook:
-const [notifiedProductIds, setNotifiedProductIds] = useState<Set<string>>(() => {
-  const stored = localStorage.getItem(NOTIFIED_PRODUCTS_KEY);
-  return stored ? new Set(JSON.parse(stored)) : new Set();
-});
-
-// Persist on change
-useEffect(() => {
-  localStorage.setItem(NOTIFIED_PRODUCTS_KEY, JSON.stringify([...notifiedProductIds]));
-}, [notifiedProductIds]);
+```sql
+UPDATE auth.users 
+SET email_confirmed_at = NOW() 
+WHERE email_confirmed_at IS NULL;
 ```
 
-### Updated NotificationsContext Logic
-- Check `notifiedProductIds.has(product.id)` before adding notification
-- Add ID to set after notification is created
-- Remove ID when stock is replenished above threshold
+## Impact
+| Before | After |
+|--------|-------|
+| Users must verify email | Users can log in immediately |
+| Rate limits block signups | No email sending needed |
+| Unconfirmed users can't log in | All users can log in |
 
-## Expected Behavior After Fix
-| Action | Before Fix | After Fix |
-|--------|------------|-----------|
-| Refresh page | Duplicate notifications appear | No new duplicates |
-| Mark as read | Reappears on refresh | Stays read |
-| Delete notification | Reappears on refresh | Stays deleted |
-| Stock replenished then drops | May duplicate | Only notifies once |
+## Security Note
+Disabling email verification is a trade-off:
+- **Pro**: Better user experience, no email delivery issues
+- **Con**: Anyone can sign up with any email address
+
+This is acceptable for most internal/business apps. If email ownership verification becomes important later, you can re-enable it.
+
+## Files Changed
+- No code changes needed - this is a backend configuration change only

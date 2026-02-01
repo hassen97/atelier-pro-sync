@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (username: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -38,15 +38,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  // Convert username to internal email format
+  const usernameToEmail = (username: string) => `${username.toLowerCase()}@repairpro.local`;
+
+  const signUp = async (username: string, password: string, fullName: string) => {
     try {
+      const internalEmail = usernameToEmail(username);
       const { error } = await supabase.auth.signUp({
-        email,
+        email: internalEmail,
         password,
         options: {
           emailRedirectTo: window.location.origin,
           data: {
             full_name: fullName,
+            username: username.toLowerCase(),
           },
         },
       });
@@ -56,10 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (username: string, password: string) => {
     try {
+      const internalEmail = usernameToEmail(username);
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: internalEmail,
         password,
       });
       return { error };

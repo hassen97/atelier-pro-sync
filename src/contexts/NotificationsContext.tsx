@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useEffect, useCallback, useRef } from "react";
+import { createContext, useContext, ReactNode, useEffect } from "react";
 import { useNotifications, Notification } from "@/hooks/useNotifications";
 import { useNotificationSettings } from "@/hooks/useNotificationSettings";
 import { useProducts } from "@/hooks/useProducts";
@@ -25,23 +25,25 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     addNotification,
     removeNotification,
     clearAllNotifications,
+    // Persisted tracking functions
+    addNotifiedProduct,
+    removeNotifiedProduct,
+    hasNotifiedProduct,
+    addNotifiedRepair,
+    hasNotifiedRepair,
   } = useNotifications();
   
   const { settings: notifSettings } = useNotificationSettings();
   const { data: products } = useProducts();
   const { data: repairs } = useRepairs();
-  
-  // Track which notifications we've already created to avoid duplicates
-  const notifiedLowStock = useRef<Set<string>>(new Set());
-  const notifiedCompletedRepairs = useRef<Set<string>>(new Set());
 
-  // Check for low stock products
+  // Check for low stock products - uses persisted tracking
   useEffect(() => {
     if (!notifSettings.lowStockAlerts || !products) return;
 
     products.forEach((product) => {
-      if (product.quantity <= product.min_quantity && !notifiedLowStock.current.has(product.id)) {
-        notifiedLowStock.current.add(product.id);
+      if (product.quantity <= product.min_quantity && !hasNotifiedProduct(product.id)) {
+        addNotifiedProduct(product.id);
         addNotification({
           type: "stock",
           title: "Stock faible",
@@ -49,14 +51,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           time: "À l'instant",
           read: false,
         });
-      } else if (product.quantity > product.min_quantity && notifiedLowStock.current.has(product.id)) {
-        // Remove from tracking if stock is replenished
-        notifiedLowStock.current.delete(product.id);
+      } else if (product.quantity > product.min_quantity && hasNotifiedProduct(product.id)) {
+        // Remove from tracking if stock is replenished (allows re-notification if it drops again)
+        removeNotifiedProduct(product.id);
       }
     });
-  }, [products, notifSettings.lowStockAlerts, addNotification]);
+  }, [products, notifSettings.lowStockAlerts, addNotification, hasNotifiedProduct, addNotifiedProduct, removeNotifiedProduct]);
 
-  // Check for completed/delivered repairs
+  // Check for completed/delivered repairs - uses persisted tracking
   useEffect(() => {
     if (!repairs) return;
 
@@ -64,9 +66,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       // Notify when a repair is completed
       if (
         (repair.status === "completed" || repair.status === "delivered") &&
-        !notifiedCompletedRepairs.current.has(repair.id)
+        !hasNotifiedRepair(repair.id)
       ) {
-        notifiedCompletedRepairs.current.add(repair.id);
+        addNotifiedRepair(repair.id);
         const customerName = (repair as any).customer?.name || "Client anonyme";
         addNotification({
           type: "repair",
@@ -77,7 +79,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         });
       }
     });
-  }, [repairs, addNotification]);
+  }, [repairs, addNotification, hasNotifiedRepair, addNotifiedRepair]);
 
   return (
     <NotificationsContext.Provider

@@ -42,6 +42,7 @@ export default function Settings() {
     saveSettings: saveBackupSettings, 
     exportJSON, 
     exportSQL, 
+    exportExcel,
     restoreFromFile, 
     syncNow 
   } = useBackup();
@@ -280,6 +281,10 @@ export default function Settings() {
                   <Button variant="outline" className="w-full" onClick={exportSQL}>
                     <Download className="h-4 w-4 mr-2" />
                     Télécharger sauvegarde (SQL)
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={exportExcel}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Télécharger sauvegarde (Excel)
                   </Button>
                   <Button variant="outline" className="w-full" onClick={restoreFromFile}>
                     <Upload className="h-4 w-4 mr-2" />

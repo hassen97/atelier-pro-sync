@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 export interface BackupSettings {
   autoBackup: boolean;
@@ -170,6 +171,36 @@ export function useBackup() {
     toast.success("Sauvegarde SQL téléchargée");
   }, [fetchAllData]);
 
+  // Export as Excel
+  const exportExcel = useCallback(async () => {
+    const data = await fetchAllData();
+    if (!data) {
+      toast.error("Erreur lors de la récupération des données");
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+
+    const addSheet = (name: string, rows: any[]) => {
+      if (rows.length > 0) {
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(workbook, worksheet, name);
+      }
+    };
+
+    addSheet("Produits", data.products);
+    addSheet("Clients", data.customers);
+    addSheet("Reparations", data.repairs);
+    addSheet("Ventes", data.sales);
+    addSheet("Depenses", data.expenses);
+    addSheet("Fournisseurs", data.suppliers);
+    addSheet("Factures", data.invoices);
+    addSheet("Categories", data.categories);
+
+    XLSX.writeFile(workbook, `backup_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Sauvegarde Excel téléchargée");
+  }, [fetchAllData]);
+
   // Restore from file
   const restoreFromFile = useCallback(() => {
     const input = document.createElement("input");
@@ -268,6 +299,7 @@ export function useBackup() {
     saveSettings,
     exportJSON,
     exportSQL,
+    exportExcel,
     restoreFromFile,
     syncNow,
   };

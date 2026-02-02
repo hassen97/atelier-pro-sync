@@ -40,8 +40,8 @@ import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { useCustomers, useUpdateCustomer, Customer } from "@/hooks/useCustomers";
-import { useRepairs } from "@/hooks/useRepairs";
-import { useSales } from "@/hooks/useSales";
+import { useRepairs, useUpdateRepair } from "@/hooks/useRepairs";
+import { useSales, useUpdateSale } from "@/hooks/useSales";
 import { toast } from "sonner";
 
 interface DebtItem {
@@ -66,6 +66,8 @@ export default function CustomerDebts() {
   const { data: repairs = [] } = useRepairs();
   const { data: sales = [] } = useSales();
   const updateCustomer = useUpdateCustomer();
+  const updateRepair = useUpdateRepair();
+  const updateSale = useUpdateSale();
 
   // Build debts list from repairs and sales with partial payments
   const debts: DebtItem[] = [];
@@ -160,7 +162,26 @@ export default function CustomerDebts() {
     }
 
     try {
-      // Update customer balance
+      // Update the source record (repair or sale)
+      if (selectedDebt.type === "Réparation") {
+        const repair = repairs.find((r) => r.id === selectedDebt.id);
+        if (repair) {
+          await updateRepair.mutateAsync({
+            id: repair.id,
+            amount_paid: Number(repair.amount_paid) + amount,
+          });
+        }
+      } else if (selectedDebt.type === "Vente") {
+        const sale = sales.find((s) => s.id === selectedDebt.id);
+        if (sale) {
+          await updateSale.mutateAsync({
+            id: sale.id,
+            amount_paid: Number(sale.amount_paid) + amount,
+          });
+        }
+      }
+
+      // Also update customer balance
       const customer = customers.find((c) => c.id === selectedDebt.customerId);
       if (customer) {
         const newBalance = Math.max(0, Number(customer.balance) - amount);
@@ -359,7 +380,7 @@ export default function CustomerDebts() {
                 <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
                   Annuler
                 </Button>
-                <Button onClick={submitPayment} disabled={updateCustomer.isPending}>
+                <Button onClick={submitPayment} disabled={updateCustomer.isPending || updateRepair.isPending || updateSale.isPending}>
                   Enregistrer
                 </Button>
               </div>

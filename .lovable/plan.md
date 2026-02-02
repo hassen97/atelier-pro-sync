@@ -1,91 +1,117 @@
 
-# Ameliorations Demandees
+# Fix: Client Debt Payment Not Updating
 
-## Probleme 1: Creation de client depuis la page Reparation
-**Situation actuelle**: Le formulaire de reparation permet uniquement de selectionner un client existant. Si le client n'existe pas, l'utilisateur doit quitter la page, aller dans "Clients", creer le client, puis revenir.
+## Root Cause Analysis
 
-**Solution proposee**: Ajouter un bouton "+" a cote du selecteur de client qui ouvre un mini-formulaire rapide (nom + telephone minimum) directement dans le dialogue de reparation.
+The bug is in `src/pages/CustomerDebts.tsx` in the `submitPayment` function (lines 147-181).
 
-## Probleme 2: Changement de mot de passe
-**Situation actuelle**: Aucune fonctionnalite de changement de mot de passe n'existe. L'onglet "Utilisateurs" dans les parametres affiche "Fonctionnalite bientot disponible".
+**Current behavior:**
+- When a payment is recorded, only `customer.balance` is updated
+- But the debt list is computed from:
+  - `repairs`: `remaining = repair.total_cost - repair.amount_paid`
+  - `sales`: `remaining = sale.total_amount - sale.amount_paid`
+- Since `amount_paid` on repairs/sales is never updated, the debt value stays the same
 
-**Solution proposee**: Ajouter une section "Mon compte" dans l'onglet Securite des parametres avec la possibilite de changer son mot de passe.
+**Expected behavior:**
+- When recording a payment, update the `amount_paid` field on the corresponding repair or sale
+- The UI should immediately reflect the new payment
 
 ---
 
-## Implementation Technique
+## Solution
 
-### Partie 1: Creation rapide de client
+### Step 1: Add `useUpdateSale` mutation to `useSales.ts`
 
-**Fichier**: `src/components/repairs/RepairDialog.tsx`
+Currently there's no function to update sales. Add one similar to `useUpdateRepair`.
 
-Modifications:
-1. Importer `useCreateCustomer` depuis `useCustomers`
-2. Ajouter un state pour controler l'affichage du mini-formulaire client
-3. Ajouter un bouton "+" (icone `UserPlus`) a cote du selecteur
-4. Creer un mini-formulaire inline avec:
-   - Champ "Nom" (requis)
-   - Champ "Telephone" (optionnel mais recommande)
-   - Boutons "Creer" et "Annuler"
-5. Apres creation, selectionner automatiquement le nouveau client
+```typescript
+export function useUpdateSale() {
+  const queryClient = useQueryClient();
 
-Structure UI proposee:
-```text
-+------------------------------------------+
-| Client                          [+ Ajouter]|
-| [Selecteur client existant ▼]              |
-+------------------------------------------+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; amount_paid?: number }) => {
+      const { data, error } = await supabase
+        .from("sales")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
 
-Quand on clique sur "+ Ajouter":
-+------------------------------------------+
-| Nouveau client rapide                      |
-| Nom *: [________________]                  |
-| Tel:   [________________]                  |
-| [Annuler]              [Creer et utiliser] |
-+------------------------------------------+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+  });
+}
 ```
 
-### Partie 2: Changement de mot de passe
+### Step 2: Fix `submitPayment` in `CustomerDebts.tsx`
 
-**Fichier**: `src/pages/Settings.tsx`
+Update the function to:
+1. Import `useUpdateRepair` and the new `useUpdateSale`
+2. Check the debt type (repair or sale)
+3. Update the `amount_paid` field on the correct record
+4. Also update customer balance
 
-Modifications:
-1. Ajouter un nouveau state pour les champs de mot de passe
-2. Ajouter une section "Mon compte" dans l'onglet Securite avec:
-   - Champ "Nouveau mot de passe"
-   - Champ "Confirmer le mot de passe"
-   - Bouton "Modifier le mot de passe"
-3. Utiliser `supabase.auth.updateUser({ password: newPassword })` pour la mise a jour
-
-**Fichier**: `src/contexts/AuthContext.tsx`
-
-Ajouter une fonction `updatePassword` au contexte:
 ```typescript
-const updatePassword = async (newPassword: string) => {
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  return { error };
+const submitPayment = async () => {
+  if (!selectedDebt || !paymentAmount) return;
+
+  const amount = parseFloat(paymentAmount);
+  // ... validation ...
+
+  try {
+    // Update the source record (repair or sale)
+    if (selectedDebt.type === "Réparation") {
+      const repair = repairs.find(r => r.id === selectedDebt.id);
+      if (repair) {
+        await updateRepair.mutateAsync({
+          id: repair.id,
+          amount_paid: Number(repair.amount_paid) + amount,
+        });
+      }
+    } else if (selectedDebt.type === "Vente") {
+      const sale = sales.find(s => s.id === selectedDebt.id);
+      if (sale) {
+        await updateSale.mutateAsync({
+          id: sale.id,
+          amount_paid: Number(sale.amount_paid) + amount,
+        });
+      }
+    }
+
+    // Also update customer balance
+    const customer = customers.find(c => c.id === selectedDebt.customerId);
+    if (customer) {
+      await updateCustomer.mutateAsync({
+        id: customer.id,
+        balance: Math.max(0, Number(customer.balance) - amount),
+      });
+    }
+
+    toast.success("Paiement enregistré");
+    setPaymentDialogOpen(false);
+  } catch (error) {
+    toast.error("Erreur lors de l'enregistrement");
+  }
 };
 ```
 
 ---
 
-## Resume des fichiers a modifier
+## Files to Modify
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/components/repairs/RepairDialog.tsx` | Ajout formulaire rapide client |
-| `src/pages/Settings.tsx` | Section changement mot de passe |
-| `src/contexts/AuthContext.tsx` | Fonction `updatePassword` |
+| File | Changes |
+|------|---------|
+| `src/hooks/useSales.ts` | Add `useUpdateSale` mutation |
+| `src/pages/CustomerDebts.tsx` | Import and use `useUpdateRepair` + `useUpdateSale`, fix `submitPayment` logic |
 
-## Comportement attendu
+## Result
 
-**Creation client rapide**:
-- L'utilisateur clique sur "+" a cote du selecteur
-- Un mini-formulaire s'affiche (nom + tel)
-- Le client est cree et automatiquement selectionne
-- Le formulaire de reparation reste ouvert avec toutes les donnees saisies
-
-**Changement mot de passe**:
-- L'utilisateur va dans Parametres > Securite
-- Il saisit son nouveau mot de passe deux fois
-- Un message de confirmation s'affiche apres modification
+After this fix:
+- Payments will update the `amount_paid` field on the repair/sale
+- The debt list will immediately reflect the new value
+- Customer balance will also be updated for consistency

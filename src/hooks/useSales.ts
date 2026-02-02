@@ -114,3 +114,29 @@ export function useCreateSale() {
     },
   });
 }
+
+export function useUpdateSale() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; amount_paid?: number }) => {
+      const { data, error } = await supabase
+        .from("sales")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+    onError: (error) => {
+      console.error("Error updating sale:", error);
+      toast.error("Erreur lors de la mise à jour");
+    },
+  });
+}

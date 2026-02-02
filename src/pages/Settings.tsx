@@ -13,7 +13,10 @@ import {
   RefreshCw,
   AlertTriangle,
   Loader2,
+  Key,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,10 +52,42 @@ export default function Settings() {
     saveSettings: saveSecuritySettings,
     resetAllData,
   } = useSecuritySettings();
+
+  const { updatePassword } = useAuth();
   
   const [shopName, setShopName] = useState("");
   const [taxRate, setTaxRate] = useState("");
   const [stockThreshold, setStockThreshold] = useState("");
+  
+  // Password change state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const handlePasswordChange = async () => {
+    if (newPassword.length < 6) {
+      toast.error("Le mot de passe doit contenir au moins 6 caractères");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Les mots de passe ne correspondent pas");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const { error } = await updatePassword(newPassword);
+      if (error) {
+        toast.error("Erreur lors du changement de mot de passe");
+      } else {
+        toast.success("Mot de passe modifié avec succès");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   // Sync local state with loaded settings
   useEffect(() => {
@@ -342,6 +377,54 @@ export default function Settings() {
 
         {/* Security Settings */}
         <TabsContent value="security" className="space-y-6">
+          {/* Password Change Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Mon compte
+              </CardTitle>
+              <CardDescription>
+                Modifier votre mot de passe
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Button 
+                onClick={handlePasswordChange}
+                disabled={changingPassword || !newPassword || !confirmPassword}
+              >
+                {changingPassword ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Key className="h-4 w-4 mr-2" />
+                )}
+                {changingPassword ? "Modification..." : "Modifier le mot de passe"}
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

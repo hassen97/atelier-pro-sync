@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -27,8 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
-import { useCustomers } from "@/hooks/useCustomers";
+import { Loader2, UserPlus, X } from "lucide-react";
+import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 
 const repairSchema = z.object({
   customer_id: z.string().optional(),
@@ -74,6 +74,34 @@ export function RepairDialog({
 }: RepairDialogProps) {
   const isEditing = !!repair;
   const { data: customers = [] } = useCustomers();
+  const createCustomer = useCreateCustomer();
+  
+  const [showQuickCustomer, setShowQuickCustomer] = useState(false);
+  const [quickCustomerName, setQuickCustomerName] = useState("");
+  const [quickCustomerPhone, setQuickCustomerPhone] = useState("");
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+
+  const handleQuickCustomerCreate = async () => {
+    if (!quickCustomerName.trim()) return;
+    
+    setCreatingCustomer(true);
+    try {
+      const newCustomer = await createCustomer.mutateAsync({
+        name: quickCustomerName.trim(),
+        phone: quickCustomerPhone.trim() || null,
+      });
+      
+      if (newCustomer?.id) {
+        form.setValue("customer_id", newCustomer.id);
+      }
+      
+      setQuickCustomerName("");
+      setQuickCustomerPhone("");
+      setShowQuickCustomer(false);
+    } finally {
+      setCreatingCustomer(false);
+    }
+  };
 
   const form = useForm<RepairFormValues>({
     resolver: zodResolver(repairSchema),
@@ -144,34 +172,110 @@ export function RepairDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             {/* Customer Selection */}
-            <FormField
-              control={form.control}
-              name="customer_id"
-              render={({ field }) => (
-                <FormItem>
+            {!showQuickCustomer ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
                   <FormLabel>Client</FormLabel>
-                  <Select 
-                    onValueChange={(value) => field.onChange(value === "__none__" ? "" : value)} 
-                    value={field.value || "__none__"}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-primary hover:text-primary"
+                    onClick={() => setShowQuickCustomer(true)}
                   >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un client (optionnel)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="__none__">Client anonyme</SelectItem>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name} {customer.phone ? `- ${customer.phone}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <UserPlus className="h-3.5 w-3.5 mr-1" />
+                    Ajouter
+                  </Button>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="customer_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Select 
+                        onValueChange={(value) => field.onChange(value === "__none__" ? "" : value)} 
+                        value={field.value || "__none__"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner un client (optionnel)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="__none__">Client anonyme</SelectItem>
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {customer.name} {customer.phone ? `- ${customer.phone}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="border rounded-lg p-3 bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Nouveau client rapide</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => {
+                      setShowQuickCustomer(false);
+                      setQuickCustomerName("");
+                      setQuickCustomerPhone("");
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Nom *</label>
+                    <Input
+                      placeholder="Nom du client"
+                      value={quickCustomerName}
+                      onChange={(e) => setQuickCustomerName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Téléphone</label>
+                    <Input
+                      placeholder="Numéro (optionnel)"
+                      value={quickCustomerPhone}
+                      onChange={(e) => setQuickCustomerPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowQuickCustomer(false);
+                      setQuickCustomerName("");
+                      setQuickCustomerPhone("");
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleQuickCustomerCreate}
+                    disabled={!quickCustomerName.trim() || creatingCustomer}
+                  >
+                    {creatingCustomer && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                    Créer et utiliser
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Device Info */}
             <div className="grid grid-cols-2 gap-4">

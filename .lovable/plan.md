@@ -1,86 +1,110 @@
 
-# Ajout de l'autocompletion Marque/Modele de telephone
+# Integration API ipsw.me pour les modeles Apple
 
 ## Objectif
 
-Remplacer le champ unique "Modele appareil" par deux champs separes avec autocompletion:
-1. **Marque** (Apple, Samsung, Xiaomi, etc.)
-2. **Modele** (filtre automatiquement selon la marque selectionnee)
+Implementer une approche hybride pour la recuperation des modeles de telephones:
+- **Apple**: Utiliser l'API publique ipsw.me pour obtenir une liste toujours a jour des appareils Apple
+- **Autres marques**: Conserver la liste statique actuelle (Samsung, Xiaomi, etc.)
 
 ---
 
-## Implementation technique
+## Architecture technique
 
-### 1. Creer un fichier de donnees avec les marques et modeles
+### API ipsw.me
 
-Fichier: `src/data/phoneModels.ts`
+L'API publique `https://api.ipsw.me/v4/devices` retourne tous les appareils Apple avec leurs details:
+- Nom du modele (iPhone 15 Pro Max, iPad Pro 12.9", etc.)
+- Identifiant unique
+- Type d'appareil (iPhone, iPad, iPod, Apple TV, Apple Watch)
 
-Ce fichier contiendra une liste comprehensive de:
-- **~30 marques** de telephones (Apple, Samsung, Xiaomi, Huawei, OnePlus, Oppo, Vivo, Realme, Google, Motorola, Nokia, Sony, LG, Honor, Tecno, Infinix, Itel, ZTE, Alcatel, etc.)
-- **Centaines de modeles** pour chaque marque
+Nous filtrerons uniquement les **iPhones** pour rester coherent avec le contexte reparation.
 
-Structure:
+---
+
+## Implementation
+
+### Etape 1: Creer un hook pour recuperer les modeles Apple
+
+Nouveau fichier: `src/hooks/useAppleDevices.ts`
+
 ```typescript
-export const PHONE_BRANDS = [
-  { value: "apple", label: "Apple" },
-  { value: "samsung", label: "Samsung" },
-  // ...
-];
+import { useQuery } from "@tanstack/react-query";
 
+interface AppleDevice {
+  name: string;
+  identifier: string;
+  boardconfig: string;
+  platform: string;
+  cpid: number;
+  bdid: number;
+}
+
+export function useAppleDevices() {
+  return useQuery({
+    queryKey: ["apple-devices"],
+    queryFn: async () => {
+      const response = await fetch("https://api.ipsw.me/v4/devices");
+      if (!response.ok) throw new Error("Failed to fetch Apple devices");
+      const devices: AppleDevice[] = await response.json();
+      
+      // Filtrer uniquement les iPhones et enlever les doublons
+      const iphones = devices
+        .filter(d => d.name.startsWith("iPhone"))
+        .map(d => d.name)
+        .filter((name, index, self) => self.indexOf(name) === index)
+        .sort((a, b) => {
+          // Tri par numero de version (iPhone 16 avant iPhone 15, etc.)
+          const numA = parseInt(a.match(/iPhone (\d+)/)?.[1] || "0");
+          const numB = parseInt(b.match(/iPhone (\d+)/)?.[1] || "0");
+          return numB - numA;
+        });
+      
+      return iphones;
+    },
+    staleTime: 24 * 60 * 60 * 1000, // Cache 24h
+    gcTime: 7 * 24 * 60 * 60 * 1000, // Garde en cache 7 jours
+  });
+}
+```
+
+### Etape 2: Modifier le fichier phoneModels.ts
+
+Supprimer la liste statique Apple et ajouter un flag pour indiquer les marques avec API:
+
+```typescript
+// Marquer Apple comme utilisant une API externe
+export const BRANDS_WITH_API = ["apple"] as const;
+
+// Garder la liste statique pour les autres marques
 export const PHONE_MODELS: Record<string, string[]> = {
-  apple: [
-    "iPhone 15 Pro Max", "iPhone 15 Pro", "iPhone 15 Plus", "iPhone 15",
-    "iPhone 14 Pro Max", "iPhone 14 Pro", "iPhone 14 Plus", "iPhone 14",
-    "iPhone 13 Pro Max", "iPhone 13 Pro", "iPhone 13", "iPhone 13 mini",
-    // ... tous les modeles iPhone
-  ],
-  samsung: [
-    "Galaxy S24 Ultra", "Galaxy S24+", "Galaxy S24",
-    "Galaxy S23 Ultra", "Galaxy S23+", "Galaxy S23",
-    "Galaxy Z Fold 5", "Galaxy Z Flip 5",
-    "Galaxy A54", "Galaxy A34", "Galaxy A24",
-    // ... tous les modeles Samsung
-  ],
-  // ... autres marques
+  // Apple est retire - sera charge via API
+  samsung: [...],
+  xiaomi: [...],
+  // ... autres marques inchangees
 };
 ```
 
-### 2. Creer un composant Combobox reutilisable
+### Etape 3: Modifier RepairDialog.tsx
 
-Utiliser le composant `Command` (cmdk) deja installe pour creer un Combobox avec:
-- Recherche/filtrage en temps reel
-- Navigation clavier
-- Selection ou saisie libre (pour les modeles non listes)
+Integrer le hook pour charger dynamiquement les modeles Apple:
 
-### 3. Modifier le formulaire de reparation
+```typescript
+import { useAppleDevices } from "@/hooks/useAppleDevices";
 
-**Avant:**
+// Dans le composant
+const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
+
+// Logique pour obtenir les modeles selon la marque
+const availableModels = useMemo(() => {
+  if (selectedBrand === "apple") {
+    return appleDevices.map(model => ({ value: model, label: model }));
+  }
+  // Utiliser la liste statique pour les autres marques
+  const models = PHONE_MODELS[selectedBrand] || [];
+  return models.map(model => ({ value: model, label: model }));
+}, [selectedBrand, appleDevices]);
 ```
-[ Modele appareil * ] [ IMEI ]
-```
-
-**Apres:**
-```
-[ Marque telephone ] [ Modele telephone * ] [ IMEI ]
-```
-
-**Comportement:**
-1. L'utilisateur tape dans le champ "Marque" → autocompletion des marques
-2. Une fois la marque selectionnee, le champ "Modele" filtre les modeles de cette marque
-3. L'utilisateur peut aussi taper un modele personnalise s'il n'est pas dans la liste
-4. Le champ `device_model` sera rempli avec "Marque Modele" (ex: "Apple iPhone 15 Pro")
-
-### 4. Modifications de la base de donnees
-
-**Option A (recommandee):** Garder le champ `device_model` existant
-- Concatener marque + modele lors de l'enregistrement
-- Pas de migration necessaire
-- Compatible avec les donnees existantes
-
-**Option B:** Ajouter des colonnes separees
-- Ajouter `device_brand` et `device_model_name`
-- Necessite une migration
-- Plus structure mais plus complexe
 
 ---
 
@@ -88,59 +112,40 @@ Utiliser le composant `Command` (cmdk) deja installe pour creer un Combobox avec
 
 | Fichier | Action |
 |---------|--------|
-| `src/data/phoneModels.ts` | **Creer** - Liste des marques et modeles |
-| `src/components/ui/combobox.tsx` | **Creer** - Composant Combobox reutilisable |
-| `src/components/repairs/RepairDialog.tsx` | **Modifier** - Remplacer le champ device_model par 2 Combobox |
+| `src/hooks/useAppleDevices.ts` | **Creer** - Hook pour l'API ipsw.me |
+| `src/data/phoneModels.ts` | **Modifier** - Retirer liste Apple statique |
+| `src/components/repairs/RepairDialog.tsx` | **Modifier** - Integrer le hook Apple |
 
 ---
 
-## Liste des marques incluses
+## Avantages de cette approche
 
-La liste inclura les marques les plus courantes:
-
-**Marques premium:** Apple, Samsung, Google, OnePlus, Sony
-**Marques chinoises:** Xiaomi, Huawei, Honor, Oppo, Vivo, Realme, ZTE, Meizu
-**Marques africaines populaires:** Tecno, Infinix, Itel
-**Autres:** Motorola, Nokia, LG, Alcatel, Asus, BlackBerry, HTC, Lenovo
-
-Chaque marque aura ses modeles des 5 dernieres annees (2020-2025).
+- **Liste Apple toujours a jour**: Nouveaux modeles automatiquement disponibles
+- **Performance**: Cache de 24h pour eviter les appels API repetitifs
+- **Fallback**: Si l'API est indisponible, affiche un champ texte libre
+- **Pas de changement pour les autres marques**: Samsung, Xiaomi, etc. gardent leur liste statique fiable
 
 ---
 
-## Apercu de l'interface
+## Gestion des erreurs
 
-```
-+--------------------------------------------------+
-| Marque telephone                                  |
-| [Samsung                              ▼]         |
-|  ┌─────────────────────────────────────┐         |
-|  │ 🔍 Rechercher...                    │         |
-|  │ ─────────────────────────────────── │         |
-|  │ Apple                               │         |
-|  │ Samsung ✓                           │         |
-|  │ Xiaomi                              │         |
-|  │ Huawei                              │         |
-|  └─────────────────────────────────────┘         |
-+--------------------------------------------------+
-| Modele telephone *                               |
-| [Galaxy S24 Ultra                     ▼]         |
-|  ┌─────────────────────────────────────┐         |
-|  │ 🔍 Rechercher modele Samsung...     │         |
-|  │ ─────────────────────────────────── │         |
-|  │ Galaxy S24 Ultra                    │         |
-|  │ Galaxy S24+                         │         |
-|  │ Galaxy S24                          │         |
-|  │ Galaxy Z Fold 5                     │         |
-|  └─────────────────────────────────────┘         |
-+--------------------------------------------------+
-```
+Si l'API ipsw.me est indisponible:
+1. Afficher un indicateur de chargement pendant la tentative
+2. En cas d'echec, permettre la saisie manuelle du modele
+3. Afficher un message discret d'erreur dans la console
 
 ---
 
-## Avantages
+## Donnees retournees par l'API
 
-- **Rapidite de saisie**: Autocompletion accelere la saisie
-- **Standardisation**: Les noms de modeles sont coherents
-- **Flexibilite**: Possibilite de saisir un modele personnalise
-- **Filtrage intelligent**: Les modeles sont filtres par marque
-- **Base de donnees complete**: Centaines de modeles inclus
+Exemple de reponse de l'API ipsw.me pour les iPhones:
+- iPhone 16 Pro Max
+- iPhone 16 Pro
+- iPhone 16 Plus
+- iPhone 16
+- iPhone 15 Pro Max
+- iPhone 15 Pro
+- iPhone SE (3rd generation)
+- ... (tous les modeles depuis iPhone 2G)
+
+La liste complete inclut environ 50+ modeles d'iPhone.

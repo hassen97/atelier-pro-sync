@@ -1,113 +1,146 @@
 
+# Ajout de l'autocompletion Marque/Modele de telephone
 
-# Ajout de l'export Excel pour la sauvegarde
+## Objectif
 
-## Contexte
-
-Le systeme de sauvegarde actuel propose deux formats d'export:
-- **JSON**: Format technique, difficile a lire pour un utilisateur non-technique
-- **SQL**: Format base de donnees, encore plus technique
-
-L'ajout d'un export **Excel (.xlsx)** est une excellente idee car:
-- Format familier pour la plupart des utilisateurs
-- Facile a ouvrir et consulter
-- Permet de filtrer/trier les donnees dans Excel
-- Utile pour la comptabilite ou le partage avec un comptable
+Remplacer le champ unique "Modele appareil" par deux champs separes avec autocompletion:
+1. **Marque** (Apple, Samsung, Xiaomi, etc.)
+2. **Modele** (filtre automatiquement selon la marque selectionnee)
 
 ---
 
 ## Implementation technique
 
-### Etape 1: Installer la bibliotheque xlsx
+### 1. Creer un fichier de donnees avec les marques et modeles
 
-Ajouter la dependance `xlsx` (SheetJS) qui permet de creer des fichiers Excel en JavaScript:
+Fichier: `src/data/phoneModels.ts`
 
-```bash
-npm install xlsx
-```
+Ce fichier contiendra une liste comprehensive de:
+- **~30 marques** de telephones (Apple, Samsung, Xiaomi, Huawei, OnePlus, Oppo, Vivo, Realme, Google, Motorola, Nokia, Sony, LG, Honor, Tecno, Infinix, Itel, ZTE, Alcatel, etc.)
+- **Centaines de modeles** pour chaque marque
 
-### Etape 2: Ajouter la fonction exportExcel dans useBackup.ts
-
+Structure:
 ```typescript
-import * as XLSX from "xlsx";
+export const PHONE_BRANDS = [
+  { value: "apple", label: "Apple" },
+  { value: "samsung", label: "Samsung" },
+  // ...
+];
 
-const exportExcel = useCallback(async () => {
-  const data = await fetchAllData();
-  if (!data) {
-    toast.error("Erreur lors de la recuperation des donnees");
-    return;
-  }
-
-  // Creer un nouveau classeur Excel
-  const workbook = XLSX.utils.book_new();
-
-  // Ajouter chaque table comme une feuille separee
-  const addSheet = (name: string, rows: any[]) => {
-    if (rows.length > 0) {
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      XLSX.utils.book_append_sheet(workbook, worksheet, name);
-    }
-  };
-
-  addSheet("Produits", data.products);
-  addSheet("Clients", data.customers);
-  addSheet("Reparations", data.repairs);
-  addSheet("Ventes", data.sales);
-  addSheet("Depenses", data.expenses);
-  addSheet("Fournisseurs", data.suppliers);
-  addSheet("Factures", data.invoices);
-  addSheet("Categories", data.categories);
-
-  // Telecharger le fichier
-  XLSX.writeFile(workbook, `backup_${new Date().toISOString().split("T")[0]}.xlsx`);
-  toast.success("Sauvegarde Excel telechargee");
-}, [fetchAllData]);
+export const PHONE_MODELS: Record<string, string[]> = {
+  apple: [
+    "iPhone 15 Pro Max", "iPhone 15 Pro", "iPhone 15 Plus", "iPhone 15",
+    "iPhone 14 Pro Max", "iPhone 14 Pro", "iPhone 14 Plus", "iPhone 14",
+    "iPhone 13 Pro Max", "iPhone 13 Pro", "iPhone 13", "iPhone 13 mini",
+    // ... tous les modeles iPhone
+  ],
+  samsung: [
+    "Galaxy S24 Ultra", "Galaxy S24+", "Galaxy S24",
+    "Galaxy S23 Ultra", "Galaxy S23+", "Galaxy S23",
+    "Galaxy Z Fold 5", "Galaxy Z Flip 5",
+    "Galaxy A54", "Galaxy A34", "Galaxy A24",
+    // ... tous les modeles Samsung
+  ],
+  // ... autres marques
+};
 ```
 
-### Etape 3: Ajouter le bouton dans Settings.tsx
+### 2. Creer un composant Combobox reutilisable
 
-Dans la section "Sauvegarde locale", ajouter un nouveau bouton:
+Utiliser le composant `Command` (cmdk) deja installe pour creer un Combobox avec:
+- Recherche/filtrage en temps reel
+- Navigation clavier
+- Selection ou saisie libre (pour les modeles non listes)
 
-```tsx
-<Button variant="outline" className="w-full" onClick={exportExcel}>
-  <Download className="h-4 w-4 mr-2" />
-  Telecharger sauvegarde (Excel)
-</Button>
+### 3. Modifier le formulaire de reparation
+
+**Avant:**
+```
+[ Modele appareil * ] [ IMEI ]
+```
+
+**Apres:**
+```
+[ Marque telephone ] [ Modele telephone * ] [ IMEI ]
+```
+
+**Comportement:**
+1. L'utilisateur tape dans le champ "Marque" → autocompletion des marques
+2. Une fois la marque selectionnee, le champ "Modele" filtre les modeles de cette marque
+3. L'utilisateur peut aussi taper un modele personnalise s'il n'est pas dans la liste
+4. Le champ `device_model` sera rempli avec "Marque Modele" (ex: "Apple iPhone 15 Pro")
+
+### 4. Modifications de la base de donnees
+
+**Option A (recommandee):** Garder le champ `device_model` existant
+- Concatener marque + modele lors de l'enregistrement
+- Pas de migration necessaire
+- Compatible avec les donnees existantes
+
+**Option B:** Ajouter des colonnes separees
+- Ajouter `device_brand` et `device_model_name`
+- Necessite une migration
+- Plus structure mais plus complexe
+
+---
+
+## Fichiers a modifier/creer
+
+| Fichier | Action |
+|---------|--------|
+| `src/data/phoneModels.ts` | **Creer** - Liste des marques et modeles |
+| `src/components/ui/combobox.tsx` | **Creer** - Composant Combobox reutilisable |
+| `src/components/repairs/RepairDialog.tsx` | **Modifier** - Remplacer le champ device_model par 2 Combobox |
+
+---
+
+## Liste des marques incluses
+
+La liste inclura les marques les plus courantes:
+
+**Marques premium:** Apple, Samsung, Google, OnePlus, Sony
+**Marques chinoises:** Xiaomi, Huawei, Honor, Oppo, Vivo, Realme, ZTE, Meizu
+**Marques africaines populaires:** Tecno, Infinix, Itel
+**Autres:** Motorola, Nokia, LG, Alcatel, Asus, BlackBerry, HTC, Lenovo
+
+Chaque marque aura ses modeles des 5 dernieres annees (2020-2025).
+
+---
+
+## Apercu de l'interface
+
+```
++--------------------------------------------------+
+| Marque telephone                                  |
+| [Samsung                              ▼]         |
+|  ┌─────────────────────────────────────┐         |
+|  │ 🔍 Rechercher...                    │         |
+|  │ ─────────────────────────────────── │         |
+|  │ Apple                               │         |
+|  │ Samsung ✓                           │         |
+|  │ Xiaomi                              │         |
+|  │ Huawei                              │         |
+|  └─────────────────────────────────────┘         |
++--------------------------------------------------+
+| Modele telephone *                               |
+| [Galaxy S24 Ultra                     ▼]         |
+|  ┌─────────────────────────────────────┐         |
+|  │ 🔍 Rechercher modele Samsung...     │         |
+|  │ ─────────────────────────────────── │         |
+|  │ Galaxy S24 Ultra                    │         |
+|  │ Galaxy S24+                         │         |
+|  │ Galaxy S24                          │         |
+|  │ Galaxy Z Fold 5                     │         |
+|  └─────────────────────────────────────┘         |
++--------------------------------------------------+
 ```
 
 ---
 
-## Structure du fichier Excel
+## Avantages
 
-Le fichier Excel contiendra plusieurs feuilles (onglets):
-
-| Feuille | Contenu |
-|---------|---------|
-| Produits | Liste des produits avec prix, stock, etc. |
-| Clients | Liste des clients avec coordonnees |
-| Reparations | Historique des reparations |
-| Ventes | Historique des ventes |
-| Depenses | Liste des depenses |
-| Fournisseurs | Liste des fournisseurs |
-| Factures | Liste des factures |
-| Categories | Categories de produits |
-
----
-
-## Fichiers a modifier
-
-| Fichier | Modifications |
-|---------|---------------|
-| `package.json` | Ajouter dependance `xlsx` |
-| `src/hooks/useBackup.ts` | Ajouter fonction `exportExcel` |
-| `src/pages/Settings.tsx` | Ajouter bouton d'export Excel |
-
----
-
-## Avantages de cette solution
-
-- **Simple a utiliser**: Un clic pour telecharger toutes les donnees
-- **Format universel**: Excel est installe sur la plupart des ordinateurs
-- **Multi-feuilles**: Chaque type de donnee dans un onglet separe
-- **Compatible comptabilite**: Facile a partager avec un comptable ou pour des archives
-
+- **Rapidite de saisie**: Autocompletion accelere la saisie
+- **Standardisation**: Les noms de modeles sont coherents
+- **Flexibilite**: Possibilite de saisir un modele personnalise
+- **Filtrage intelligent**: Les modeles sont filtres par marque
+- **Base de donnees complete**: Centaines de modeles inclus

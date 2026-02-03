@@ -30,7 +30,8 @@ import {
 import { Loader2, UserPlus, X } from "lucide-react";
 import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 import { Combobox } from "@/components/ui/combobox";
-import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel } from "@/data/phoneModels";
+import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel, BRANDS_WITH_API } from "@/data/phoneModels";
+import { useAppleDevices } from "@/hooks/useAppleDevices";
 
 const repairSchema = z.object({
   customer_id: z.string().optional(),
@@ -93,6 +94,7 @@ export function RepairDialog({
   const isEditing = !!repair;
   const { data: customers = [] } = useCustomers();
   const createCustomer = useCreateCustomer();
+  const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
   
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
   const [quickCustomerName, setQuickCustomerName] = useState("");
@@ -145,9 +147,18 @@ export function RepairDialog({
   // Get available models based on selected brand
   const availableModels = useMemo(() => {
     if (!selectedBrand) return [];
+    
+    // Use API data for brands with external API
+    if (BRANDS_WITH_API.includes(selectedBrand as typeof BRANDS_WITH_API[number])) {
+      if (selectedBrand === "apple") {
+        return appleDevices.map(model => ({ value: model, label: model }));
+      }
+    }
+    
+    // Use static list for other brands
     const models = PHONE_MODELS[selectedBrand] || [];
     return models.map(model => ({ value: model, label: model }));
-  }, [selectedBrand]);
+  }, [selectedBrand, appleDevices]);
 
   // Brand options for combobox
   const brandOptions = useMemo(() => 
@@ -365,15 +376,16 @@ export function RepairDialog({
                   <FormItem>
                     <FormLabel>Modèle *</FormLabel>
                     <FormControl>
-                      {selectedBrand && availableModels.length > 0 ? (
+                      {selectedBrand && (availableModels.length > 0 || isLoadingApple) ? (
                         <Combobox
                           options={availableModels}
                           value={field.value || ""}
                           onValueChange={field.onChange}
-                          placeholder="Sélectionner modèle"
+                          placeholder={isLoadingApple ? "Chargement..." : "Sélectionner modèle"}
                           searchPlaceholder="Rechercher modèle..."
                           emptyText="Aucun modèle trouvé"
                           allowCustomValue
+                          disabled={isLoadingApple}
                         />
                       ) : (
                         <Input 

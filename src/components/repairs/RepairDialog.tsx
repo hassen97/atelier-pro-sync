@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,11 +29,14 @@ import {
 } from "@/components/ui/select";
 import { Loader2, UserPlus, X } from "lucide-react";
 import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
+import { Combobox } from "@/components/ui/combobox";
+import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel } from "@/data/phoneModels";
 
 const repairSchema = z.object({
   customer_id: z.string().optional(),
   customer_name: z.string().optional(),
   customer_phone: z.string().optional(),
+  device_brand: z.string().optional(),
   device_model: z.string().min(1, "Le modèle est requis"),
   imei: z.string().optional(),
   problem_description: z.string().min(1, "La description du problème est requise"),
@@ -65,6 +68,21 @@ interface RepairDialogProps {
   isLoading?: boolean;
 }
 
+// Helper function to parse device_model into brand and model
+function parseDeviceModel(deviceModel: string): { brand: string; model: string } {
+  // Try to find a matching brand at the start of the string
+  for (const brand of PHONE_BRANDS) {
+    if (deviceModel.toLowerCase().startsWith(brand.label.toLowerCase() + " ")) {
+      return {
+        brand: brand.value,
+        model: deviceModel.substring(brand.label.length + 1),
+      };
+    }
+  }
+  // If no brand found, return empty brand and full string as model
+  return { brand: "", model: deviceModel };
+}
+
 export function RepairDialog({
   open,
   onOpenChange,
@@ -80,6 +98,9 @@ export function RepairDialog({
   const [quickCustomerName, setQuickCustomerName] = useState("");
   const [quickCustomerPhone, setQuickCustomerPhone] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
+  
+  // State for brand/model selection
+  const [selectedBrand, setSelectedBrand] = useState("");
 
   const handleQuickCustomerCreate = async () => {
     if (!quickCustomerName.trim()) return;
@@ -109,6 +130,7 @@ export function RepairDialog({
       customer_id: "",
       customer_name: "",
       customer_phone: "",
+      device_brand: "",
       device_model: "",
       imei: "",
       problem_description: "",
@@ -120,11 +142,27 @@ export function RepairDialog({
     },
   });
 
+  // Get available models based on selected brand
+  const availableModels = useMemo(() => {
+    if (!selectedBrand) return [];
+    const models = PHONE_MODELS[selectedBrand] || [];
+    return models.map(model => ({ value: model, label: model }));
+  }, [selectedBrand]);
+
+  // Brand options for combobox
+  const brandOptions = useMemo(() => 
+    PHONE_BRANDS.map(brand => ({ value: brand.value, label: brand.label })),
+    []
+  );
+
   useEffect(() => {
     if (repair) {
+      const { brand, model } = parseDeviceModel(repair.device_model);
+      setSelectedBrand(brand);
       form.reset({
         customer_id: repair.customer_id || "",
-        device_model: repair.device_model,
+        device_brand: brand,
+        device_model: model,
         imei: repair.imei || "",
         problem_description: repair.problem_description,
         diagnosis: repair.diagnosis || "",
@@ -134,10 +172,12 @@ export function RepairDialog({
         notes: repair.notes || "",
       });
     } else {
+      setSelectedBrand("");
       form.reset({
         customer_id: "",
         customer_name: "",
         customer_phone: "",
+        device_brand: "",
         device_model: "",
         imei: "",
         problem_description: "",
@@ -150,9 +190,26 @@ export function RepairDialog({
     }
   }, [repair, form]);
 
+  const handleBrandChange = (brandValue: string) => {
+    setSelectedBrand(brandValue);
+    form.setValue("device_brand", brandValue);
+    // Reset model when brand changes
+    form.setValue("device_model", "");
+  };
+
   const handleSubmit = async (data: RepairFormValues) => {
-    await onSubmit(data);
+    // Combine brand and model for storage
+    const brandLabel = data.device_brand ? getBrandLabel(data.device_brand) : "";
+    const fullDeviceModel = brandLabel 
+      ? `${brandLabel} ${data.device_model}`.trim()
+      : data.device_model;
+    
+    await onSubmit({
+      ...data,
+      device_model: fullDeviceModel,
+    });
     form.reset();
+    setSelectedBrand("");
   };
 
   const laborCostWatch = form.watch("labor_cost");
@@ -277,16 +334,24 @@ export function RepairDialog({
               </div>
             )}
 
-            {/* Device Info */}
+            {/* Device Info - Brand and Model with autocomplete */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="device_model"
+                name="device_brand"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Modèle appareil *</FormLabel>
+                    <FormLabel>Marque</FormLabel>
                     <FormControl>
-                      <Input placeholder="iPhone 13 Pro" {...field} />
+                      <Combobox
+                        options={brandOptions}
+                        value={field.value || ""}
+                        onValueChange={handleBrandChange}
+                        placeholder="Sélectionner marque"
+                        searchPlaceholder="Rechercher marque..."
+                        emptyText="Aucune marque trouvée"
+                        allowCustomValue
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -295,18 +360,48 @@ export function RepairDialog({
 
               <FormField
                 control={form.control}
-                name="imei"
+                name="device_model"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>IMEI</FormLabel>
+                    <FormLabel>Modèle *</FormLabel>
                     <FormControl>
-                      <Input placeholder="IMEI (optionnel)" {...field} />
+                      {selectedBrand && availableModels.length > 0 ? (
+                        <Combobox
+                          options={availableModels}
+                          value={field.value || ""}
+                          onValueChange={field.onChange}
+                          placeholder="Sélectionner modèle"
+                          searchPlaceholder="Rechercher modèle..."
+                          emptyText="Aucun modèle trouvé"
+                          allowCustomValue
+                        />
+                      ) : (
+                        <Input 
+                          placeholder="Ex: iPhone 15 Pro" 
+                          {...field} 
+                        />
+                      )}
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            {/* IMEI */}
+            <FormField
+              control={form.control}
+              name="imei"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>IMEI</FormLabel>
+                  <FormControl>
+                    <Input placeholder="IMEI (optionnel)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Problem Description */}
             <FormField

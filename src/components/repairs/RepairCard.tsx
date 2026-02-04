@@ -69,6 +69,9 @@ export function RepairCard({
               </Badge>
             </div>
             <h3 className="font-semibold mt-1">{repair.customer}</h3>
+            {repair.phone && (
+              <p className="text-sm text-muted-foreground mt-0.5">{repair.phone}</p>
+            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

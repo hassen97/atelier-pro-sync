@@ -101,7 +101,8 @@ export default function Repairs() {
     const matchesSearch =
       repair.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       repair.device.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      repair.id.toLowerCase().includes(searchQuery.toLowerCase());
+      repair.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (repair.phone && repair.phone.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesTab = activeTab === "all" || repair.status === activeTab;
     return matchesSearch && matchesTab;
   });

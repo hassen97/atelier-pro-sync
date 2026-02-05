@@ -105,6 +105,7 @@ export default function Settings() {
     await saveSettings({
       shop_name: shopName,
       tax_rate: parseFloat(taxRate) || 19,
+      tax_enabled: taxEnabled,
       stock_alert_threshold: parseInt(stockThreshold) || 5,
     });
   };

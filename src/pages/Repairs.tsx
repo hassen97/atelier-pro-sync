@@ -10,6 +10,7 @@ import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
 import { CancelRepairDialog } from "@/components/repairs/CancelRepairDialog";
 import { RepairReceiptDialog } from "@/components/repairs/RepairReceiptDialog";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
+import { PaymentConfirmDialog } from "@/components/repairs/PaymentConfirmDialog";
 import {
   useRepairs,
   useCreateRepair,
@@ -17,6 +18,7 @@ import {
   useUpdateRepairStatus,
   useDeleteRepair,
 } from "@/hooks/useRepairs";
+import { useCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 

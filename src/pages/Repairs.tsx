@@ -10,6 +10,7 @@ import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
 import { CancelRepairDialog } from "@/components/repairs/CancelRepairDialog";
 import { RepairReceiptDialog } from "@/components/repairs/RepairReceiptDialog";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
+import { PaymentConfirmDialog } from "@/components/repairs/PaymentConfirmDialog";
 import {
   useRepairs,
   useCreateRepair,
@@ -17,6 +18,7 @@ import {
   useUpdateRepairStatus,
   useDeleteRepair,
 } from "@/hooks/useRepairs";
+import { useCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 
@@ -78,12 +80,20 @@ export default function Repairs() {
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
   const [editingRepair, setEditingRepair] = useState<RepairWithCustomer | null>(null);
+  
+  // Payment confirmation state
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
+  const [paymentConfirmRepair, setPaymentConfirmRepair] = useState<ReturnType<typeof transformRepair> | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<RepairStatus | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { data: rawRepairs = [], isLoading } = useRepairs();
+  const { data: customers = [] } = useCustomers();
   const createRepair = useCreateRepair();
   const updateRepair = useUpdateRepair();
   const updateStatus = useUpdateRepairStatus();
   const deleteRepair = useDeleteRepair();
+  const updateCustomer = useUpdateCustomer();
 
   // Enable realtime updates for repairs
   useRealtimeSubscription({
@@ -157,22 +167,91 @@ export default function Repairs() {
     repair: ReturnType<typeof transformRepair>,
     newStatus: RepairStatus
   ) => {
-    updateStatus.mutate(
-      { id: repair.id, status: newStatus },
-      {
-        onSuccess: () => {
-          const statusLabels: Record<RepairStatus, string> = {
-            pending: "En attente",
-            in_progress: "En cours",
-            completed: "Terminé",
-            delivered: "Livré",
-          };
-          toast.success(`Statut mis à jour`, {
-            description: `→ ${statusLabels[newStatus]}`,
+    // Check if moving to completed or delivered AND not fully paid
+    const remaining = repair.total - repair.paid;
+    
+    if ((newStatus === "completed" || newStatus === "delivered") && remaining > 0) {
+      // Open payment confirmation dialog
+      setPaymentConfirmRepair(repair);
+      setPendingStatus(newStatus);
+      setPaymentConfirmOpen(true);
+    } else {
+      // Direct status change for other cases
+      updateStatus.mutate(
+        { id: repair.id, status: newStatus },
+        {
+          onSuccess: () => {
+            const statusLabels: Record<RepairStatus, string> = {
+              pending: "En attente",
+              in_progress: "En cours",
+              completed: "Terminé",
+              delivered: "Livré",
+            };
+            toast.success(`Statut mis à jour`, {
+              description: `→ ${statusLabels[newStatus]}`,
+            });
+          },
+        }
+      );
+    }
+  };
+
+  const handlePaymentConfirm = async (data: { paymentAmount: number; isFullPayment: boolean }) => {
+    if (!paymentConfirmRepair || !pendingStatus) return;
+
+    setIsProcessingPayment(true);
+    
+    try {
+      const repair = paymentConfirmRepair;
+      const remaining = repair.total - repair.paid;
+      const newAmountPaid = repair.paid + data.paymentAmount;
+      const debtAmount = remaining - data.paymentAmount;
+
+      // 1. Update repair with new payment amount and status
+      await updateRepair.mutateAsync({
+        id: repair.id,
+        amount_paid: newAmountPaid,
+        status: pendingStatus,
+        delivery_date: pendingStatus === "delivered" ? new Date().toISOString() : undefined,
+      });
+
+      // 2. If partial payment and customer exists, add debt to customer balance
+      if (debtAmount > 0 && repair.customer_id) {
+        const customer = customers.find((c) => c.id === repair.customer_id);
+        if (customer) {
+          await updateCustomer.mutateAsync({
+            id: customer.id,
+            balance: Number(customer.balance) + debtAmount,
           });
-        },
+          toast.success("Dette enregistrée", {
+            description: `${debtAmount.toFixed(3)} DT ajouté au solde de ${customer.name}`,
+          });
+        }
       }
-    );
+
+      const statusLabels: Record<RepairStatus, string> = {
+        pending: "En attente",
+        in_progress: "En cours",
+        completed: "Terminé",
+        delivered: "Livré",
+      };
+
+      toast.success(`Réparation ${statusLabels[pendingStatus].toLowerCase()}`, {
+        description: data.isFullPayment 
+          ? "Paiement complet enregistré" 
+          : `Paiement de ${data.paymentAmount.toFixed(3)} DT enregistré`,
+      });
+
+      // Reset state
+      setPaymentConfirmOpen(false);
+      setPaymentConfirmRepair(null);
+      setPendingStatus(null);
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      toast.error("Erreur lors du traitement du paiement");
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   const handleRepairSubmit = async (data: {
@@ -309,6 +388,15 @@ export default function Repairs() {
         repair={editingRepair}
         onSubmit={handleRepairSubmit}
         isLoading={createRepair.isPending || updateRepair.isPending}
+      />
+
+      <PaymentConfirmDialog
+        open={paymentConfirmOpen}
+        onOpenChange={setPaymentConfirmOpen}
+        repair={paymentConfirmRepair}
+        pendingStatus={pendingStatus}
+        onConfirm={handlePaymentConfirm}
+        isLoading={isProcessingPayment}
       />
     </div>
   );

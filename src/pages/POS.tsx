@@ -92,7 +92,8 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.19; // TVA 19%
+  const taxRate = settings.tax_enabled ? settings.tax_rate / 100 : 0;
+  const tax = subtotal * taxRate;
   const total = subtotal + tax;
 
   const clearCart = () => setCart([]);

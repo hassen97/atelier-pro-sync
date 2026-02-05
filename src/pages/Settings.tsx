@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { useShopSettings } from "@/hooks/useShopSettings";
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useNotificationSettings } from "@/hooks/useNotificationSettings";
 import { useBackup } from "@/hooks/useBackup";
 import { useSecuritySettings } from "@/hooks/useSecuritySettings";

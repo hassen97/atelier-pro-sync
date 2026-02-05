@@ -80,12 +80,20 @@ export default function Repairs() {
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
   const [editingRepair, setEditingRepair] = useState<RepairWithCustomer | null>(null);
+  
+  // Payment confirmation state
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
+  const [paymentConfirmRepair, setPaymentConfirmRepair] = useState<ReturnType<typeof transformRepair> | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<RepairStatus | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { data: rawRepairs = [], isLoading } = useRepairs();
+  const { data: customers = [] } = useCustomers();
   const createRepair = useCreateRepair();
   const updateRepair = useUpdateRepair();
   const updateStatus = useUpdateRepairStatus();
   const deleteRepair = useDeleteRepair();
+  const updateCustomer = useUpdateCustomer();
 
   // Enable realtime updates for repairs
   useRealtimeSubscription({

@@ -320,10 +320,12 @@ export default function POS() {
                 <span className="text-muted-foreground">Sous-total</span>
                 <span className="font-mono-numbers">{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">TVA (19%)</span>
-                <span className="font-mono-numbers">{formatCurrency(tax)}</span>
-              </div>
+              {settings.tax_enabled && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">TVA ({settings.tax_rate}%)</span>
+                  <span className="font-mono-numbers">{formatCurrency(tax)}</span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>

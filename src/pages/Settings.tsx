@@ -58,6 +58,7 @@ export default function Settings() {
   
   const [shopName, setShopName] = useState("");
   const [taxRate, setTaxRate] = useState("");
+  const [taxEnabled, setTaxEnabled] = useState(true);
   const [stockThreshold, setStockThreshold] = useState("");
   
   // Password change state
@@ -95,6 +96,7 @@ export default function Settings() {
     if (!loading) {
       setShopName(settings.shop_name);
       setTaxRate(String(settings.tax_rate));
+      setTaxEnabled(settings.tax_enabled);
       setStockThreshold(String(settings.stock_alert_threshold));
     }
   }, [loading, settings]);
@@ -103,6 +105,7 @@ export default function Settings() {
     await saveSettings({
       shop_name: shopName,
       tax_rate: parseFloat(taxRate) || 19,
+      tax_enabled: taxEnabled,
       stock_alert_threshold: parseInt(stockThreshold) || 5,
     });
   };
@@ -176,12 +179,29 @@ export default function Settings() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="taxRate">Taux TVA (%)</Label>
-                  <Input
-                    id="taxRate"
-                    type="number"
-                    value={taxRate}
-                    onChange={(e) => setTaxRate(e.target.value)}
-                  />
+                  <div className="flex gap-3 items-center">
+                    <Input
+                      id="taxRate"
+                      type="number"
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(e.target.value)}
+                      disabled={!taxEnabled}
+                      className={!taxEnabled ? "opacity-50" : ""}
+                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Switch
+                        id="taxEnabled"
+                        checked={taxEnabled}
+                        onCheckedChange={setTaxEnabled}
+                      />
+                      <Label htmlFor="taxEnabled" className="text-sm cursor-pointer whitespace-nowrap">
+                        Activer TVA
+                      </Label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {taxEnabled ? "La TVA sera appliquée aux ventes" : "TVA désactivée pour les ventes"}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="stockThreshold">Seuil alerte stock</Label>

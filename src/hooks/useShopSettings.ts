@@ -8,6 +8,7 @@ export interface ShopSettings {
   shop_name: string;
   currency: string;
   tax_rate: number;
+  tax_enabled: boolean;
   stock_alert_threshold: number;
 }
 
@@ -15,6 +16,7 @@ const defaultSettings: ShopSettings = {
   shop_name: "Mon Atelier",
   currency: "TND",
   tax_rate: 19,
+  tax_enabled: true,
   stock_alert_threshold: 5,
 };
 
@@ -49,6 +51,7 @@ export function useShopSettings() {
           shop_name: data.shop_name,
           currency: data.currency,
           tax_rate: Number(data.tax_rate),
+          tax_enabled: data.tax_enabled ?? true,
           stock_alert_threshold: data.stock_alert_threshold,
         });
       }
@@ -78,6 +81,7 @@ export function useShopSettings() {
             shop_name: updatedSettings.shop_name,
             currency: updatedSettings.currency,
             tax_rate: updatedSettings.tax_rate,
+            tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
             updated_at: new Date().toISOString(),
           })
@@ -93,6 +97,7 @@ export function useShopSettings() {
             shop_name: updatedSettings.shop_name,
             currency: updatedSettings.currency,
             tax_rate: updatedSettings.tax_rate,
+            tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
           })
           .select()

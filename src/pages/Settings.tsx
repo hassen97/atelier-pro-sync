@@ -96,6 +96,7 @@ export default function Settings() {
     if (!loading) {
       setShopName(settings.shop_name);
       setTaxRate(String(settings.tax_rate));
+      setTaxEnabled(settings.tax_enabled);
       setStockThreshold(String(settings.stock_alert_threshold));
     }
   }, [loading, settings]);

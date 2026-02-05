@@ -51,6 +51,7 @@ export function useShopSettings() {
           shop_name: data.shop_name,
           currency: data.currency,
           tax_rate: Number(data.tax_rate),
+          tax_enabled: data.tax_enabled ?? true,
           stock_alert_threshold: data.stock_alert_threshold,
         });
       }

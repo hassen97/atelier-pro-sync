@@ -58,6 +58,7 @@ export default function Settings() {
   
   const [shopName, setShopName] = useState("");
   const [taxRate, setTaxRate] = useState("");
+  const [taxEnabled, setTaxEnabled] = useState(true);
   const [stockThreshold, setStockThreshold] = useState("");
   
   // Password change state

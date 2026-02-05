@@ -34,7 +34,7 @@ import { ResetDataDialog } from "@/components/settings/ResetDataDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Settings() {
-  const { settings, loading, saving, saveSettings } = useShopSettings();
+  const { settings, loading, saving, saveSettings } = useShopSettingsContext();
   const { settings: notifSettings, saveSettings: saveNotifSettings } = useNotificationSettings();
   const { 
     settings: backupSettings, 

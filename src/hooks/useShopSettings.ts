@@ -8,6 +8,7 @@ export interface ShopSettings {
   shop_name: string;
   currency: string;
   tax_rate: number;
+  tax_enabled: boolean;
   stock_alert_threshold: number;
 }
 
@@ -15,6 +16,7 @@ const defaultSettings: ShopSettings = {
   shop_name: "Mon Atelier",
   currency: "TND",
   tax_rate: 19,
+  tax_enabled: true,
   stock_alert_threshold: 5,
 };
 

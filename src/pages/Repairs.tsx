@@ -389,6 +389,15 @@ export default function Repairs() {
         onSubmit={handleRepairSubmit}
         isLoading={createRepair.isPending || updateRepair.isPending}
       />
+
+      <PaymentConfirmDialog
+        open={paymentConfirmOpen}
+        onOpenChange={setPaymentConfirmOpen}
+        repair={paymentConfirmRepair}
+        pendingStatus={pendingStatus}
+        onConfirm={handlePaymentConfirm}
+        isLoading={isProcessingPayment}
+      />
     </div>
   );
 }

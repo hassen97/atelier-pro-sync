@@ -38,6 +38,7 @@ export default function POS() {
   const { data: products = [], isLoading: productsLoading } = useProducts();
   const { data: customers = [], isLoading: customersLoading } = useCustomers();
   const createSale = useCreateSale();
+  const { settings } = useShopSettingsContext();
 
   // Extract unique categories from products
   const categories = [...new Set(products.map((p: any) => p.category?.name).filter(Boolean))];

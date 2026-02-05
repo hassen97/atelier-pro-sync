@@ -1,174 +1,127 @@
 
-# Confirmation de paiement lors du changement de statut
+# Correction du paramètre TVA et ajout de l'option de désactivation
 
-## Objectif
+## Problèmes identifiés
 
-Ajouter une popup de confirmation lorsqu'une reparation passe au statut "Termine" ou "Livre" pour:
-1. Demander si la reparation est entierement payee
-2. Si non payee entierement, ajouter le reste en dette pour le client
+1. **TVA hardcodée**: Dans `src/pages/POS.tsx` ligne 93, la TVA est fixée à `0.19` au lieu d'utiliser le paramètre dynamique
+2. **Pas d'option désactivation**: Aucun champ `tax_enabled` pour activer/désactiver la TVA
 
----
+## Solution
 
-## Logique metier
+### Etape 1: Ajouter le champ `tax_enabled` à la base de données
 
-### Flux actuel
-```
-Changement statut → Mise a jour status uniquement → Pas de gestion du paiement
-```
-
-### Nouveau flux
-```
-Changement vers "Termine" ou "Livre"
-    ↓
-Popup de confirmation
-    ↓
-┌─────────────────────────────────────────┐
-│  Reparation: Samsung Galaxy S24         │
-│  Total: 150.000 DT                      │
-│  Deja paye: 50.000 DT                   │
-│  Reste: 100.000 DT                      │
-│                                         │
-│  [ ] Entierement paye (100.000 DT)      │
-│  [ ] Paiement partiel: [____] DT        │
-│                                         │
-│  [Annuler]  [Confirmer]                 │
-└─────────────────────────────────────────┘
-    ↓
-Si paiement complet → amount_paid = total_cost
-Si paiement partiel → amount_paid += montant saisi
-                    → customer.balance += reste non paye
+Migration SQL:
+```sql
+ALTER TABLE shop_settings 
+ADD COLUMN tax_enabled boolean NOT NULL DEFAULT true;
 ```
 
----
+### Etape 2: Mettre à jour le hook useShopSettings
 
-## Implementation technique
-
-### Etape 1: Creer le composant PaymentConfirmDialog
-
-Nouveau fichier: `src/components/repairs/PaymentConfirmDialog.tsx`
-
-Ce composant affichera:
-- Resume de la reparation (appareil, client)
-- Montants (total, paye, reste)
-- Options de paiement:
-  - Checkbox "Entierement paye"
-  - Champ montant pour paiement partiel
-- Avertissement si client non associe (dette impossible)
-
-### Etape 2: Modifier la page Repairs.tsx
-
-Intercepter les changements de statut vers "completed" ou "delivered":
+Ajouter le champ `tax_enabled` dans l'interface et la logique:
 
 ```typescript
-const handleStatusChange = (repair, newStatus) => {
-  if (newStatus === "completed" || newStatus === "delivered") {
-    // Ouvrir la popup de confirmation de paiement
-    setPaymentConfirmRepair(repair);
-    setPendingStatus(newStatus);
-    setPaymentConfirmOpen(true);
-  } else {
-    // Changement direct pour les autres statuts
-    updateStatus.mutate({ id: repair.id, status: newStatus });
-  }
-};
+export interface ShopSettings {
+  id?: string;
+  shop_name: string;
+  currency: string;
+  tax_rate: number;
+  tax_enabled: boolean;  // Nouveau champ
+  stock_alert_threshold: number;
+}
 ```
 
-### Etape 3: Logique de confirmation du paiement
+### Etape 3: Modifier la page Settings
 
-```typescript
-const confirmPaymentAndStatus = async (paymentData) => {
-  const repair = paymentConfirmRepair;
-  const remaining = repair.total - repair.paid;
-  
-  // 1. Mettre a jour le montant paye
-  await updateRepair.mutateAsync({
-    id: repair.id,
-    amount_paid: repair.paid + paymentData.amount,
-    status: pendingStatus,
-  });
-  
-  // 2. Si paiement incomplet et client existe, ajouter dette
-  if (paymentData.amount < remaining && repair.customer_id) {
-    const customer = customers.find(c => c.id === repair.customer_id);
-    if (customer) {
-      const debtAmount = remaining - paymentData.amount;
-      await updateCustomer.mutateAsync({
-        id: customer.id,
-        balance: Number(customer.balance) + debtAmount,
-      });
-    }
-  }
-};
-```
+Ajouter un Switch pour activer/désactiver la TVA à côté du champ taux:
 
----
-
-## Fichiers a modifier/creer
-
-| Fichier | Action |
-|---------|--------|
-| `src/components/repairs/PaymentConfirmDialog.tsx` | **Creer** - Popup de confirmation paiement |
-| `src/pages/Repairs.tsx` | **Modifier** - Integrer la popup et la logique |
-
----
-
-## Interface de la popup
-
-```
+```text
 ┌─────────────────────────────────────────────────────┐
-│         Confirmer le paiement                       │
-│─────────────────────────────────────────────────────│
-│                                                     │
-│  📱 Samsung Galaxy S24 Ultra                        │
-│  👤 Ahmed Ben Ali                                   │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │ Total reparation      150.000 DT              │  │
-│  │ Deja paye              50.000 DT              │  │
-│  │ ─────────────────────────────────             │  │
-│  │ Reste a payer         100.000 DT              │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  Comment souhaitez-vous proceder ?                  │
-│                                                     │
-│  ○ Marquer comme entierement paye                   │
-│    Le client paie les 100.000 DT restants          │
-│                                                     │
-│  ○ Paiement partiel ou aucun paiement              │
-│    Montant recu: [________] DT                     │
-│    → Le reste (XX.XXX DT) sera ajoute aux dettes   │
-│                                                     │
-│  ⚠️ Pas de client associe - la dette ne peut       │
-│     pas etre enregistree (si applicable)           │
-│                                                     │
-│         [Annuler]        [Confirmer et changer]    │
+│  Taux TVA (%)                                       │
+│  ┌─────────────┐  Activer TVA [Switch]             │
+│  │    19       │                                    │
+│  └─────────────┘                                    │
+│  Le taux ne s'applique que si la TVA est activée   │
 └─────────────────────────────────────────────────────┘
 ```
 
+### Etape 4: Mettre à jour la page POS
+
+Remplacer le calcul hardcodé par l'utilisation des paramètres dynamiques:
+
+```typescript
+// Avant (hardcodé)
+const tax = subtotal * 0.19;
+
+// Après (dynamique)
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+
+const { settings } = useShopSettingsContext();
+const taxRate = settings.tax_enabled ? settings.tax_rate / 100 : 0;
+const tax = subtotal * taxRate;
+```
+
+Affichage conditionnel dans le panier:
+- Si TVA activée: afficher "TVA (X%)" avec le taux dynamique
+- Si TVA désactivée: ne pas afficher la ligne TVA ou afficher "TVA (désactivée)"
+
 ---
 
-## Cas particuliers geres
+## Fichiers à modifier
 
-1. **Client non associe**: 
-   - Afficher un avertissement
-   - Permettre quand meme le changement de statut
-   - La dette ne sera pas enregistree (pas de customer_id)
-
-2. **Deja entierement paye**:
-   - Ne pas afficher la popup si `amount_paid >= total_cost`
-   - Changer directement le statut
-
-3. **Statut "pending" ou "in_progress"**:
-   - Pas de popup, changement direct
-
-4. **Annulation**:
-   - Fermer la popup sans changer le statut
+| Fichier | Action |
+|---------|--------|
+| Migration DB | **Créer** - Ajouter colonne `tax_enabled` |
+| `src/hooks/useShopSettings.ts` | **Modifier** - Ajouter `tax_enabled` |
+| `src/pages/Settings.tsx` | **Modifier** - Ajouter Switch TVA |
+| `src/pages/POS.tsx` | **Modifier** - Utiliser paramètres dynamiques |
 
 ---
 
-## Avantages
+## Comportement attendu
 
-- **Tracabilite**: Chaque changement de statut est documente avec le paiement
-- **Gestion des dettes**: Les impayss sont automatiquement ajoutes au solde client
-- **Flexibilite**: Possibilite de paiement partiel
-- **Securite**: Confirmation requise avant finalisation
+### Dans les Paramètres:
+- Switch "Activer TVA" à côté du champ taux
+- Champ taux grisé si TVA désactivée
+- Sauvegarde des deux paramètres ensemble
+
+### Dans le POS:
+- Si TVA activée: calcul avec le taux défini dans les paramètres
+- Si TVA désactivée: pas de TVA appliquée, ligne masquée ou marquée "(désactivée)"
+- Total = sous-total si TVA désactivée
+
+---
+
+## Détails techniques
+
+### Interface mise à jour
+```typescript
+interface ShopSettings {
+  id?: string;
+  shop_name: string;
+  currency: string;
+  tax_rate: number;
+  tax_enabled: boolean;
+  stock_alert_threshold: number;
+}
+```
+
+### Calcul TVA dynamique
+```typescript
+const { settings } = useShopSettingsContext();
+
+const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+const taxRate = settings.tax_enabled ? settings.tax_rate / 100 : 0;
+const tax = subtotal * taxRate;
+const total = subtotal + tax;
+```
+
+### Affichage conditionnel
+```tsx
+{settings.tax_enabled && (
+  <div className="flex justify-between text-sm">
+    <span className="text-muted-foreground">TVA ({settings.tax_rate}%)</span>
+    <span className="font-mono-numbers">{formatCurrency(tax)}</span>
+  </div>
+)}
+```

@@ -465,6 +465,7 @@ export type Database = {
           id: string
           shop_name: string
           stock_alert_threshold: number
+          tax_enabled: boolean
           tax_rate: number
           updated_at: string
           user_id: string
@@ -475,6 +476,7 @@ export type Database = {
           id?: string
           shop_name?: string
           stock_alert_threshold?: number
+          tax_enabled?: boolean
           tax_rate?: number
           updated_at?: string
           user_id: string
@@ -485,6 +487,7 @@ export type Database = {
           id?: string
           shop_name?: string
           stock_alert_threshold?: number
+          tax_enabled?: boolean
           tax_rate?: number
           updated_at?: string
           user_id?: string

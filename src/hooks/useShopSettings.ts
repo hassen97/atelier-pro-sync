@@ -81,6 +81,7 @@ export function useShopSettings() {
             shop_name: updatedSettings.shop_name,
             currency: updatedSettings.currency,
             tax_rate: updatedSettings.tax_rate,
+            tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
             updated_at: new Date().toISOString(),
           })

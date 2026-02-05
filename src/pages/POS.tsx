@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useProducts } from "@/hooks/useProducts";
 import { useCreateSale } from "@/hooks/useSales";
 import { useCustomers } from "@/hooks/useCustomers";
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { 
   Select, 
   SelectContent, 

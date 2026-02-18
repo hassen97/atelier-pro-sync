@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, ComponentType } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,22 +10,35 @@ import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 
-// Lazy load pages for better initial load performance
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const POS = lazy(() => import("./pages/POS"));
-const Repairs = lazy(() => import("./pages/Repairs"));
-const Inventory = lazy(() => import("./pages/Inventory"));
-const Customers = lazy(() => import("./pages/Customers"));
-const Suppliers = lazy(() => import("./pages/Suppliers"));
-const Expenses = lazy(() => import("./pages/Expenses"));
-const CustomerDebts = lazy(() => import("./pages/CustomerDebts"));
-const Invoices = lazy(() => import("./pages/Invoices"));
-const Statistics = lazy(() => import("./pages/Statistics"));
-const Profit = lazy(() => import("./pages/Profit"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Auth = lazy(() => import("./pages/Auth"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+function lazyWithRetry(importFn: () => Promise<{ default: ComponentType<any> }>) {
+  return lazy(() =>
+    importFn().catch(() => {
+      if (!sessionStorage.getItem("chunk_reload")) {
+        sessionStorage.setItem("chunk_reload", "1");
+        window.location.reload();
+      }
+      sessionStorage.removeItem("chunk_reload");
+      return importFn();
+    })
+  );
+}
+
+// Lazy load pages with retry for stale cache on mobile
+const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+const POS = lazyWithRetry(() => import("./pages/POS"));
+const Repairs = lazyWithRetry(() => import("./pages/Repairs"));
+const Inventory = lazyWithRetry(() => import("./pages/Inventory"));
+const Customers = lazyWithRetry(() => import("./pages/Customers"));
+const Suppliers = lazyWithRetry(() => import("./pages/Suppliers"));
+const Expenses = lazyWithRetry(() => import("./pages/Expenses"));
+const CustomerDebts = lazyWithRetry(() => import("./pages/CustomerDebts"));
+const Invoices = lazyWithRetry(() => import("./pages/Invoices"));
+const Statistics = lazyWithRetry(() => import("./pages/Statistics"));
+const Profit = lazyWithRetry(() => import("./pages/Profit"));
+const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
 
 const queryClient = new QueryClient();
 

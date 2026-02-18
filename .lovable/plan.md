@@ -1,49 +1,85 @@
 
-# Permettre au proprietaire de creer le compte de l'employe
+
+# Tableau de bord Ultra Super Admin
 
 ## Objectif
 
-Le proprietaire pourra creer directement le compte d'un employe depuis **Parametres > Gestion de l'equipe**, en renseignant le nom, le username et le mot de passe. L'employe n'aura plus besoin de s'inscrire lui-meme -- il se connecte directement avec les identifiants fournis par son patron.
+Creer un nouveau role **`platform_admin`** et un tableau de bord dedie pour vous (le proprietaire de la plateforme) permettant de :
+
+- Voir la liste de tous les proprietaires de boutiques inscrits
+- Voir les statistiques globales (nombre de boutiques, d'employes, de reparations...)
+- Supprimer un proprietaire de boutique (et ses donnees)
+- Reinitialiser le mot de passe d'un proprietaire
+- Creer manuellement un nouveau compte proprietaire
+
+Ce dashboard est completement separe de l'interface des proprietaires de boutiques et uniquement accessible par vous.
 
 ## Comment ca marche
 
-1. Le proprietaire clique sur "Inviter un employe"
-2. Il choisit entre **rechercher un utilisateur existant** ou **creer un nouveau compte**
-3. S'il cree un compte : il entre le nom complet, le username et le mot de passe
-4. Le systeme cree le compte, l'ajoute automatiquement a l'equipe avec les permissions choisies
-5. Le proprietaire communique les identifiants a l'employe
+1. Vous vous connectez avec votre compte plateforme
+2. Le systeme detecte votre role `platform_admin` et affiche le dashboard admin au lieu du dashboard boutique
+3. Vous voyez la liste de tous les proprietaires avec leurs infos (nom, username, date d'inscription, nombre d'employes)
+4. Vous pouvez chercher, supprimer, reinitialiser le mot de passe ou creer un nouveau proprietaire
 
 ## Details techniques
 
-### 1. Nouvelle fonction backend (Edge Function)
+### 1. Nouveau role dans l'enum `app_role`
 
-Creer `supabase/functions/create-employee/index.ts` :
+Ajouter `platform_admin` a l'enum existant :
 
-- Recoit : `fullName`, `username`, `password`, `role`, `allowedPages`
-- Verifie que l'appelant est authentifie et a le role `super_admin`
-- Utilise l'API admin Supabase (`supabase.auth.admin.createUser`) pour creer le compte avec l'email interne `username@repairpro.local`
-- Le trigger `handle_new_user` cree automatiquement le profil, le role `super_admin` et les parametres boutique
-- Corrige le role en `employee` dans `user_roles` (car le trigger met `super_admin` par defaut)
-- Insere une ligne dans `team_members` pour lier l'employe au proprietaire
-- Retourne le user ID cree
+```sql
+ALTER TYPE app_role ADD VALUE 'platform_admin';
+```
 
-### 2. Modification du dialog d'ajout (AddMemberDialog.tsx)
+Attribuer ce role a votre compte (une seule fois via migration).
 
-- Ajouter un toggle/tabs pour basculer entre "Rechercher" et "Creer un compte"
-- Mode "Creer un compte" : formulaire avec champs nom complet, username, mot de passe, confirmation mot de passe
-- Validation identique a la page d'inscription (3-20 caracteres alphanumeriques, mot de passe >= 6 caracteres)
-- Appel a la fonction backend au lieu de l'insertion directe dans `team_members`
+### 2. Nouvelle Edge Function : `admin-manage-users`
 
-### 3. Fichiers modifies
+Fonction backend securisee qui verifie que l'appelant a le role `platform_admin` avant d'executer toute action :
+
+- **GET** : Liste tous les profils avec leur role, date d'inscription, et nombre de membres d'equipe
+- **POST (action: delete)** : Supprime un utilisateur via `auth.admin.deleteUser`
+- **POST (action: reset-password)** : Reinitialise le mot de passe via `auth.admin.updateUserById`
+- **POST (action: create)** : Cree un nouveau compte proprietaire via `auth.admin.createUser`
+
+### 3. Nouvelles pages et composants
+
+| Fichier | Description |
+|---|---|
+| `src/pages/AdminDashboard.tsx` | Page principale avec statistiques globales et liste des proprietaires |
+| `src/hooks/useAdmin.ts` | Hooks pour appeler la fonction backend (liste, suppression, reset, creation) |
+| `src/components/admin/ShopOwnersList.tsx` | Tableau des proprietaires avec actions (supprimer, reset mot de passe) |
+| `src/components/admin/AdminStats.tsx` | Cartes statistiques (total boutiques, employes, reparations) |
+| `src/components/admin/CreateOwnerDialog.tsx` | Dialog pour creer un nouveau proprietaire |
+| `src/components/admin/ResetPasswordDialog.tsx` | Dialog pour reinitialiser un mot de passe |
+
+### 4. Routing et navigation
+
+- Nouvelle route `/admin` protegee, accessible uniquement si `role === 'platform_admin'`
+- Redirection automatique : si platform_admin se connecte, il est redirige vers `/admin` au lieu de `/`
+- Sidebar adaptee : l'admin plateforme voit uniquement les liens admin, pas les liens boutique
+
+### 5. Securite
+
+- Le role `platform_admin` est verifie cote serveur dans la Edge Function (jamais cote client uniquement)
+- L'Edge Function utilise `SUPABASE_SERVICE_ROLE_KEY` pour les operations admin
+- Aucun proprietaire de boutique ne peut acceder a `/admin` -- la route redirige vers `/` si le role ne correspond pas
+- Le role `platform_admin` ne peut pas etre attribue depuis l'interface -- uniquement via migration SQL directe
+
+### 6. Fichiers modifies
 
 | Fichier | Modification |
 |---|---|
-| `supabase/functions/create-employee/index.ts` | Nouvelle fonction backend pour creer un compte employe |
-| `src/components/settings/AddMemberDialog.tsx` | Ajout du formulaire de creation de compte + appel a la fonction |
-| `src/hooks/useTeam.ts` | Nouveau hook `useCreateEmployee` pour appeler la fonction backend |
+| Migration SQL | Ajouter `platform_admin` a l'enum, attribuer le role a votre compte |
+| `supabase/functions/admin-manage-users/index.ts` | Nouvelle Edge Function pour gerer les utilisateurs |
+| `supabase/config.toml` | Enregistrer la nouvelle fonction |
+| `src/pages/AdminDashboard.tsx` | Nouvelle page admin |
+| `src/hooks/useAdmin.ts` | Hooks pour les operations admin |
+| `src/components/admin/ShopOwnersList.tsx` | Liste des proprietaires |
+| `src/components/admin/AdminStats.tsx` | Statistiques globales |
+| `src/components/admin/CreateOwnerDialog.tsx` | Creation de proprietaire |
+| `src/components/admin/ResetPasswordDialog.tsx` | Reset mot de passe |
+| `src/App.tsx` | Ajouter la route `/admin` |
+| `src/hooks/useTeam.ts` | Ajouter hook `useIsPlatformAdmin` |
+| `src/components/auth/ProtectedRoute.tsx` | Redirection admin vers `/admin` |
 
-### 4. Securite
-
-- La fonction backend verifie le role `super_admin` de l'appelant cote serveur (pas cote client)
-- Le mot de passe est transmis via HTTPS et jamais stocke cote client
-- L'employe cree n'a pas acces aux parametres boutique ni aux donnees d'autres proprietaires grace au RLS

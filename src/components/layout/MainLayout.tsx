@@ -4,6 +4,7 @@ import { Menu, Search, User, Moon, Sun, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppSidebar } from "./AppSidebar";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import { WhatsNewModal } from "@/components/announcements/WhatsNewModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -142,6 +143,9 @@ export function MainLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* What's New Modal */}
+      <WhatsNewModal />
     </div>
   );
 }

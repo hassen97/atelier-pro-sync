@@ -1,10 +1,20 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const ActionSchema = z.object({
+  action: z.enum(["list", "delete", "reset-password", "create", "lock", "unlock", "get-revenue", "get-activity"]).optional(),
+  userId: z.string().uuid().optional(),
+  newPassword: z.string().min(8).max(128).optional(),
+  fullName: z.string().trim().min(1).max(100).optional(),
+  username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  password: z.string().min(8).max(128).optional(),
+});
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -53,79 +63,82 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Handle POST actions
+    // Parse and validate body
     if (req.method === "POST" || req.method === "GET") {
-      const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+      const rawBody = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+      const parseResult = ActionSchema.safeParse(rawBody);
+      if (!parseResult.success) {
+        return new Response(
+          JSON.stringify({ error: "Invalid input", details: parseResult.error.issues.map(i => i.message) }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const body = parseResult.data;
       const { action } = body;
 
-      // List all shop owners with stats (default when no action or action=list)
+      // List all shop owners with stats (default)
       if (!action || action === "list") {
-      const { data: profiles } = await adminClient
-        .from("profiles")
-        .select("user_id, full_name, username, created_at, is_locked")
-        .order("created_at", { ascending: false });
+        const { data: profiles } = await adminClient
+          .from("profiles")
+          .select("user_id, full_name, username, created_at, is_locked")
+          .order("created_at", { ascending: false });
 
-      const { data: roles } = await adminClient
-        .from("user_roles")
-        .select("user_id, role");
+        const { data: roles } = await adminClient
+          .from("user_roles")
+          .select("user_id, role");
 
-      const { data: teamCounts } = await adminClient
-        .from("team_members")
-        .select("owner_id")
-        .eq("status", "active");
+        const { data: teamCounts } = await adminClient
+          .from("team_members")
+          .select("owner_id")
+          .eq("status", "active");
 
-      const { data: repairCounts } = await adminClient
-        .from("repairs")
-        .select("user_id");
+        const { data: repairCounts } = await adminClient
+          .from("repairs")
+          .select("user_id");
 
-      const { data: shopSettings } = await adminClient
-        .from("shop_settings")
-        .select("user_id, shop_name");
+        const { data: shopSettings } = await adminClient
+          .from("shop_settings")
+          .select("user_id, shop_name");
 
-      const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
-      const teamCountMap = new Map<string, number>();
-      (teamCounts || []).forEach((t: any) => {
-        teamCountMap.set(t.owner_id, (teamCountMap.get(t.owner_id) || 0) + 1);
-      });
-      const repairCountMap = new Map<string, number>();
-      (repairCounts || []).forEach((r: any) => {
-        repairCountMap.set(r.user_id, (repairCountMap.get(r.user_id) || 0) + 1);
-      });
-      const shopNameMap = new Map((shopSettings || []).map((s: any) => [s.user_id, s.shop_name]));
+        const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
+        const teamCountMap = new Map<string, number>();
+        (teamCounts || []).forEach((t: any) => {
+          teamCountMap.set(t.owner_id, (teamCountMap.get(t.owner_id) || 0) + 1);
+        });
+        const repairCountMap = new Map<string, number>();
+        (repairCounts || []).forEach((r: any) => {
+          repairCountMap.set(r.user_id, (repairCountMap.get(r.user_id) || 0) + 1);
+        });
+        const shopNameMap = new Map((shopSettings || []).map((s: any) => [s.user_id, s.shop_name]));
 
-      const owners = (profiles || [])
-        .filter((p: any) => roleMap.get(p.user_id) === "super_admin")
-        .map((p: any) => ({
-          ...p,
-          role: roleMap.get(p.user_id),
-          team_count: teamCountMap.get(p.user_id) || 0,
-          repair_count: repairCountMap.get(p.user_id) || 0,
-          shop_name: shopNameMap.get(p.user_id) || "Mon Atelier",
-        }));
+        const owners = (profiles || [])
+          .filter((p: any) => roleMap.get(p.user_id) === "super_admin")
+          .map((p: any) => ({
+            ...p,
+            role: roleMap.get(p.user_id),
+            team_count: teamCountMap.get(p.user_id) || 0,
+            repair_count: repairCountMap.get(p.user_id) || 0,
+            shop_name: shopNameMap.get(p.user_id) || "Mon Atelier",
+          }));
 
-      const stats = {
-        total_owners: owners.length,
-        total_employees: (teamCounts || []).length,
-        total_repairs: (repairCounts || []).length,
-      };
+        const stats = {
+          total_owners: owners.length,
+          total_employees: (teamCounts || []).length,
+          total_repairs: (repairCounts || []).length,
+        };
 
-
-      return new Response(JSON.stringify({ owners, stats }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-
+        return new Response(JSON.stringify({ owners, stats }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       if (action === "delete") {
-        const { userId } = body;
-        if (!userId) {
+        if (!body.userId) {
           return new Response(JSON.stringify({ error: "userId required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        const { error } = await adminClient.auth.admin.deleteUser(userId);
+        const { error } = await adminClient.auth.admin.deleteUser(body.userId);
         if (error) throw error;
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -133,15 +146,14 @@ Deno.serve(async (req) => {
       }
 
       if (action === "reset-password") {
-        const { userId, newPassword } = body;
-        if (!userId || !newPassword) {
+        if (!body.userId || !body.newPassword) {
           return new Response(
             JSON.stringify({ error: "userId and newPassword required" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        const { error } = await adminClient.auth.admin.updateUserById(userId, {
-          password: newPassword,
+        const { error } = await adminClient.auth.admin.updateUserById(body.userId, {
+          password: body.newPassword,
         });
         if (error) throw error;
         return new Response(JSON.stringify({ success: true }), {
@@ -150,20 +162,19 @@ Deno.serve(async (req) => {
       }
 
       if (action === "create") {
-        const { fullName, username, password } = body;
-        if (!fullName || !username || !password) {
+        if (!body.fullName || !body.username || !body.password) {
           return new Response(
             JSON.stringify({ error: "fullName, username and password required" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        const email = `${username.toLowerCase()}@repairpro.local`;
+        const email = `${body.username.toLowerCase()}@repairpro.local`;
         const { data: newUser, error: createError } =
           await adminClient.auth.admin.createUser({
             email,
-            password,
+            password: body.password,
             email_confirm: true,
-            user_metadata: { full_name: fullName, username: username.toLowerCase() },
+            user_metadata: { full_name: body.fullName, username: body.username.toLowerCase() },
           });
         if (createError) throw createError;
         return new Response(
@@ -173,17 +184,13 @@ Deno.serve(async (req) => {
       }
 
       if (action === "lock") {
-        const { userId } = body;
-        if (!userId) {
+        if (!body.userId) {
           return new Response(JSON.stringify({ error: "userId required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        // Update profile is_locked
-        await adminClient.from("profiles").update({ is_locked: true }).eq("user_id", userId);
-        // Ban user
-        const { error } = await adminClient.auth.admin.updateUserById(userId, {
+        await adminClient.from("profiles").update({ is_locked: true }).eq("user_id", body.userId);
+        const { error } = await adminClient.auth.admin.updateUserById(body.userId, {
           ban_duration: "876000h",
         });
         if (error) throw error;
@@ -193,15 +200,13 @@ Deno.serve(async (req) => {
       }
 
       if (action === "unlock") {
-        const { userId } = body;
-        if (!userId) {
+        if (!body.userId) {
           return new Response(JSON.stringify({ error: "userId required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        await adminClient.from("profiles").update({ is_locked: false }).eq("user_id", userId);
-        const { error } = await adminClient.auth.admin.updateUserById(userId, {
+        await adminClient.from("profiles").update({ is_locked: false }).eq("user_id", body.userId);
+        const { error } = await adminClient.auth.admin.updateUserById(body.userId, {
           ban_duration: "none",
         });
         if (error) throw error;
@@ -222,7 +227,6 @@ Deno.serve(async (req) => {
           revenueByOwner.set(s.user_id, (revenueByOwner.get(s.user_id) || 0) + Number(s.total_amount || 0));
         });
 
-        // Also count repair revenue
         const { data: repairs } = await adminClient
           .from("repairs")
           .select("user_id, total_cost");
@@ -254,7 +258,6 @@ Deno.serve(async (req) => {
           .order("created_at", { ascending: false })
           .limit(10);
 
-        // Get profile names for these users
         const userIds = new Set<string>();
         (recentRepairs || []).forEach((r: any) => userIds.add(r.user_id));
         (recentSales || []).forEach((s: any) => userIds.add(s.user_id));
@@ -306,7 +309,7 @@ Deno.serve(async (req) => {
       });
     }
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

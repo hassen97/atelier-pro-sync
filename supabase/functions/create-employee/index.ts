@@ -1,10 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const EmployeeSchema = z.object({
+  fullName: z.string().trim().min(1).max(100),
+  username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/),
+  password: z.string().min(8).max(128),
+  role: z.enum(["employee", "manager", "admin"]),
+  allowedPages: z.array(z.string().max(50)).max(20).optional(),
+});
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -52,39 +61,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse body
-    const { fullName, username, password, role, allowedPages } = await req.json();
-
-    // Validate inputs
-    if (!fullName || typeof fullName !== "string" || fullName.trim().length < 1 || fullName.trim().length > 100) {
-      return new Response(JSON.stringify({ error: "Nom complet invalide" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-    if (!username || !usernameRegex.test(username)) {
+    // Parse and validate body with Zod
+    const rawBody = await req.json();
+    const parseResult = EmployeeSchema.safeParse(rawBody);
+    if (!parseResult.success) {
       return new Response(
-        JSON.stringify({ error: "Username invalide (3-20 caractères alphanumériques)" }),
+        JSON.stringify({ error: "Données invalides", details: parseResult.error.issues.map(i => i.message) }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!password || typeof password !== "string" || password.length < 6) {
-      return new Response(
-        JSON.stringify({ error: "Mot de passe trop court (min 6 caractères)" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const validRoles = ["employee", "manager", "admin"];
-    if (!validRoles.includes(role)) {
-      return new Response(JSON.stringify({ error: "Rôle invalide" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { fullName, username, password, role, allowedPages } = parseResult.data;
 
     // Check username uniqueness
     const { data: existingUser } = await anonClient

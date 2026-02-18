@@ -2,3 +2,6 @@ project_id = "kevdkypgaoelzsubiunz"
 
 [functions.create-employee]
 verify_jwt = false
+
+[functions.admin-manage-users]
+verify_jwt = false

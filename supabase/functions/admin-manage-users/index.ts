@@ -53,8 +53,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Handle GET - list all shop owners with stats
-    if (req.method === "GET") {
+    // Handle POST actions
+    if (req.method === "POST" || req.method === "GET") {
+      const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+      const { action } = body;
+
+      // List all shop owners with stats (default when no action or action=list)
+      if (!action || action === "list") {
       const { data: profiles } = await adminClient
         .from("profiles")
         .select("user_id, full_name, username, created_at, is_locked")
@@ -104,15 +109,13 @@ Deno.serve(async (req) => {
         total_repairs: (repairCounts || []).length,
       };
 
+
       return new Response(JSON.stringify({ owners, stats }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Handle POST actions
-    if (req.method === "POST") {
-      const body = await req.json();
-      const { action } = body;
+
 
       if (action === "delete") {
         const { userId } = body;
@@ -302,11 +305,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,

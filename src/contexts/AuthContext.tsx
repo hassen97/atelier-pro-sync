@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -14,13 +17,61 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Direct fetch to Supabase Auth REST API with timeout + retries
+// Bypasses Chrome Android Data Saver/proxy issues with the JS client
+async function authFetch(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: Error | null }> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        const msg = json?.error_description || json?.error || json?.msg || "Erreur d'authentification";
+        return { data: null, error: new Error(String(msg)) };
+      }
+
+      return { data: json, error: null };
+    } catch (err) {
+      clearTimeout(timeout);
+      const message = (err as Error).message || "";
+      const isNetworkError = message.includes("Failed to fetch") ||
+        message.includes("NetworkError") ||
+        message.includes("Load failed") ||
+        message.includes("aborted");
+
+      if (isNetworkError && attempt < 2) {
+        await new Promise(r => setTimeout(r, (attempt + 1) * 500));
+        continue;
+      }
+      if (isNetworkError) {
+        return { data: null, error: new Error("Erreur de connexion réseau. Vérifiez votre connexion internet et réessayez.") };
+      }
+      return { data: null, error: err as Error };
+    }
+  }
+  return { data: null, error: new Error("Erreur inattendue") };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener BEFORE checking session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
@@ -29,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -39,70 +89,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Convert username to internal email format
   const usernameToEmail = (username: string) => `${username.toLowerCase()}@repairpro.local`;
 
   const signUp = async (username: string, password: string, fullName: string) => {
     const internalEmail = usernameToEmail(username);
-    
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const { error } = await supabase.auth.signUp({
-          email: internalEmail,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: {
-              full_name: fullName,
-              username: username.toLowerCase(),
-            },
-          },
-        });
-        return { error };
-      } catch (error) {
-        const isNetworkError = (error as Error).message?.includes("Failed to fetch") || 
-                               (error as Error).message?.includes("NetworkError") ||
-                               (error as Error).message?.includes("Load failed");
-        if (isNetworkError && attempt < 2) {
-          await new Promise(r => setTimeout(r, (attempt + 1) * 500));
-          continue;
-        }
-        if (isNetworkError) {
-          return { error: new Error("Erreur de connexion réseau. Vérifiez votre connexion internet et réessayez.") };
-        }
-        return { error: error as Error };
-      }
+
+    const { data, error } = await authFetch("signup", {
+      email: internalEmail,
+      password,
+      data: {
+        full_name: fullName,
+        username: username.toLowerCase(),
+      },
+    });
+
+    if (error) return { error };
+
+    // If signup returns a session, set it
+    if (data?.access_token && data?.refresh_token) {
+      await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
     }
-    return { error: new Error("Erreur inattendue") };
+
+    return { error: null };
   };
 
   const signIn = async (username: string, password: string) => {
     const internalEmail = usernameToEmail(username);
-    
-    // Retry up to 2 times for network errors (common on mobile)
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: internalEmail,
-          password,
-        });
-        return { error };
-      } catch (error) {
-        const isNetworkError = (error as Error).message?.includes("Failed to fetch") || 
-                               (error as Error).message?.includes("NetworkError") ||
-                               (error as Error).message?.includes("Load failed");
-        if (isNetworkError && attempt < 2) {
-          // Wait before retry (500ms, then 1500ms)
-          await new Promise(r => setTimeout(r, (attempt + 1) * 500));
-          continue;
-        }
-        if (isNetworkError) {
-          return { error: new Error("Erreur de connexion réseau. Vérifiez votre connexion internet et réessayez.") };
-        }
-        return { error: error as Error };
-      }
-    }
-    return { error: new Error("Erreur inattendue") };
+
+    const { data, error } = await authFetch("token?grant_type=password", {
+      email: internalEmail,
+      password,
+    });
+
+    if (error) return { error };
+
+    // Sync session with the Supabase client
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+
+    if (sessionError) return { error: sessionError };
+    return { error: null };
   };
 
   const signOut = async () => {

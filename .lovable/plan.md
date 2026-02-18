@@ -1,192 +1,131 @@
 
-# Categories dynamiques, integration formulaires et panier flexible
 
-## Vue d'ensemble
+# Notifications navigateur (Browser Notifications)
 
-Ce plan couvre 4 axes : (1) systeme de categories dynamiques avec gestion dans les parametres, (2) integration dans les formulaires reparation et stock, (3) prix editables dans le panier POS, (4) categories par defaut pre-remplies.
+## Objectif
 
----
-
-## Etape 1 : Hook useCategories
-
-Creer `src/hooks/useCategories.ts` pour gerer les operations CRUD sur la table `categories` existante.
-
-La table `categories` a deja les colonnes : `id`, `name`, `type` ('product' ou 'repair'), `user_id`, `created_at`. Les RLS sont en place.
-
-Le hook exposera :
-- `useCategories(type?)` - lister les categories filtrees par type
-- `useCreateCategory()` - creer une categorie
-- `useDeleteCategory()` - supprimer une categorie
-- `useSeedDefaultCategories()` - inserer les categories par defaut si aucune n'existe
-
-Categories par defaut repair : Ecran/Affichage, Batterie, Port de charge, Degats des eaux, Carte mere, Chassis/Vitre, Logiciel, Camera/FaceID
-
-Categories par defaut stock : Ecrans, Batteries, Petites pieces, Consommables, Accessoires
+Ajouter le support des notifications natives du navigateur. Quand vous activez cette option et autorisez les notifications, les alertes (stock faible, reparations terminees) apparaitront comme des notifications systeme sur votre tablette/PC, meme si l'onglet n'est pas au premier plan.
 
 ---
 
-## Etape 2 : Section "Gerer les categories" dans Settings
+## Ce qui change
 
-Ajouter un nouvel onglet "Categories" dans la page `src/pages/Settings.tsx`.
+### 1. Nouveau parametre "Notifications navigateur" dans les reglages
 
-Interface :
-- Deux sous-sections : "Categories de reparation" et "Categories de stock"
-- Liste des categories avec bouton supprimer (rouge) pour chacune
-- Champ + bouton pour ajouter une nouvelle categorie
-- Bouton "Reinitialiser par defaut" pour re-inserer les categories initiales
-- Dialog de confirmation avant suppression
+Dans la section Notifications de l'onglet General (Settings), un nouveau switch sera ajoute :
 
----
-
-## Etape 3 : Integration dans le formulaire RepairDialog
-
-Modifier `src/components/repairs/RepairDialog.tsx` :
-- Ajouter un champ "Categorie de reparation" utilisant le composant Combobox existant
-- Charger les categories de type 'repair' via `useCategories('repair')`
-- Ajouter `repair_category_id` au schema du formulaire (optionnel)
-
-Migration DB necessaire :
-```sql
-ALTER TABLE repairs ADD COLUMN category_id uuid REFERENCES categories(id) ON DELETE SET NULL;
+```text
+┌─────────────────────────────────────────────────────┐
+│  Notifications                                       │
+│                                                      │
+│  Alertes stock faible           [Switch]             │
+│  Rappels paiements              [Switch]             │
+│                                                      │
+│  ── Separateur ──                                    │
+│                                                      │
+│  Notifications navigateur       [Switch]             │
+│  "Recevoir les alertes sur votre appareil"           │
+│  Statut: Autorise / Bloque / Non demande            │
+└─────────────────────────────────────────────────────┘
 ```
 
-Quand une categorie est supprimee, `ON DELETE SET NULL` garantit que les reparations existantes ne cassent pas (category_id devient null = "Non classe").
+- Au clic sur le switch, si la permission n'a pas ete demandee, le navigateur affichera la boite de dialogue d'autorisation
+- Si l'utilisateur refuse, le switch revient a off avec un message explicatif
+- Un badge indique le statut actuel (Autorise / Bloque / Non demande)
 
----
+### 2. Mise a jour du hook useNotificationSettings
 
-## Etape 4 : Integration dans le formulaire ProductDialog
+Ajouter un champ `browserNotifications: boolean` aux parametres :
 
-Modifier `src/components/inventory/ProductDialog.tsx` :
-- Ajouter un champ "Categorie" utilisant le Combobox
-- Charger les categories de type 'product' via `useCategories('product')`
-- Le champ `category_id` existe deja sur la table `products`
-- Passer le `category_id` lors de la creation/mise a jour
-
-Modifier `src/hooks/useProducts.ts` pour accepter `category_id` dans les mutations create/update.
-
----
-
-## Etape 5 : Panier flexible avec prix editables (POS)
-
-Modifier `src/pages/POS.tsx` :
-
-Interface CartItem mise a jour :
 ```typescript
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;        // prix editable
-  originalPrice: number; // prix catalogue (pour reference)
-  quantity: number;
-  maxStock: number;
+export interface NotificationSettings {
+  lowStockAlerts: boolean;
+  paymentReminders: boolean;
+  browserNotifications: boolean;  // nouveau
 }
 ```
 
-Dans chaque ligne du panier, remplacer l'affichage statique du prix par un champ Input de type number :
-- Valeur par defaut = prix du catalogue (`sell_price`)
-- Editable manuellement pour remises/ajustements
-- Recalcul automatique du sous-total, TVA et total en temps reel
-- Afficher l'ecart par rapport au prix catalogue si modifie (ex: badge "Remise")
+Ajouter une fonction `requestBrowserPermission()` qui :
+- Appelle `Notification.requestPermission()`
+- Met a jour le parametre selon le resultat
+- Retourne le statut de la permission
+
+### 3. Envoi des notifications navigateur
+
+Modifier `NotificationsContext.tsx` pour envoyer une notification native a chaque fois qu'une notification in-app est creee :
+
+```typescript
+// Dans NotificationsProvider, apres chaque addNotification :
+if (notifSettings.browserNotifications && Notification.permission === "granted") {
+  new Notification(title, {
+    body: description,
+    icon: "/favicon.png",
+    badge: "/favicon.png",
+  });
+}
+```
+
+Cela sera encapsule dans une fonction helper `sendBrowserNotification(title, body)` pour eviter la duplication.
 
 ---
 
-## Fichiers a creer
-
-| Fichier | Description |
-|---------|-------------|
-| `src/hooks/useCategories.ts` | Hook CRUD categories + seed par defaut |
-
 ## Fichiers a modifier
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/pages/Settings.tsx` | Ajouter onglet "Categories" avec gestion complete |
-| `src/components/repairs/RepairDialog.tsx` | Ajouter Combobox categorie reparation |
-| `src/components/inventory/ProductDialog.tsx` | Ajouter Combobox categorie stock |
-| `src/hooks/useProducts.ts` | Accepter `category_id` dans create/update |
-| `src/pages/POS.tsx` | Prix editables dans le panier |
-| `src/pages/Inventory.tsx` | Utiliser categories dynamiques pour le filtre |
-
-## Migration DB
-
-```sql
-ALTER TABLE repairs ADD COLUMN category_id uuid REFERENCES categories(id) ON DELETE SET NULL;
-```
+| Fichier | Modification |
+|---------|-------------|
+| `src/hooks/useNotificationSettings.ts` | Ajouter `browserNotifications` + fonction `requestBrowserPermission` |
+| `src/contexts/NotificationsContext.tsx` | Envoyer notification native quand une notification est ajoutee |
+| `src/pages/Settings.tsx` | Ajouter switch + badge statut permission dans la section Notifications |
 
 ---
 
 ## Details techniques
 
-### Hook useCategories
+### Gestion des permissions navigateur
 
 ```typescript
-export function useCategories(type?: 'product' | 'repair') {
-  // Fetch categories filtered by type, ordered by name
-}
-
-export function useCreateCategory() {
-  // Insert with user_id, invalidate ["categories"]
-}
-
-export function useDeleteCategory() {
-  // Delete by id, invalidate ["categories"]
-  // ON DELETE SET NULL protege les references existantes
-}
-
-export function useSeedDefaultCategories() {
-  // Verifie si des categories existent pour l'utilisateur
-  // Si non, insere les categories par defaut (repair + product)
+async function requestBrowserPermission(): Promise<boolean> {
+  if (!("Notification" in window)) return false;
+  
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") return false;
+  
+  const result = await Notification.requestPermission();
+  return result === "granted";
 }
 ```
 
-### Prix editable dans le panier
+### Affichage du statut
 
-```tsx
-// Dans chaque ligne du panier
-<Input
-  type="number"
-  step="0.001"
-  value={item.price}
-  onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)}
-  className="w-20 h-7 text-xs text-right font-mono-numbers"
-/>
-
-// Indicateur de remise si prix modifie
-{item.price < item.originalPrice && (
-  <Badge variant="secondary" className="text-[10px]">
-    -{((1 - item.price / item.originalPrice) * 100).toFixed(0)}%
-  </Badge>
-)}
+```typescript
+function getPermissionStatus(): "granted" | "denied" | "default" | "unsupported" {
+  if (!("Notification" in window)) return "unsupported";
+  return Notification.permission;
+}
 ```
 
-### Onglet Categories dans Settings
+Le badge affichera :
+- Vert "Autorise" si `granted`
+- Rouge "Bloque" si `denied` (avec indication d'aller dans les parametres du navigateur)
+- Gris "Non demande" si `default`
+- Gris "Non supporte" si l'API n'est pas disponible
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  Categories de reparation                           │
-│  ┌─────────────────────────────────────────────┐    │
-│  │ Ecran/Affichage              [Supprimer 🔴] │    │
-│  │ Batterie                     [Supprimer 🔴] │    │
-│  │ Port de charge               [Supprimer 🔴] │    │
-│  │ ...                                         │    │
-│  └─────────────────────────────────────────────┘    │
-│  [________Nouvelle categorie________] [+ Ajouter]  │
-│                                                     │
-│  Categories de stock                                │
-│  ┌─────────────────────────────────────────────┐    │
-│  │ Ecrans                       [Supprimer 🔴] │    │
-│  │ Batteries                    [Supprimer 🔴] │    │
-│  │ ...                                         │    │
-│  └─────────────────────────────────────────────┘    │
-│  [________Nouvelle categorie________] [+ Ajouter]  │
-│                                                     │
-│  [Reinitialiser les categories par defaut]          │
-└─────────────────────────────────────────────────────┘
-```
+### Notification native
 
-### Protection a la suppression
+Chaque notification in-app declenchera aussi une notification systeme si :
+1. Le parametre `browserNotifications` est active
+2. La permission du navigateur est `granted`
 
-- `ON DELETE SET NULL` sur la FK `repairs.category_id`
-- La FK `products.category_id` existe deja (verifier qu'elle a aussi `ON DELETE SET NULL`)
-- Dialog de confirmation avec le nom de la categorie avant suppression
-- Bouton supprimer en rouge (`text-destructive`)
+L'icone utilisera `/favicon.png` deja present dans le projet.
+
+---
+
+## Comportement attendu
+
+1. L'utilisateur va dans Parametres > General > Notifications
+2. Il active "Notifications navigateur"
+3. Le navigateur demande l'autorisation
+4. Si autorise : le badge passe en vert, les futures alertes (stock faible, reparation terminee) apparaissent comme notifications systeme
+5. Si refuse : le switch revient a off, un message indique de modifier dans les parametres du navigateur
+6. Les notifications apparaissent sur la tablette/PC meme si l'onglet est en arriere-plan
+

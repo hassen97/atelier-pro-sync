@@ -25,6 +25,7 @@ const Profit = lazy(() => import("./pages/Profit"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Auth = lazy(() => import("./pages/Auth"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,13 @@ const App = () => (
             <Routes>
               {/* Public route */}
               <Route path="/auth" element={<Auth />} />
+              
+              {/* Admin route - separate layout */}
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
               
               {/* Protected routes */}
               <Route element={

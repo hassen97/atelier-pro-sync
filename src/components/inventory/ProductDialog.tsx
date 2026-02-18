@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -20,12 +20,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
 import { Loader2 } from "lucide-react";
+import { useCategories } from "@/hooks/useCategories";
 
 const productSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   sku: z.string().optional(),
   description: z.string().optional(),
+  category_id: z.string().optional(),
   cost_price: z.coerce.number().min(0, "Le prix doit être positif"),
   sell_price: z.coerce.number().min(0, "Le prix doit être positif"),
   quantity: z.coerce.number().int().min(0, "La quantité doit être positive"),
@@ -42,6 +45,7 @@ interface ProductDialogProps {
     name: string;
     sku?: string | null;
     description?: string | null;
+    category_id?: string | null;
     cost_price: number;
     sell_price: number;
     quantity: number;
@@ -59,6 +63,11 @@ export function ProductDialog({
   isLoading,
 }: ProductDialogProps) {
   const isEditing = !!product;
+  const { data: productCategories = [] } = useCategories("product");
+  const categoryOptions = useMemo(
+    () => productCategories.map((c) => ({ value: c.id, label: c.name })),
+    [productCategories]
+  );
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -66,6 +75,7 @@ export function ProductDialog({
       name: "",
       sku: "",
       description: "",
+      category_id: "",
       cost_price: 0,
       sell_price: 0,
       quantity: 0,
@@ -79,6 +89,7 @@ export function ProductDialog({
         name: product.name,
         sku: product.sku || "",
         description: product.description || "",
+        category_id: product.category_id || "",
         cost_price: Number(product.cost_price) || 0,
         sell_price: Number(product.sell_price) || 0,
         quantity: product.quantity || 0,
@@ -89,6 +100,7 @@ export function ProductDialog({
         name: "",
         sku: "",
         description: "",
+        category_id: "",
         cost_price: 0,
         sell_price: 0,
         quantity: 0,
@@ -145,6 +157,30 @@ export function ProductDialog({
                 </FormItem>
               )}
             />
+
+            {/* Category */}
+            {categoryOptions.length > 0 && (
+              <FormField
+                control={form.control}
+                name="category_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Catégorie</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={categoryOptions}
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                        placeholder="Sélectionner catégorie"
+                        searchPlaceholder="Rechercher catégorie..."
+                        emptyText="Aucune catégorie"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Description */}
             <FormField

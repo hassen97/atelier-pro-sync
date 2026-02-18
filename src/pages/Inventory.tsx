@@ -146,15 +146,20 @@ export default function Inventory() {
     name: string;
     sku?: string;
     description?: string;
+    category_id?: string;
     cost_price: number;
     sell_price: number;
     quantity: number;
     min_quantity: number;
   }) => {
+    const submitData = {
+      ...data,
+      category_id: data.category_id || null,
+    };
     if (editingProduct) {
-      await updateProduct.mutateAsync({ id: editingProduct.id, ...data });
+      await updateProduct.mutateAsync({ id: editingProduct.id, ...submitData });
     } else {
-      await createProduct.mutateAsync(data);
+      await createProduct.mutateAsync(submitData);
     }
     setDialogOpen(false);
     setEditingProduct(null);

@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Loader2,
   Key,
+  Tag,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ import { useNotificationSettings } from "@/hooks/useNotificationSettings";
 import { useBackup } from "@/hooks/useBackup";
 import { useSecuritySettings } from "@/hooks/useSecuritySettings";
 import { ResetDataDialog } from "@/components/settings/ResetDataDialog";
+import { CategoriesSettings } from "@/components/settings/CategoriesSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Settings() {
@@ -142,8 +144,12 @@ export default function Settings() {
       />
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
           <TabsTrigger value="general">Général</TabsTrigger>
+          <TabsTrigger value="categories">
+            <Tag className="h-3.5 w-3.5 mr-1" />
+            Catégories
+          </TabsTrigger>
           <TabsTrigger value="backup">Sauvegarde</TabsTrigger>
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>
           <TabsTrigger value="security">Sécurité</TabsTrigger>
@@ -263,6 +269,11 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Categories Settings */}
+        <TabsContent value="categories" className="space-y-6">
+          <CategoriesSettings />
         </TabsContent>
 
         {/* Backup Settings */}

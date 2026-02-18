@@ -32,11 +32,13 @@ import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 import { Combobox } from "@/components/ui/combobox";
 import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel, BRANDS_WITH_API } from "@/data/phoneModels";
 import { useAppleDevices } from "@/hooks/useAppleDevices";
+import { useCategories } from "@/hooks/useCategories";
 
 const repairSchema = z.object({
   customer_id: z.string().optional(),
   customer_name: z.string().optional(),
   customer_phone: z.string().optional(),
+  category_id: z.string().optional(),
   device_brand: z.string().optional(),
   device_model: z.string().min(1, "Le modèle est requis"),
   imei: z.string().optional(),
@@ -56,6 +58,7 @@ interface RepairDialogProps {
   repair?: {
     id: string;
     customer_id?: string | null;
+    category_id?: string | null;
     device_model: string;
     imei?: string | null;
     problem_description: string;
@@ -95,6 +98,9 @@ export function RepairDialog({
   const { data: customers = [] } = useCustomers();
   const createCustomer = useCreateCustomer();
   const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
+  const { data: repairCategories = [] } = useCategories("repair");
+
+  const categoryOptions = repairCategories.map((c) => ({ value: c.id, label: c.name }));
   
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
   const [quickCustomerName, setQuickCustomerName] = useState("");
@@ -132,6 +138,7 @@ export function RepairDialog({
       customer_id: "",
       customer_name: "",
       customer_phone: "",
+      category_id: "",
       device_brand: "",
       device_model: "",
       imei: "",
@@ -172,6 +179,7 @@ export function RepairDialog({
       setSelectedBrand(brand);
       form.reset({
         customer_id: repair.customer_id || "",
+        category_id: repair.category_id || "",
         device_brand: brand,
         device_model: model,
         imei: repair.imei || "",
@@ -188,6 +196,7 @@ export function RepairDialog({
         customer_id: "",
         customer_name: "",
         customer_phone: "",
+        category_id: "",
         device_brand: "",
         device_model: "",
         imei: "",
@@ -399,6 +408,30 @@ export function RepairDialog({
                 )}
               />
             </div>
+
+            {/* Repair Category */}
+            {categoryOptions.length > 0 && (
+              <FormField
+                control={form.control}
+                name="category_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Catégorie de réparation</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={categoryOptions}
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                        placeholder="Sélectionner catégorie"
+                        searchPlaceholder="Rechercher catégorie..."
+                        emptyText="Aucune catégorie"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* IMEI */}
             <FormField

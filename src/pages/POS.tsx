@@ -25,6 +25,7 @@ interface CartItem {
   id: string;
   name: string;
   price: number;
+  originalPrice: number;
   quantity: number;
   maxStock: number;
 }
@@ -67,7 +68,8 @@ export default function POS() {
       return [...prev, { 
         id: product.id, 
         name: product.name, 
-        price: product.sell_price, 
+        price: product.sell_price,
+        originalPrice: product.sell_price,
         quantity: 1,
         maxStock: product.quantity
       }];
@@ -89,6 +91,14 @@ export default function POS() {
 
   const removeFromCart = (id: string) => {
     setCart((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const updateItemPrice = (id: string, newPrice: number) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, price: newPrice } : item
+      )
+    );
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -270,43 +280,61 @@ export default function POS() {
                 cart.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                    className="flex flex-col gap-1 p-2 rounded-lg bg-muted/50"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono-numbers">
-                        {formatCurrency(item.price)} × {item.quantity}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.name}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => updateQuantity(item.id, -1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-6 text-center text-sm font-medium">
+                          {item.quantity}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => updateQuantity(item.id, 1)}
+                          disabled={item.quantity >= item.maxStock}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => updateQuantity(item.id, -1)}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-6 text-center text-sm font-medium">
-                        {item.quantity}
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={item.price}
+                        onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)}
+                        className="w-24 h-7 text-xs text-right font-mono-numbers"
+                      />
+                      <span className="text-xs text-muted-foreground">× {item.quantity}</span>
+                      <span className="text-xs font-medium font-mono-numbers ml-auto">
+                        {formatCurrency(item.price * item.quantity)}
                       </span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => updateQuantity(item.id, 1)}
-                        disabled={item.quantity >= item.maxStock}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {item.price < item.originalPrice && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          -{((1 - item.price / item.originalPrice) * 100).toFixed(0)}%
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 ))

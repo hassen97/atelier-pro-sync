@@ -27,6 +27,8 @@ import { useDashboardRealtime } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
+import { MyTasks } from "@/components/dashboard/MyTasks";
+import { useMyTeamInfo } from "@/hooks/useTeam";
 
 const statusConfig = {
   pending: { label: "En attente", icon: Clock, className: "bg-warning/10 text-warning border-warning/20" },
@@ -45,6 +47,7 @@ export default function Dashboard() {
   // Enable realtime updates for dashboard data
   useDashboardRealtime();
   
+  const { data: teamInfo } = useMyTeamInfo();
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
 
   const isLoading = statsLoading || repairsLoading || alertsLoading;
@@ -181,6 +184,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* My Tasks (for team members) */}
+      {teamInfo && <MyTasks />}
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">

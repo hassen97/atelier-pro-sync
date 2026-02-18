@@ -33,6 +33,8 @@ import { useBackup } from "@/hooks/useBackup";
 import { useSecuritySettings } from "@/hooks/useSecuritySettings";
 import { ResetDataDialog } from "@/components/settings/ResetDataDialog";
 import { CategoriesSettings } from "@/components/settings/CategoriesSettings";
+import { TeamManagement } from "@/components/settings/TeamManagement";
+import { TaskManagement } from "@/components/settings/TaskManagement";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Settings() {
@@ -431,26 +433,8 @@ export default function Settings() {
 
         {/* Users Settings */}
         <TabsContent value="users" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Gestion des utilisateurs
-              </CardTitle>
-              <CardDescription>
-                Gérez les accès et les rôles
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">Fonctionnalité bientôt disponible</p>
-                <p className="text-sm mt-1">
-                  La gestion des utilisateurs sera disponible prochainement
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <TeamManagement />
+          <TaskManagement />
         </TabsContent>
 
         {/* Security Settings */}

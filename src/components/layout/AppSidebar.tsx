@@ -25,6 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { useAllowedPages } from "@/hooks/useTeam";
 
 const navigation = [
   { name: "Tableau de bord", href: "/", icon: LayoutDashboard },
@@ -54,6 +55,12 @@ interface AppSidebarProps {
 export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: AppSidebarProps) {
   const location = useLocation();
   const { settings } = useShopSettingsContext();
+  const { allowedPages } = useAllowedPages();
+
+  // Filter navigation based on allowed pages
+  const filteredNavigation = allowedPages
+    ? navigation.filter((item) => allowedPages.includes(item.href))
+    : navigation;
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
@@ -144,7 +151,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
-          {navigation.map((item) => (
+          {filteredNavigation.map((item) => (
             <NavItem key={item.href} item={item} />
           ))}
         </nav>

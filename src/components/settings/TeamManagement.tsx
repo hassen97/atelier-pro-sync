@@ -1,0 +1,190 @@
+import { useState } from "react";
+import { Users, Save, Loader2, UserMinus } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  useTeamMembers,
+  useUpdateMemberPermissions,
+  useRemoveTeamMember,
+  ALL_PAGES,
+  type TeamMember,
+} from "@/hooks/useTeam";
+import { AddMemberDialog } from "./AddMemberDialog";
+
+function MemberCard({ member }: { member: TeamMember }) {
+  const [pages, setPages] = useState<string[]>(member.allowed_pages || []);
+  const [role, setRole] = useState(member.role);
+  const updatePermissions = useUpdateMemberPermissions();
+  const removeMember = useRemoveTeamMember();
+
+  const togglePage = (href: string) => {
+    if (href === "/") return;
+    setPages((prev) =>
+      prev.includes(href) ? prev.filter((p) => p !== href) : [...prev, href]
+    );
+  };
+
+  const hasChanges =
+    JSON.stringify(pages.sort()) !== JSON.stringify((member.allowed_pages || []).sort()) ||
+    role !== member.role;
+
+  const handleSave = () => {
+    updatePermissions.mutate({
+      memberId: member.id,
+      allowedPages: pages.includes("/") ? pages : ["/", ...pages],
+      role: role as any,
+    });
+  };
+
+  return (
+    <div className="p-4 rounded-lg border bg-card space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+            {(member.profile?.full_name || member.profile?.username || "?")[0]?.toUpperCase()}
+          </div>
+          <div>
+            <p className="font-medium">{member.profile?.full_name || "Sans nom"}</p>
+            <p className="text-sm text-muted-foreground">@{member.profile?.username}</p>
+          </div>
+        </div>
+        <Select value={role} onValueChange={(v: any) => setRole(v)}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="employee">Employé</SelectItem>
+            <SelectItem value="manager">Manager</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm text-muted-foreground">Pages autorisées</Label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {ALL_PAGES.map((page) => (
+            <label
+              key={page.href}
+              className="flex items-center gap-2 text-sm cursor-pointer"
+            >
+              <Checkbox
+                checked={pages.includes(page.href)}
+                onCheckedChange={() => togglePage(page.href)}
+                disabled={page.href === "/"}
+              />
+              {page.label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-2">
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={!hasChanges || updatePermissions.isPending}
+        >
+          {updatePermissions.isPending ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4 mr-1" />
+          )}
+          Enregistrer
+        </Button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm">
+              <UserMinus className="h-4 w-4 mr-1" />
+              Retirer
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Retirer ce membre ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {member.profile?.full_name || member.profile?.username} n'aura plus accès aux données de votre boutique.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => removeMember.mutate(member.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Retirer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
+  );
+}
+
+export function TeamManagement() {
+  const { data: members = [], isLoading } = useTeamMembers();
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Gestion de l'équipe
+            </CardTitle>
+            <CardDescription>
+              Invitez vos employés et gérez leurs accès
+            </CardDescription>
+          </div>
+          <AddMemberDialog />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : members.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="font-medium">Aucun membre dans l'équipe</p>
+            <p className="text-sm mt-1">
+              Invitez vos employés pour partager l'accès à votre boutique
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {members.map((member) => (
+              <MemberCard key={member.id} member={member} />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

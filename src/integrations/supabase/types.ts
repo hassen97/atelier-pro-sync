@@ -543,6 +543,69 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          allowed_pages: string[]
+          created_at: string
+          id: string
+          member_user_id: string
+          owner_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+        }
+        Insert: {
+          allowed_pages?: string[]
+          created_at?: string
+          id?: string
+          member_user_id: string
+          owner_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Update: {
+          allowed_pages?: string[]
+          created_at?: string
+          id?: string
+          member_user_id?: string
+          owner_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Relationships: []
+      }
+      team_tasks: {
+        Row: {
+          assigned_to: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          owner_id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner_id: string
+          status?: string
+          title: string
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner_id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -569,11 +632,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_team_owner_id: { Args: { _member_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_team_member: {
+        Args: { _member_id: string; _owner_id: string }
         Returns: boolean
       }
     }

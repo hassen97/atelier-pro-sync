@@ -1,51 +1,49 @@
-# Promouvoir les proprietaires de boutiques en Super Admin
+
+# Permettre au proprietaire de creer le compte de l'employe
 
 ## Objectif
 
-Mettre a jour le role de tous les utilisateurs existants (276 comptes) de `employee` a `super_admin` pour qu'ils puissent gerer leur propre equipe, inviter des employes et assigner des taches -- exactement comme vous le faites deja.
+Le proprietaire pourra creer directement le compte d'un employe depuis **Parametres > Gestion de l'equipe**, en renseignant le nom, le username et le mot de passe. L'employe n'aura plus besoin de s'inscrire lui-meme -- il se connecte directement avec les identifiants fournis par son patron.
 
-## Ce qui change
+## Comment ca marche
 
-### Migration de donnees
+1. Le proprietaire clique sur "Inviter un employe"
+2. Il choisit entre **rechercher un utilisateur existant** ou **creer un nouveau compte**
+3. S'il cree un compte : il entre le nom complet, le username et le mot de passe
+4. Le systeme cree le compte, l'ajoute automatiquement a l'equipe avec les permissions choisies
+5. Le proprietaire communique les identifiants a l'employe
 
-Une seule requete SQL met a jour tous les roles :
+## Details techniques
 
-```sql
-UPDATE user_roles SET role = 'super_admin' WHERE role = 'employee';
-```
+### 1. Nouvelle fonction backend (Edge Function)
 
-Cela transforme les 276 proprietaires de boutiques existants en super admins.
+Creer `supabase/functions/create-employee/index.ts` :
 
-### Impact
+- Recoit : `fullName`, `username`, `password`, `role`, `allowedPages`
+- Verifie que l'appelant est authentifie et a le role `super_admin`
+- Utilise l'API admin Supabase (`supabase.auth.admin.createUser`) pour creer le compte avec l'email interne `username@repairpro.local`
+- Le trigger `handle_new_user` cree automatiquement le profil, le role `super_admin` et les parametres boutique
+- Corrige le role en `employee` dans `user_roles` (car le trigger met `super_admin` par defaut)
+- Insere une ligne dans `team_members` pour lier l'employe au proprietaire
+- Retourne le user ID cree
 
-- Chaque proprietaire verra la section **Gestion de l'equipe** dans Parametres > Utilisateurs
-- Chaque proprietaire pourra inviter ses propres employes, definir leurs permissions et leur assigner des taches
-- Les donnees restent isolees : chaque proprietaire ne voit que ses propres donnees grace au RLS (`user_id`)
+### 2. Modification du dialog d'ajout (AddMemberDialog.tsx)
 
-### Nouveaux inscrits
+- Ajouter un toggle/tabs pour basculer entre "Rechercher" et "Creer un compte"
+- Mode "Creer un compte" : formulaire avec champs nom complet, username, mot de passe, confirmation mot de passe
+- Validation identique a la page d'inscription (3-20 caracteres alphanumeriques, mot de passe >= 6 caracteres)
+- Appel a la fonction backend au lieu de l'insertion directe dans `team_members`
 
-Il y a un point important a regler : actuellement, le trigger `handle_new_user()` attribue le role `employee` a chaque nouvel inscrit. Il faut le modifier pour attribuer `super_admin` par defaut, car chaque nouvel inscrit est un proprietaire de boutique (pas un employe invite).
+### 3. Fichiers modifies
 
-```sql
--- Dans handle_new_user(), changer :
-INSERT INTO public.user_roles (user_id, role)
-VALUES (NEW.id, 'employee');
--- En :
-INSERT INTO public.user_roles (user_id, role)
-VALUES (NEW.id, 'super_admin');
-```
+| Fichier | Modification |
+|---|---|
+| `supabase/functions/create-employee/index.ts` | Nouvelle fonction backend pour creer un compte employe |
+| `src/components/settings/AddMemberDialog.tsx` | Ajout du formulaire de creation de compte + appel a la fonction |
+| `src/hooks/useTeam.ts` | Nouveau hook `useCreateEmployee` pour appeler la fonction backend |
 
-Un employe n'a pas besoin de s'inscrire seul -- c'est le proprietaire qui l'invite. Quand un employe s'inscrit, il devient proprietaire de sa propre boutique par defaut. C'est seulement quand un autre proprietaire l'ajoute a son equipe qu'il agit en tant qu'employe.
+### 4. Securite
 
-## Fichiers a modifier
-
-
-| Modification  | Detail                                                                                    |
-| ------------- | ----------------------------------------------------------------------------------------- |
-| Migration SQL | `UPDATE user_roles SET role = 'super_admin' WHERE role = 'employee'`                      |
-| Migration SQL | Remplacer le trigger `handle_new_user()` pour inserer `super_admin` au lieu de `employee` |
-
-
-## Aucun changement de code
-
-Le code existant (`useIsOwner`, `useTeam`, sidebar, etc.) verifie deja `role === 'super_admin'` pour determiner si l'utilisateur est proprietaire. Aucune modification du code frontend n'est necessaire.
+- La fonction backend verifie le role `super_admin` de l'appelant cote serveur (pas cote client)
+- Le mot de passe est transmis via HTTPS et jamais stocke cote client
+- L'employe cree n'a pas acces aux parametres boutique ni aux donnees d'autres proprietaires grace au RLS

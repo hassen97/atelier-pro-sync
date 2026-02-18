@@ -310,6 +310,7 @@ export type Database = {
       repairs: {
         Row: {
           amount_paid: number
+          category_id: string | null
           created_at: string
           customer_id: string | null
           delivery_date: string | null
@@ -329,6 +330,7 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number
+          category_id?: string | null
           created_at?: string
           customer_id?: string | null
           delivery_date?: string | null
@@ -348,6 +350,7 @@ export type Database = {
         }
         Update: {
           amount_paid?: number
+          category_id?: string | null
           created_at?: string
           customer_id?: string | null
           delivery_date?: string | null
@@ -366,6 +369,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "repairs_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "repairs_customer_id_fkey"
             columns: ["customer_id"]

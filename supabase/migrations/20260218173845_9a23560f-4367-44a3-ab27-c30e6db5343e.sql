@@ -1,0 +1,1 @@
+ALTER TABLE repairs ADD COLUMN category_id uuid REFERENCES categories(id) ON DELETE SET NULL;

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useNotificationsContext } from "@/contexts/NotificationsContext";
+import { type Notification as AppNotification } from "@/hooks/useNotifications";
 
 const iconMap = {
   repair: Wrench,

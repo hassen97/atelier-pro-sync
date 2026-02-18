@@ -11,12 +11,30 @@ export interface ShopOwner {
   role: string;
   team_count: number;
   repair_count: number;
+  shop_name: string;
+  is_locked: boolean;
 }
 
 export interface AdminStats {
   total_owners: number;
   total_employees: number;
   total_repairs: number;
+}
+
+export interface AdminRevenue {
+  total_revenue: number;
+  sales_revenue: number;
+  repair_revenue: number;
+}
+
+export interface ActivityItem {
+  type: "repair" | "sale";
+  id: string;
+  description: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  shop_name: string;
 }
 
 export function useIsPlatformAdmin() {
@@ -46,6 +64,36 @@ export function useAdminData() {
       });
       if (error) throw error;
       return data as { owners: ShopOwner[]; stats: AdminStats };
+    },
+    enabled: !!user,
+  });
+}
+
+export function useAdminRevenue() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["admin-revenue"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "get-revenue" },
+      });
+      if (error) throw error;
+      return data as AdminRevenue;
+    },
+    enabled: !!user,
+  });
+}
+
+export function useAdminActivity() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["admin-activity"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "get-activity" },
+      });
+      if (error) throw error;
+      return data as { activity: ActivityItem[] };
     },
     enabled: !!user,
   });
@@ -101,5 +149,24 @@ export function useCreateOwner() {
       toast.success("Compte propriétaire créé avec succès");
     },
     onError: (err: any) => toast.error(err.message || "Erreur lors de la création"),
+  });
+}
+
+export function useLockOwner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, lock }: { userId: string; lock: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: lock ? "lock" : "unlock", userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
+      toast.success(variables.lock ? "Compte verrouillé" : "Compte déverrouillé");
+    },
+    onError: (err: any) => toast.error(err.message || "Erreur"),
   });
 }

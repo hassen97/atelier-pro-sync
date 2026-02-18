@@ -55,27 +55,27 @@ Deno.serve(async (req) => {
 
     // Handle GET - list all shop owners with stats
     if (req.method === "GET") {
-      // Get all profiles
       const { data: profiles } = await adminClient
         .from("profiles")
-        .select("user_id, full_name, username, created_at")
+        .select("user_id, full_name, username, created_at, is_locked")
         .order("created_at", { ascending: false });
 
-      // Get all roles
       const { data: roles } = await adminClient
         .from("user_roles")
         .select("user_id, role");
 
-      // Get team member counts per owner
       const { data: teamCounts } = await adminClient
         .from("team_members")
         .select("owner_id")
         .eq("status", "active");
 
-      // Get repair counts per user
       const { data: repairCounts } = await adminClient
         .from("repairs")
         .select("user_id");
+
+      const { data: shopSettings } = await adminClient
+        .from("shop_settings")
+        .select("user_id, shop_name");
 
       const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
       const teamCountMap = new Map<string, number>();
@@ -86,8 +86,8 @@ Deno.serve(async (req) => {
       (repairCounts || []).forEach((r: any) => {
         repairCountMap.set(r.user_id, (repairCountMap.get(r.user_id) || 0) + 1);
       });
+      const shopNameMap = new Map((shopSettings || []).map((s: any) => [s.user_id, s.shop_name]));
 
-      // Filter only super_admin (shop owners), exclude platform_admin and employees
       const owners = (profiles || [])
         .filter((p: any) => roleMap.get(p.user_id) === "super_admin")
         .map((p: any) => ({
@@ -95,6 +95,7 @@ Deno.serve(async (req) => {
           role: roleMap.get(p.user_id),
           team_count: teamCountMap.get(p.user_id) || 0,
           repair_count: repairCountMap.get(p.user_id) || 0,
+          shop_name: shopNameMap.get(p.user_id) || "Mon Atelier",
         }));
 
       const stats = {
@@ -166,6 +167,134 @@ Deno.serve(async (req) => {
           JSON.stringify({ success: true, userId: newUser.user.id }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      if (action === "lock") {
+        const { userId } = body;
+        if (!userId) {
+          return new Response(JSON.stringify({ error: "userId required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // Update profile is_locked
+        await adminClient.from("profiles").update({ is_locked: true }).eq("user_id", userId);
+        // Ban user
+        const { error } = await adminClient.auth.admin.updateUserById(userId, {
+          ban_duration: "876000h",
+        });
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "unlock") {
+        const { userId } = body;
+        if (!userId) {
+          return new Response(JSON.stringify({ error: "userId required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        await adminClient.from("profiles").update({ is_locked: false }).eq("user_id", userId);
+        const { error } = await adminClient.auth.admin.updateUserById(userId, {
+          ban_duration: "none",
+        });
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "get-revenue") {
+        const { data: sales } = await adminClient
+          .from("sales")
+          .select("user_id, total_amount");
+        
+        let totalRevenue = 0;
+        const revenueByOwner = new Map<string, number>();
+        (sales || []).forEach((s: any) => {
+          totalRevenue += Number(s.total_amount || 0);
+          revenueByOwner.set(s.user_id, (revenueByOwner.get(s.user_id) || 0) + Number(s.total_amount || 0));
+        });
+
+        // Also count repair revenue
+        const { data: repairs } = await adminClient
+          .from("repairs")
+          .select("user_id, total_cost");
+        
+        let totalRepairRevenue = 0;
+        (repairs || []).forEach((r: any) => {
+          totalRepairRevenue += Number(r.total_cost || 0);
+        });
+
+        return new Response(JSON.stringify({ 
+          total_revenue: totalRevenue + totalRepairRevenue,
+          sales_revenue: totalRevenue,
+          repair_revenue: totalRepairRevenue,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "get-activity") {
+        const { data: recentRepairs } = await adminClient
+          .from("repairs")
+          .select("id, device_model, status, created_at, user_id, total_cost")
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        const { data: recentSales } = await adminClient
+          .from("sales")
+          .select("id, total_amount, created_at, user_id, payment_method")
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        // Get profile names for these users
+        const userIds = new Set<string>();
+        (recentRepairs || []).forEach((r: any) => userIds.add(r.user_id));
+        (recentSales || []).forEach((s: any) => userIds.add(s.user_id));
+        
+        const { data: profiles } = await adminClient
+          .from("profiles")
+          .select("user_id, full_name, username")
+          .in("user_id", Array.from(userIds));
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
+        const { data: shopSettings } = await adminClient
+          .from("shop_settings")
+          .select("user_id, shop_name")
+          .in("user_id", Array.from(userIds));
+
+        const shopMap = new Map((shopSettings || []).map((s: any) => [s.user_id, s.shop_name]));
+
+        const activity = [
+          ...(recentRepairs || []).map((r: any) => ({
+            type: "repair" as const,
+            id: r.id,
+            description: `Réparation: ${r.device_model}`,
+            amount: r.total_cost,
+            status: r.status,
+            created_at: r.created_at,
+            shop_name: shopMap.get(r.user_id) || profileMap.get(r.user_id)?.full_name || "Inconnu",
+          })),
+          ...(recentSales || []).map((s: any) => ({
+            type: "sale" as const,
+            id: s.id,
+            description: `Vente (${s.payment_method})`,
+            amount: s.total_amount,
+            status: "completed",
+            created_at: s.created_at,
+            shop_name: shopMap.get(s.user_id) || profileMap.get(s.user_id)?.full_name || "Inconnu",
+          })),
+        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+         .slice(0, 15);
+
+        return new Response(JSON.stringify({ activity }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       return new Response(JSON.stringify({ error: "Unknown action" }), {

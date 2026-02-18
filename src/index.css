@@ -166,6 +166,37 @@
     @apply backdrop-blur-2xl bg-card/90 border border-border/70;
   }
 
+  /* Admin Glassmorphism */
+  .admin-glass {
+    backdrop-filter: blur(24px);
+    background: hsla(215, 28%, 12%, 0.6);
+    border: 1px solid hsla(0, 0%, 100%, 0.1);
+  }
+
+  .admin-glass-card {
+    backdrop-filter: blur(16px);
+    background: hsla(215, 28%, 15%, 0.5);
+    border: 1px solid hsla(0, 0%, 100%, 0.05);
+  }
+
+  .admin-neon-blue {
+    color: #00D4FF;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+  }
+
+  .admin-neon-green {
+    color: #10B981;
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+
+  .admin-neon-blue-glow {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), 0 0 40px rgba(0, 212, 255, 0.05);
+  }
+
+  .admin-neon-green-glow {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.15), 0 0 40px rgba(16, 185, 129, 0.05);
+  }
+
   .text-gradient-primary {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-primary);

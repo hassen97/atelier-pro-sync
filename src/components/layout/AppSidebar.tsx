@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -15,9 +16,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Smartphone,
+  MessageSquareWarning,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
@@ -55,6 +58,7 @@ interface AppSidebarProps {
 export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: AppSidebarProps) {
   const location = useLocation();
   const { settings } = useShopSettingsContext();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { allowedPages } = useAllowedPages();
 
   // Filter navigation based on allowed pages
@@ -158,7 +162,19 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
       </ScrollArea>
 
       {/* Bottom Navigation */}
-      <div className="px-3 py-3 border-t border-sidebar-border">
+      <div className="px-3 py-3 border-t border-sidebar-border space-y-1">
+        {/* Feedback Button */}
+        <button
+          onClick={() => setFeedbackOpen(true)}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full",
+            "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            collapsed && !isMobile && "justify-center px-2"
+          )}
+        >
+          <MessageSquareWarning className="h-5 w-5 shrink-0" />
+          {(!collapsed || isMobile) && <span className="truncate">Signaler / Suggérer</span>}
+        </button>
         {bottomNav.map((item) => (
           <NavItem key={item.href} item={item} />
         ))}
@@ -177,6 +193,8 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
           </Button>
         </div>
       )}
+
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </aside>
   );
 }

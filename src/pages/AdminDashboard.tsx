@@ -1,46 +1,38 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Loader2, Plus, Shield } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAdminData } from "@/hooks/useAdmin";
-import { AdminStats } from "@/components/admin/AdminStats";
-import { ShopOwnersList } from "@/components/admin/ShopOwnersList";
-import { CreateOwnerDialog } from "@/components/admin/CreateOwnerDialog";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminOverview } from "@/components/admin/AdminOverview";
+import { AdminShopsView } from "@/components/admin/AdminShopsView";
+import { AdminAnnouncementsView } from "@/components/admin/AdminAnnouncementsView";
+import { AdminFeedbackInbox } from "@/components/admin/AdminFeedbackInbox";
+
+type AdminView = "overview" | "shops" | "announcements" | "feedback";
 
 const AdminDashboard = () => {
-  const { data, isLoading } = useAdminData();
-  const [createOpen, setCreateOpen] = useState(false);
+  const { isLoading } = useAdminData();
+  const [activeView, setActiveView] = useState<AdminView>("overview");
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-screen bg-[#0B1120]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-[#00D4FF]" />
+          <p className="text-slate-400 text-sm">Chargement du centre de commande...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b">
-        <div className="container mx-auto flex items-center justify-between py-4 px-4">
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Administration Plateforme</h1>
-          </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Nouveau propriétaire
-          </Button>
-        </div>
-      </div>
-
-      <div className="container mx-auto p-4 space-y-6">
-        {data?.stats && <AdminStats stats={data.stats} />}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Propriétaires de boutiques</h2>
-          <ShopOwnersList owners={data?.owners || []} />
-        </div>
-      </div>
-
-      <CreateOwnerDialog open={createOpen} onOpenChange={setCreateOpen} />
+    <div className="flex h-screen bg-gradient-to-br from-[#0B1120] via-[#0F172A] to-[#0B1120] text-white overflow-hidden">
+      <AdminSidebar active={activeView} onNavigate={setActiveView} />
+      <main className="flex-1 overflow-auto p-6">
+        {activeView === "overview" && <AdminOverview />}
+        {activeView === "shops" && <AdminShopsView />}
+        {activeView === "announcements" && <AdminAnnouncementsView />}
+        {activeView === "feedback" && <AdminFeedbackInbox />}
+      </main>
     </div>
   );
 };

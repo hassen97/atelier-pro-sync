@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_reads: {
+        Row: {
+          announcement_id: string
+          id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          id?: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "platform_announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -179,6 +208,63 @@ export type Database = {
           },
         ]
       }
+      platform_announcements: {
+        Row: {
+          changes_fixes: string | null
+          created_by: string
+          id: string
+          new_features: string | null
+          published_at: string
+          title: string
+        }
+        Insert: {
+          changes_fixes?: string | null
+          created_by: string
+          id?: string
+          new_features?: string | null
+          published_at?: string
+          title: string
+        }
+        Update: {
+          changes_fixes?: string | null
+          created_by?: string
+          id?: string
+          new_features?: string | null
+          published_at?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      platform_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          shop_name: string
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          shop_name?: string
+          status?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          shop_name?: string
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category_id: string | null
@@ -238,6 +324,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_locked: boolean
           phone: string | null
           updated_at: string
           user_id: string
@@ -248,6 +335,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_locked?: boolean
           phone?: string | null
           updated_at?: string
           user_id: string
@@ -258,6 +346,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_locked?: boolean
           phone?: string | null
           updated_at?: string
           user_id?: string

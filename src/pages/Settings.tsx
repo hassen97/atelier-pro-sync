@@ -37,7 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettingsContext();
-  const { settings: notifSettings, saveSettings: saveNotifSettings } = useNotificationSettings();
+  const { settings: notifSettings, saveSettings: saveNotifSettings, permissionStatus, requestBrowserPermission } = useNotificationSettings();
   const { 
     settings: backupSettings, 
     syncing, 
@@ -265,6 +265,48 @@ export default function Settings() {
                 <Switch 
                   checked={notifSettings.paymentReminders}
                   onCheckedChange={(checked) => saveNotifSettings({ paymentReminders: checked })}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="font-medium">Notifications navigateur</p>
+                  <p className="text-sm text-muted-foreground">
+                    Recevoir les alertes sur votre appareil
+                  </p>
+                  <Badge
+                    variant={
+                      permissionStatus === "granted" ? "default" :
+                      permissionStatus === "denied" ? "destructive" : "secondary"
+                    }
+                    className={
+                      permissionStatus === "granted" ? "bg-success/10 text-success border-success/20" :
+                      permissionStatus === "denied" ? "" : ""
+                    }
+                  >
+                    {permissionStatus === "granted" ? "Autorisé" :
+                     permissionStatus === "denied" ? "Bloqué" :
+                     permissionStatus === "unsupported" ? "Non supporté" : "Non demandé"}
+                  </Badge>
+                  {permissionStatus === "denied" && (
+                    <p className="text-xs text-destructive">
+                      Modifiez l'autorisation dans les paramètres de votre navigateur
+                    </p>
+                  )}
+                </div>
+                <Switch
+                  checked={notifSettings.browserNotifications}
+                  disabled={permissionStatus === "unsupported"}
+                  onCheckedChange={async (checked) => {
+                    if (checked) {
+                      const granted = await requestBrowserPermission();
+                      if (granted) {
+                        saveNotifSettings({ browserNotifications: true });
+                      }
+                    } else {
+                      saveNotifSettings({ browserNotifications: false });
+                    }
+                  }}
                 />
               </div>
             </CardContent>

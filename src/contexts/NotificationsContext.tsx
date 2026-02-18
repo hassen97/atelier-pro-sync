@@ -1,15 +1,15 @@
-import { createContext, useContext, ReactNode, useEffect } from "react";
-import { useNotifications, Notification } from "@/hooks/useNotifications";
+import { createContext, useContext, ReactNode, useEffect, useCallback } from "react";
+import { useNotifications, type Notification as AppNotification } from "@/hooks/useNotifications";
 import { useNotificationSettings } from "@/hooks/useNotificationSettings";
 import { useProducts } from "@/hooks/useProducts";
 import { useRepairs } from "@/hooks/useRepairs";
 
 interface NotificationsContextType {
-  notifications: Notification[];
+  notifications: AppNotification[];
   unreadCount: number;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
-  addNotification: (notification: Omit<Notification, "id" | "createdAt">) => void;
+  addNotification: (notification: Omit<AppNotification, "id" | "createdAt">) => void;
   removeNotification: (id: string) => void;
   clearAllNotifications: () => void;
 }
@@ -37,6 +37,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { data: products } = useProducts();
   const { data: repairs } = useRepairs();
 
+  // Helper to send browser notification
+  const sendBrowserNotification = useCallback((title: string, body: string) => {
+    if (notifSettings.browserNotifications && "Notification" in window && Notification.permission === "granted") {
+      new Notification(title, {
+        body,
+        icon: "/favicon.png",
+      });
+    }
+  }, [notifSettings.browserNotifications]);
+
   // Check for low stock products - uses persisted tracking
   useEffect(() => {
     if (!notifSettings.lowStockAlerts || !products) return;
@@ -44,42 +54,46 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     products.forEach((product) => {
       if (product.quantity <= product.min_quantity && !hasNotifiedProduct(product.id)) {
         addNotifiedProduct(product.id);
+        const title = "Stock faible";
+        const description = `${product.name} - ${product.quantity} unité(s) restante(s)`;
         addNotification({
           type: "stock",
-          title: "Stock faible",
-          description: `${product.name} - ${product.quantity} unité(s) restante(s)`,
+          title,
+          description,
           time: "À l'instant",
           read: false,
         });
+        sendBrowserNotification(title, description);
       } else if (product.quantity > product.min_quantity && hasNotifiedProduct(product.id)) {
-        // Remove from tracking if stock is replenished (allows re-notification if it drops again)
         removeNotifiedProduct(product.id);
       }
     });
-  }, [products, notifSettings.lowStockAlerts, addNotification, hasNotifiedProduct, addNotifiedProduct, removeNotifiedProduct]);
+  }, [products, notifSettings.lowStockAlerts, addNotification, hasNotifiedProduct, addNotifiedProduct, removeNotifiedProduct, sendBrowserNotification]);
 
   // Check for completed/delivered repairs - uses persisted tracking
   useEffect(() => {
     if (!repairs) return;
 
     repairs.forEach((repair) => {
-      // Notify when a repair is completed
       if (
         (repair.status === "completed" || repair.status === "delivered") &&
         !hasNotifiedRepair(repair.id)
       ) {
         addNotifiedRepair(repair.id);
         const customerName = (repair as any).customer?.name || "Client anonyme";
+        const title = repair.status === "completed" ? "Réparation terminée" : "Réparation livrée";
+        const description = `${repair.device_model} - ${customerName}`;
         addNotification({
           type: "repair",
-          title: repair.status === "completed" ? "Réparation terminée" : "Réparation livrée",
-          description: `${repair.device_model} - ${customerName}`,
+          title,
+          description,
           time: "À l'instant",
           read: false,
         });
+        sendBrowserNotification(title, description);
       }
     });
-  }, [repairs, addNotification, hasNotifiedRepair, addNotifiedRepair]);
+  }, [repairs, addNotification, hasNotifiedRepair, addNotifiedRepair, sendBrowserNotification]);
 
   return (
     <NotificationsContext.Provider

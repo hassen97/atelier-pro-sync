@@ -60,7 +60,7 @@ export function useAdminData() {
     queryKey: ["admin-data"],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("admin-manage-users", {
-        method: "GET",
+        body: { action: "list" },
       });
       if (error) throw error;
       return data as { owners: ShopOwner[]; stats: AdminStats };

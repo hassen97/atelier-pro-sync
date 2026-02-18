@@ -151,6 +151,34 @@ export function useSearchUsers() {
   });
 }
 
+// Create employee account via edge function
+export function useCreateEmployee() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      fullName: string;
+      username: string;
+      password: string;
+      role: "employee" | "manager" | "admin";
+      allowedPages: string[];
+    }) => {
+      const { data, error } = await supabase.functions.invoke("create-employee", {
+        body: params,
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success("Compte employé créé et ajouté à l'équipe");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Erreur lors de la création du compte");
+    },
+  });
+}
+
 // Add team member
 export function useAddTeamMember() {
   const queryClient = useQueryClient();

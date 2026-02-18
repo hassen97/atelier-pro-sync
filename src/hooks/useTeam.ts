@@ -1,0 +1,368 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
+export interface TeamMember {
+  id: string;
+  owner_id: string;
+  member_user_id: string;
+  role: "super_admin" | "admin" | "manager" | "employee";
+  allowed_pages: string[];
+  status: string;
+  created_at: string;
+  profile?: {
+    username: string | null;
+    full_name: string | null;
+  };
+}
+
+export interface TeamTask {
+  id: string;
+  owner_id: string;
+  assigned_to: string;
+  title: string;
+  description: string | null;
+  status: string;
+  due_date: string | null;
+  created_at: string;
+  assignee_profile?: {
+    username: string | null;
+    full_name: string | null;
+  };
+}
+
+// All available pages for permission assignment
+export const ALL_PAGES = [
+  { href: "/", label: "Tableau de bord" },
+  { href: "/pos", label: "Point de Vente" },
+  { href: "/repairs", label: "Réparations" },
+  { href: "/inventory", label: "Stock" },
+  { href: "/customers", label: "Clients" },
+  { href: "/suppliers", label: "Fournisseurs" },
+  { href: "/expenses", label: "Dépenses" },
+  { href: "/customer-debts", label: "Dettes Clients" },
+  { href: "/invoices", label: "Factures" },
+  { href: "/statistics", label: "Statistiques" },
+  { href: "/profit", label: "Profit" },
+  { href: "/settings", label: "Paramètres" },
+] as const;
+
+// Check if current user is a super_admin (owner)
+export function useIsOwner() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["user-role", user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      return data?.role === "super_admin";
+    },
+    enabled: !!user,
+  });
+}
+
+// Get team membership info for the current user (as employee)
+export function useMyTeamInfo() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["my-team-info", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("*")
+        .eq("member_user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+      if (error) throw error;
+      return data as TeamMember | null;
+    },
+    enabled: !!user,
+  });
+}
+
+// Get the effective user_id for data queries (owner's ID if team member)
+export function useEffectiveUserId() {
+  const { user } = useAuth();
+  const { data: teamInfo } = useMyTeamInfo();
+  const { data: isOwner } = useIsOwner();
+
+  if (!user) return null;
+  // If user is a team member, use the owner's user_id
+  if (teamInfo?.owner_id && !isOwner) return teamInfo.owner_id;
+  // Otherwise use own user_id
+  return user.id;
+}
+
+// List team members (for owner)
+export function useTeamMembers() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["team-members", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("*")
+        .eq("owner_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+
+      // Fetch profiles for each member
+      const memberIds = (data || []).map((m: any) => m.member_user_id);
+      if (memberIds.length === 0) return [];
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, full_name")
+        .in("user_id", memberIds);
+
+      const profileMap = new Map(
+        (profiles || []).map((p: any) => [p.user_id, p])
+      );
+
+      return (data || []).map((m: any) => ({
+        ...m,
+        profile: profileMap.get(m.member_user_id) || null,
+      })) as TeamMember[];
+    },
+    enabled: !!user,
+  });
+}
+
+// Search users by username
+export function useSearchUsers() {
+  return useMutation({
+    mutationFn: async (username: string) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, username, full_name")
+        .ilike("username", `%${username}%`)
+        .limit(5);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+}
+
+// Add team member
+export function useAddTeamMember() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      memberUserId,
+      role,
+      allowedPages,
+    }: {
+      memberUserId: string;
+      role: "employee" | "manager" | "admin";
+      allowedPages: string[];
+    }) => {
+      if (!user) throw new Error("Non authentifié");
+      const { error } = await supabase.from("team_members").insert({
+        owner_id: user.id,
+        member_user_id: memberUserId,
+        role,
+        allowed_pages: allowedPages,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success("Membre ajouté à l'équipe");
+    },
+    onError: (err: any) => {
+      if (err.message?.includes("duplicate")) {
+        toast.error("Cet utilisateur fait déjà partie de votre équipe");
+      } else {
+        toast.error("Erreur lors de l'ajout du membre");
+      }
+    },
+  });
+}
+
+// Remove team member
+export function useRemoveTeamMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (memberId: string) => {
+      const { error } = await supabase
+        .from("team_members")
+        .update({ status: "removed" })
+        .eq("id", memberId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success("Membre retiré de l'équipe");
+    },
+    onError: () => toast.error("Erreur lors du retrait du membre"),
+  });
+}
+
+// Update member permissions
+export function useUpdateMemberPermissions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      memberId,
+      allowedPages,
+      role,
+    }: {
+      memberId: string;
+      allowedPages: string[];
+      role?: "employee" | "manager" | "admin";
+    }) => {
+      const update: any = { allowed_pages: allowedPages };
+      if (role) update.role = role;
+      const { error } = await supabase
+        .from("team_members")
+        .update(update)
+        .eq("id", memberId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success("Permissions mises à jour");
+    },
+    onError: () => toast.error("Erreur lors de la mise à jour"),
+  });
+}
+
+// Team Tasks
+export function useTeamTasks() {
+  const { user } = useAuth();
+  const { data: isOwner } = useIsOwner();
+  const { data: teamInfo } = useMyTeamInfo();
+
+  return useQuery({
+    queryKey: ["team-tasks", user?.id, isOwner],
+    queryFn: async () => {
+      if (!user) return [];
+
+      let query = supabase.from("team_tasks").select("*").order("created_at", { ascending: false });
+
+      if (isOwner) {
+        query = query.eq("owner_id", user.id);
+      } else {
+        query = query.eq("assigned_to", user.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      // Fetch assignee profiles
+      const assigneeIds = [...new Set((data || []).map((t: any) => t.assigned_to))];
+      if (assigneeIds.length === 0) return [];
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, full_name")
+        .in("user_id", assigneeIds);
+
+      const profileMap = new Map(
+        (profiles || []).map((p: any) => [p.user_id, p])
+      );
+
+      return (data || []).map((t: any) => ({
+        ...t,
+        assignee_profile: profileMap.get(t.assigned_to) || null,
+      })) as TeamTask[];
+    },
+    enabled: !!user && (isOwner !== undefined || teamInfo !== undefined),
+  });
+}
+
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (task: {
+      assigned_to: string;
+      title: string;
+      description?: string;
+      due_date?: string;
+    }) => {
+      if (!user) throw new Error("Non authentifié");
+      const { error } = await supabase.from("team_tasks").insert({
+        owner_id: user.id,
+        ...task,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-tasks"] });
+      toast.success("Tâche créée");
+    },
+    onError: () => toast.error("Erreur lors de la création de la tâche"),
+  });
+}
+
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      taskId,
+      updates,
+    }: {
+      taskId: string;
+      updates: { status?: string; title?: string; description?: string; due_date?: string | null };
+    }) => {
+      const { error } = await supabase
+        .from("team_tasks")
+        .update(updates)
+        .eq("id", taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-tasks"] });
+      toast.success("Tâche mise à jour");
+    },
+    onError: () => toast.error("Erreur lors de la mise à jour"),
+  });
+}
+
+export function useDeleteTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase
+        .from("team_tasks")
+        .delete()
+        .eq("id", taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team-tasks"] });
+      toast.success("Tâche supprimée");
+    },
+    onError: () => toast.error("Erreur lors de la suppression"),
+  });
+}
+
+// Hook for allowed pages (used in sidebar filtering)
+export function useAllowedPages() {
+  const { data: isOwner, isLoading: ownerLoading } = useIsOwner();
+  const { data: teamInfo, isLoading: teamLoading } = useMyTeamInfo();
+
+  const isLoading = ownerLoading || teamLoading;
+
+  if (isLoading) return { allowedPages: null, isLoading: true, isTeamMember: false };
+
+  // Owner or standalone user: all pages
+  if (isOwner || !teamInfo) {
+    return { allowedPages: null, isLoading: false, isTeamMember: false };
+  }
+
+  // Team member: filtered pages (always include "/") dashboard
+  const pages = teamInfo.allowed_pages || [];
+  const allPages = pages.includes("/") ? pages : ["/", ...pages];
+  return { allowedPages: allPages, isLoading: false, isTeamMember: true };
+}

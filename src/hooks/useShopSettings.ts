@@ -7,6 +7,7 @@ export interface ShopSettings {
   id?: string;
   shop_name: string;
   currency: string;
+  country: string;
   tax_rate: number;
   tax_enabled: boolean;
   stock_alert_threshold: number;
@@ -15,6 +16,7 @@ export interface ShopSettings {
 const defaultSettings: ShopSettings = {
   shop_name: "Mon Atelier",
   currency: "TND",
+  country: "TN",
   tax_rate: 19,
   tax_enabled: true,
   stock_alert_threshold: 5,
@@ -50,6 +52,7 @@ export function useShopSettings() {
           id: data.id,
           shop_name: data.shop_name,
           currency: data.currency,
+          country: (data as any).country || "TN",
           tax_rate: Number(data.tax_rate),
           tax_enabled: data.tax_enabled ?? true,
           stock_alert_threshold: data.stock_alert_threshold,
@@ -80,11 +83,12 @@ export function useShopSettings() {
           .update({
             shop_name: updatedSettings.shop_name,
             currency: updatedSettings.currency,
+            country: updatedSettings.country,
             tax_rate: updatedSettings.tax_rate,
             tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq("id", settings.id);
 
         if (error) throw error;
@@ -96,10 +100,11 @@ export function useShopSettings() {
             user_id: user.id,
             shop_name: updatedSettings.shop_name,
             currency: updatedSettings.currency,
+            country: updatedSettings.country,
             tax_rate: updatedSettings.tax_rate,
             tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
-          })
+          } as any)
           .select()
           .single();
 

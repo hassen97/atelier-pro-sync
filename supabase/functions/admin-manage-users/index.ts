@@ -8,12 +8,14 @@ const corsHeaders = {
 };
 
 const ActionSchema = z.object({
-  action: z.enum(["list", "delete", "reset-password", "create", "lock", "unlock", "get-revenue", "get-activity"]).optional(),
+  action: z.enum(["list", "delete", "reset-password", "create", "lock", "unlock", "get-revenue", "get-activity", "update-settings"]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
   fullName: z.string().trim().min(1).max(100).optional(),
   username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional(),
   password: z.string().min(8).max(128).optional(),
+  country: z.string().min(2).max(3).optional(),
+  currency: z.string().min(3).max(4).optional(),
 });
 
 Deno.serve(async (req) => {
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
 
         const { data: shopSettings } = await adminClient
           .from("shop_settings")
-          .select("user_id, shop_name");
+          .select("user_id, shop_name, country, currency");
 
         const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
         const teamCountMap = new Map<string, number>();
@@ -109,7 +111,7 @@ Deno.serve(async (req) => {
         (repairCounts || []).forEach((r: any) => {
           repairCountMap.set(r.user_id, (repairCountMap.get(r.user_id) || 0) + 1);
         });
-        const shopNameMap = new Map((shopSettings || []).map((s: any) => [s.user_id, s.shop_name]));
+        const shopMap = new Map((shopSettings || []).map((s: any) => [s.user_id, { shop_name: s.shop_name, country: s.country, currency: s.currency }]));
 
         const owners = (profiles || [])
           .filter((p: any) => roleMap.get(p.user_id) === "super_admin")
@@ -118,7 +120,9 @@ Deno.serve(async (req) => {
             role: roleMap.get(p.user_id),
             team_count: teamCountMap.get(p.user_id) || 0,
             repair_count: repairCountMap.get(p.user_id) || 0,
-            shop_name: shopNameMap.get(p.user_id) || "Mon Atelier",
+            shop_name: shopMap.get(p.user_id)?.shop_name || "Mon Atelier",
+            country: shopMap.get(p.user_id)?.country || "TN",
+            currency: shopMap.get(p.user_id)?.currency || "TND",
           }));
 
         const stats = {
@@ -174,7 +178,12 @@ Deno.serve(async (req) => {
             email,
             password: body.password,
             email_confirm: true,
-            user_metadata: { full_name: body.fullName, username: body.username.toLowerCase() },
+            user_metadata: {
+              full_name: body.fullName,
+              username: body.username.toLowerCase(),
+              ...(body.country && { country: body.country }),
+              ...(body.currency && { currency: body.currency }),
+            },
           });
         if (createError) throw createError;
         return new Response(
@@ -299,6 +308,28 @@ Deno.serve(async (req) => {
          .slice(0, 15);
 
         return new Response(JSON.stringify({ activity }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "update-settings") {
+        if (!body.userId) {
+          return new Response(JSON.stringify({ error: "userId required" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const updateData: Record<string, unknown> = {};
+        if (body.country) updateData.country = body.country;
+        if (body.currency) updateData.currency = body.currency;
+        updateData.updated_at = new Date().toISOString();
+
+        const { error } = await adminClient
+          .from("shop_settings")
+          .update(updateData)
+          .eq("user_id", body.userId);
+
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

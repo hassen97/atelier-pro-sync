@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign } from "lucide-react";
+import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe } from "lucide-react";
+import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -19,6 +21,8 @@ export default function Auth() {
   const [registerUsername, setRegisterUsername] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerFullName, setRegisterFullName] = useState("");
+  const [registerCountry, setRegisterCountry] = useState("TN");
+  const [registerCurrency, setRegisterCurrency] = useState("TND");
   const [confirmPassword, setConfirmPassword] = useState("");
   
   const [loading, setLoading] = useState(false);
@@ -83,7 +87,7 @@ export default function Auth() {
 
     setLoading(true);
 
-    const { error } = await signUp(registerUsername, registerPassword, registerFullName);
+    const { error } = await signUp(registerUsername, registerPassword, registerFullName, registerCountry, registerCurrency);
     
     if (error) {
       if (error.message.includes("already registered")) {
@@ -96,6 +100,8 @@ export default function Auth() {
       setRegisterUsername("");
       setRegisterPassword("");
       setRegisterFullName("");
+      setRegisterCountry("TN");
+      setRegisterCurrency("TND");
       setConfirmPassword("");
     }
     
@@ -227,6 +233,47 @@ export default function Auth() {
                         required
                         disabled={loading}
                       />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="register-country">Pays</Label>
+                      <Select
+                        value={registerCountry}
+                        onValueChange={(val) => {
+                          setRegisterCountry(val);
+                          const curr = getCurrencyForCountry(val);
+                          if (curr) setRegisterCurrency(curr.code);
+                        }}
+                        disabled={loading}
+                      >
+                        <SelectTrigger id="register-country">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map((c) => (
+                            <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-currency">Devise</Label>
+                      <Select
+                        value={registerCurrency}
+                        onValueChange={setRegisterCurrency}
+                        disabled={loading}
+                      >
+                        <SelectTrigger id="register-currency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currencies.map((c) => (
+                            <SelectItem key={c.code} value={c.code}>{c.symbol} - {c.code}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

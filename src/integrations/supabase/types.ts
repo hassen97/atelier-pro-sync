@@ -559,6 +559,7 @@ export type Database = {
       }
       shop_settings: {
         Row: {
+          country: string
           created_at: string
           currency: string
           id: string
@@ -570,6 +571,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          country?: string
           created_at?: string
           currency?: string
           id?: string
@@ -581,6 +583,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          country?: string
           created_at?: string
           currency?: string
           id?: string

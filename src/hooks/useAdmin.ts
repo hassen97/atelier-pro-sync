@@ -13,6 +13,8 @@ export interface ShopOwner {
   repair_count: number;
   shop_name: string;
   is_locked: boolean;
+  country: string;
+  currency: string;
 }
 
 export interface AdminStats {
@@ -136,7 +138,7 @@ export function useResetOwnerPassword() {
 export function useCreateOwner() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { fullName: string; username: string; password: string }) => {
+    mutationFn: async (params: { fullName: string; username: string; password: string; country?: string; currency?: string }) => {
       const { data, error } = await supabase.functions.invoke("admin-manage-users", {
         body: { action: "create", ...params },
       });

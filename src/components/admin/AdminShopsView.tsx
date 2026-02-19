@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useAdminData, useDeleteOwner, useResetOwnerPassword, useLockOwner } from "@/hooks/useAdmin";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { EditOwnerSettingsDialog } from "./EditOwnerSettingsDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, KeyRound, Lock, Unlock, Store } from "lucide-react";
+import { Plus, Trash2, KeyRound, Lock, Unlock, Store, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
 
 export function AdminShopsView() {
   const { data } = useAdminData();
@@ -14,6 +16,7 @@ export function AdminShopsView() {
   const lockOwner = useLockOwner();
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
 
   const owners = data?.owners || [];
 
@@ -55,6 +58,8 @@ export function AdminShopsView() {
                 <span>•</span>
                 <span>{owner.shop_name}</span>
                 <span>•</span>
+                <span>{getCountryByCode(owner.country || "TN")?.flag || "🇹🇳"} {getCurrencyByCode(owner.currency || "TND")?.code || "TND"}</span>
+                <span>•</span>
                 <span>{owner.team_count} membres</span>
                 <span>•</span>
                 <span>{owner.repair_count} réparations</span>
@@ -64,6 +69,20 @@ export function AdminShopsView() {
               </p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-slate-400 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10"
+                onClick={() => setEditTarget({
+                  userId: owner.user_id,
+                  name: owner.full_name || owner.username || "",
+                  country: owner.country || "TN",
+                  currency: owner.currency || "TND",
+                })}
+                title="Modifier pays/devise"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -112,6 +131,16 @@ export function AdminShopsView() {
           onOpenChange={() => setResetTarget(null)}
           userId={resetTarget.userId}
           userName={resetTarget.name}
+        />
+      )}
+      {editTarget && (
+        <EditOwnerSettingsDialog
+          open={!!editTarget}
+          onOpenChange={() => setEditTarget(null)}
+          userId={editTarget.userId}
+          userName={editTarget.name}
+          currentCountry={editTarget.country}
+          currentCurrency={editTarget.currency}
         />
       )}
     </div>

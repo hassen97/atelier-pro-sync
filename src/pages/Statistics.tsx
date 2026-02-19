@@ -17,8 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/useCurrency";
 import {
   BarChart,
   Bar,
@@ -39,6 +39,7 @@ export default function Statistics() {
   const [period, setPeriod] = useState("month");
   const { data: stats, isLoading } = useStatistics(period);
   const { settings } = useShopSettingsContext();
+  const { format } = useCurrency();
 
   const handleExportPDF = () => {
     if (!stats) {
@@ -54,13 +55,13 @@ Date: ${new Date().toLocaleDateString("fr-TN")}
 
 RÉSUMÉ
 ------
-Ventes: ${stats.totals.salesCount} transactions - ${formatCurrency(stats.totals.salesRevenue)}
-Réparations: ${stats.totals.repairsCount} interventions - ${formatCurrency(stats.totals.repairsRevenue)}
-Total revenus: ${formatCurrency(stats.totals.salesRevenue + stats.totals.repairsRevenue)}
+Ventes: ${stats.totals.salesCount} transactions - ${format(stats.totals.salesRevenue)}
+Réparations: ${stats.totals.repairsCount} interventions - ${format(stats.totals.repairsRevenue)}
+Total revenus: ${format(stats.totals.salesRevenue + stats.totals.repairsRevenue)}
 
 MEILLEURES VENTES
 -----------------
-${stats.topProducts.map((p, i) => `${i + 1}. ${p.name} - ${p.sales} unités - ${formatCurrency(p.revenue)}`).join("\n")}
+${stats.topProducts.map((p, i) => `${i + 1}. ${p.name} - ${p.sales} unités - ${format(p.revenue)}`).join("\n")}
 
 RÉPARTITION PAR CATÉGORIE
 -------------------------
@@ -127,7 +128,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
             <BarChart3 className="h-5 w-5" />
             Évolution des ventes et réparations
           </CardTitle>
-          <CardDescription>Comparaison mensuelle (en DT)</CardDescription>
+          <CardDescription>Comparaison mensuelle</CardDescription>
         </CardHeader>
         <CardContent>
           {monthlyData.length > 0 ? (
@@ -144,7 +145,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                         border: "1px solid hsl(var(--border))",
                         borderRadius: "8px",
                       }}
-                      formatter={(value: number) => formatCurrency(value)}
+                      formatter={(value: number) => format(value)}
                     />
                     <Bar dataKey="ventes" fill="hsl(217, 91%, 40%)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="réparations" fill="hsl(187, 72%, 41%)" radius={[4, 4, 0, 0]} />
@@ -196,7 +197,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                       <p className="text-xs text-muted-foreground">{product.sales} unités</p>
                     </div>
                     <span className="font-semibold font-mono-numbers text-sm">
-                      {formatCurrency(product.revenue)}
+                      {format(product.revenue)}
                     </span>
                   </div>
                 ))}

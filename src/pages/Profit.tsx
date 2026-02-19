@@ -22,16 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { useProfit } from "@/hooks/useProfit";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 
 export default function Profit() {
   const [period, setPeriod] = useState("month");
   const { data: profitData, isLoading } = useProfit(period);
   const { settings } = useShopSettingsContext();
+  const { format } = useCurrency();
 
   const handleExport = () => {
     if (!profitData) {
@@ -47,20 +48,20 @@ Date: ${new Date().toLocaleDateString("fr-TN")}
 
 REVENUS
 -------
-Ventes produits: ${formatCurrency(profitData.revenue.sales)}
-Réparations: ${formatCurrency(profitData.revenue.repairs)}
-Total revenus: ${formatCurrency(profitData.revenue.total)}
+Ventes produits: ${format(profitData.revenue.sales)}
+Réparations: ${format(profitData.revenue.repairs)}
+Total revenus: ${format(profitData.revenue.total)}
 
 DÉPENSES
 --------
-Achats stock: ${formatCurrency(profitData.expenses.stock)}
-Charges fixes: ${formatCurrency(profitData.expenses.fixed)}
-Autres dépenses: ${formatCurrency(profitData.expenses.other)}
-Total dépenses: ${formatCurrency(profitData.expenses.total)}
+Achats stock: ${format(profitData.expenses.stock)}
+Charges fixes: ${format(profitData.expenses.fixed)}
+Autres dépenses: ${format(profitData.expenses.other)}
+Total dépenses: ${format(profitData.expenses.total)}
 
 RÉSULTAT
 --------
-Bénéfice net: ${formatCurrency(profitData.profit)}
+Bénéfice net: ${format(profitData.profit)}
 Marge bénéficiaire: ${profitData.profitMargin.toFixed(1)}%
 
 MARGES PAR PRODUIT
@@ -131,20 +132,20 @@ Généré le ${new Date().toLocaleString("fr-TN")}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Chiffre d'affaires"
-          value={formatCurrency(data.revenue.total)}
+          value={format(data.revenue.total)}
           icon={TrendingUp}
           trend={data.revenueTrend !== 0 ? { value: Math.round(data.revenueTrend * 10) / 10, label: "vs période précédente" } : undefined}
           variant="success"
         />
         <StatCard
           title="Dépenses totales"
-          value={formatCurrency(data.expenses.total)}
+          value={format(data.expenses.total)}
           icon={TrendingDown}
           variant="destructive"
         />
         <StatCard
           title="Bénéfice net"
-          value={formatCurrency(data.profit)}
+          value={format(data.profit)}
           icon={DollarSign}
           trend={data.profitTrend !== 0 ? { value: Math.round(data.profitTrend * 10) / 10, label: "vs période précédente" } : undefined}
           variant={data.profit >= 0 ? "success" : "destructive"}
@@ -177,7 +178,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                 </div>
               </div>
               <span className="font-bold font-mono-numbers text-success">
-                +{formatCurrency(data.revenue.sales)}
+                +{format(data.revenue.sales)}
               </span>
             </div>
             <div className="flex items-center justify-between p-4 rounded-lg bg-success/5 border border-success/20">
@@ -189,14 +190,14 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                 </div>
               </div>
               <span className="font-bold font-mono-numbers text-success">
-                +{formatCurrency(data.revenue.repairs)}
+                +{format(data.revenue.repairs)}
               </span>
             </div>
             <div className="pt-3 border-t">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Total revenus</span>
                 <span className="font-bold font-mono-numbers text-lg text-success">
-                  {formatCurrency(data.revenue.total)}
+                  {format(data.revenue.total)}
                 </span>
               </div>
             </div>
@@ -221,7 +222,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                 </div>
               </div>
               <span className="font-bold font-mono-numbers text-destructive">
-                -{formatCurrency(data.expenses.stock)}
+                -{format(data.expenses.stock)}
               </span>
             </div>
             <div className="flex items-center justify-between p-4 rounded-lg bg-destructive/5 border border-destructive/20">
@@ -233,7 +234,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                 </div>
               </div>
               <span className="font-bold font-mono-numbers text-destructive">
-                -{formatCurrency(data.expenses.fixed)}
+                -{format(data.expenses.fixed)}
               </span>
             </div>
             <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
@@ -245,14 +246,14 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                 </div>
               </div>
               <span className="font-bold font-mono-numbers">
-                -{formatCurrency(data.expenses.other)}
+                -{format(data.expenses.other)}
               </span>
             </div>
             <div className="pt-3 border-t">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Total dépenses</span>
                 <span className="font-bold font-mono-numbers text-lg text-destructive">
-                  {formatCurrency(data.expenses.total)}
+                  {format(data.expenses.total)}
                 </span>
               </div>
             </div>
@@ -278,7 +279,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{product.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(product.cost)} → {formatCurrency(product.price)} • {product.sales} ventes
+                      {format(product.cost)} → {format(product.price)} • {product.sales} ventes
                     </p>
                   </div>
                   <Badge
@@ -319,7 +320,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{repair.type}</p>
                     <p className="text-xs text-muted-foreground">
-                      Moy: {formatCurrency(repair.avgRevenue)} • Coût: {formatCurrency(repair.avgCost)} • {repair.count} réparations
+                      Moy: {format(repair.avgRevenue)} • Coût: {format(repair.avgCost)} • {repair.count} réparations
                     </p>
                   </div>
                   <Badge

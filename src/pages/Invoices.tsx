@@ -46,8 +46,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useInvoices, useUpdateInvoice, useDeleteInvoice, InvoiceWithRelations } from "@/hooks/useInvoices";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { toast } from "sonner";
@@ -69,6 +69,7 @@ export default function Invoices() {
   const updateInvoice = useUpdateInvoice();
   const deleteInvoice = useDeleteInvoice();
   const { settings } = useShopSettingsContext();
+  const { format } = useCurrency();
 
   const filteredInvoices = invoices.filter(
     (invoice) =>
@@ -94,7 +95,6 @@ export default function Invoices() {
   };
 
   const handleDownloadPDF = (invoice: InvoiceWithRelations) => {
-    // Generate PDF content
     const content = `
 FACTURE: ${invoice.invoice_number}
 ${settings.shop_name}
@@ -104,9 +104,9 @@ Client: ${invoice.customer?.name || "Client passager"}
 ${invoice.customer?.phone ? `Tél: ${invoice.customer.phone}` : ""}
 ================================
 ${invoice.repair ? `Réparation: ${invoice.repair.device_model}` : ""}
-${invoice.sale ? `Vente - Montant: ${formatCurrency(invoice.sale.total_amount)}` : ""}
+${invoice.sale ? `Vente - Montant: ${format(invoice.sale.total_amount)}` : ""}
 ================================
-TOTAL: ${formatCurrency(Number(invoice.total_amount))}
+TOTAL: ${format(Number(invoice.total_amount))}
 Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || invoice.status}
 ================================
     `.trim();
@@ -123,10 +123,7 @@ Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || in
 
   const handleCancel = async (invoice: InvoiceWithRelations) => {
     try {
-      await updateInvoice.mutateAsync({
-        id: invoice.id,
-        status: "cancelled",
-      });
+      await updateInvoice.mutateAsync({ id: invoice.id, status: "cancelled" });
       toast.success("Facture annulée");
     } catch (error) {
       toast.error("Erreur lors de l'annulation");
@@ -135,10 +132,7 @@ Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || in
 
   const handleMarkAsPaid = async (invoice: InvoiceWithRelations) => {
     try {
-      await updateInvoice.mutateAsync({
-        id: invoice.id,
-        status: "paid",
-      });
+      await updateInvoice.mutateAsync({ id: invoice.id, status: "paid" });
       toast.success("Facture marquée comme payée");
     } catch (error) {
       toast.error("Erreur lors de la mise à jour");
@@ -181,50 +175,24 @@ Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || in
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Factures"
-        description="Gestion et historique des factures"
-      >
+      <PageHeader title="Factures" description="Gestion et historique des factures">
         <Button variant="outline" onClick={handleExportExcel}>
           <Download className="h-4 w-4 mr-2" />
           Exporter Excel
         </Button>
       </PageHeader>
 
-      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          title="Total factures"
-          value={totalInvoices}
-          icon={FileText}
-          variant="default"
-        />
-        <StatCard
-          title="Montant total"
-          value={formatCurrency(totalAmount)}
-          icon={FileText}
-          variant="accent"
-        />
-        <StatCard
-          title="Montant encaissé"
-          value={formatCurrency(paidAmount)}
-          icon={FileText}
-          variant="success"
-        />
+        <StatCard title="Total factures" value={totalInvoices} icon={FileText} variant="default" />
+        <StatCard title="Montant total" value={format(totalAmount)} icon={FileText} variant="accent" />
+        <StatCard title="Montant encaissé" value={format(paidAmount)} icon={FileText} variant="success" />
       </div>
 
-      {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher par N° ou client..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
+        <Input placeholder="Rechercher par N° ou client..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
       </div>
 
-      {/* Invoices Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -242,20 +210,15 @@ Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || in
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Aucune facture trouvée
-                  </TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucune facture trouvée</TableCell>
                 </TableRow>
               ) : (
                 filteredInvoices.map((invoice) => {
                   const status = statusConfig[invoice.status as keyof typeof statusConfig] || statusConfig.pending;
                   const type = invoice.repair ? "Réparation" : "Vente";
-
                   return (
                     <TableRow key={invoice.id}>
-                      <TableCell className="font-mono text-sm font-medium">
-                        {invoice.invoice_number}
-                      </TableCell>
+                      <TableCell className="font-mono text-sm font-medium">{invoice.invoice_number}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
@@ -268,48 +231,20 @@ Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || in
                           {new Date(invoice.created_at).toLocaleDateString("fr-TN")}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{type}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono-numbers font-medium">
-                        {formatCurrency(Number(invoice.total_amount))}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={status.className}>{status.label}</Badge>
-                      </TableCell>
+                      <TableCell><Badge variant="secondary">{type}</Badge></TableCell>
+                      <TableCell className="text-right font-mono-numbers font-medium">{format(Number(invoice.total_amount))}</TableCell>
+                      <TableCell><Badge className={status.className}>{status.label}</Badge></TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleView(invoice)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Voir
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadPDF(invoice)}>
-                              <Download className="h-4 w-4 mr-2" />
-                              Télécharger
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handlePrint(invoice)}>
-                              <Printer className="h-4 w-4 mr-2" />
-                              Imprimer
-                            </DropdownMenuItem>
-                            {invoice.status === "pending" && (
-                              <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice)}>
-                                Marquer payée
-                              </DropdownMenuItem>
-                            )}
-                            {invoice.status !== "cancelled" && (
-                              <DropdownMenuItem 
-                                className="text-destructive"
-                                onClick={() => handleCancel(invoice)}
-                              >
-                                Annuler
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onClick={() => handleView(invoice)}><Eye className="h-4 w-4 mr-2" />Voir</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadPDF(invoice)}><Download className="h-4 w-4 mr-2" />Télécharger</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handlePrint(invoice)}><Printer className="h-4 w-4 mr-2" />Imprimer</DropdownMenuItem>
+                            {invoice.status === "pending" && <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice)}>Marquer payée</DropdownMenuItem>}
+                            {invoice.status !== "cancelled" && <DropdownMenuItem className="text-destructive" onClick={() => handleCancel(invoice)}>Annuler</DropdownMenuItem>}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -322,67 +257,33 @@ Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || in
         </CardContent>
       </Card>
 
-      {/* View Invoice Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-md print:max-w-full print:m-0">
           <DialogHeader>
             <DialogTitle>Facture {selectedInvoice?.invoice_number}</DialogTitle>
           </DialogHeader>
-
           {selectedInvoice && (
             <div className="space-y-4">
               <div className="text-center pb-4 border-b">
                 <h2 className="text-xl font-bold">{settings.shop_name}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(selectedInvoice.created_at).toLocaleDateString("fr-TN")}
-                </p>
+                <p className="text-sm text-muted-foreground">{new Date(selectedInvoice.created_at).toLocaleDateString("fr-TN")}</p>
               </div>
-
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Client:</span>
-                  <span className="font-medium">{selectedInvoice.customer?.name || "Client passager"}</span>
-                </div>
-                {selectedInvoice.customer?.phone && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Téléphone:</span>
-                    <span>{selectedInvoice.customer.phone}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Type:</span>
-                  <span>{selectedInvoice.repair ? "Réparation" : "Vente"}</span>
-                </div>
-                {selectedInvoice.repair && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Appareil:</span>
-                    <span>{selectedInvoice.repair.device_model}</span>
-                  </div>
-                )}
+                <div className="flex justify-between"><span className="text-muted-foreground">Client:</span><span className="font-medium">{selectedInvoice.customer?.name || "Client passager"}</span></div>
+                {selectedInvoice.customer?.phone && <div className="flex justify-between"><span className="text-muted-foreground">Téléphone:</span><span>{selectedInvoice.customer.phone}</span></div>}
+                <div className="flex justify-between"><span className="text-muted-foreground">Type:</span><span>{selectedInvoice.repair ? "Réparation" : "Vente"}</span></div>
+                {selectedInvoice.repair && <div className="flex justify-between"><span className="text-muted-foreground">Appareil:</span><span>{selectedInvoice.repair.device_model}</span></div>}
               </div>
-
               <div className="pt-4 border-t">
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Total:</span>
-                  <span>{formatCurrency(Number(selectedInvoice.total_amount))}</span>
-                </div>
+                <div className="flex justify-between text-lg font-bold"><span>Total:</span><span>{format(Number(selectedInvoice.total_amount))}</span></div>
                 <div className="flex justify-between mt-2">
                   <span className="text-muted-foreground">Statut:</span>
-                  <Badge className={statusConfig[selectedInvoice.status as keyof typeof statusConfig]?.className}>
-                    {statusConfig[selectedInvoice.status as keyof typeof statusConfig]?.label}
-                  </Badge>
+                  <Badge className={statusConfig[selectedInvoice.status as keyof typeof statusConfig]?.className}>{statusConfig[selectedInvoice.status as keyof typeof statusConfig]?.label}</Badge>
                 </div>
               </div>
-
               <div className="flex gap-2 pt-4 print:hidden">
-                <Button variant="outline" className="flex-1" onClick={() => handleDownloadPDF(selectedInvoice)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Télécharger
-                </Button>
-                <Button className="flex-1" onClick={() => window.print()}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimer
-                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => handleDownloadPDF(selectedInvoice)}><Download className="h-4 w-4 mr-2" />Télécharger</Button>
+                <Button className="flex-1" onClick={() => window.print()}><Printer className="h-4 w-4 mr-2" />Imprimer</Button>
               </div>
             </div>
           )}

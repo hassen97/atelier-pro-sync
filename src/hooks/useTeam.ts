@@ -140,10 +140,13 @@ export function useTeamMembers() {
 export function useSearchUsers() {
   return useMutation({
     mutationFn: async (username: string) => {
+      // Sanitize input: only allow alphanumeric and underscores
+      const sanitized = username.replace(/[^a-zA-Z0-9_]/g, '');
+      if (!sanitized) return [];
       const { data, error } = await supabase
         .from("profiles")
         .select("user_id, username, full_name")
-        .ilike("username", `%${username}%`)
+        .ilike("username", `%${sanitized}%`)
         .limit(5);
       if (error) throw error;
       return data || [];

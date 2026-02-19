@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useProducts } from "@/hooks/useProducts";
 import { useCreateSale } from "@/hooks/useSales";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -40,6 +40,7 @@ export default function POS() {
   const { data: customers = [], isLoading: customersLoading } = useCustomers();
   const createSale = useCreateSale();
   const { settings } = useShopSettingsContext();
+  const { format } = useCurrency();
 
   // Extract unique categories from products
   const categories = [...new Set(products.map((p: any) => p.category?.name).filter(Boolean))];
@@ -57,7 +58,7 @@ export default function POS() {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
         if (existing.quantity >= product.quantity) {
-          return prev; // Can't add more than stock
+          return prev;
         }
         return prev.map((item) =>
           item.id === product.id
@@ -82,7 +83,7 @@ export default function POS() {
         .map((item) => {
           if (item.id !== id) return item;
           const newQuantity = item.quantity + delta;
-          if (newQuantity > item.maxStock) return item; // Can't exceed stock
+          if (newQuantity > item.maxStock) return item;
           return { ...item, quantity: Math.max(0, newQuantity) };
         })
         .filter((item) => item.quantity > 0)
@@ -156,7 +157,6 @@ export default function POS() {
       <div className="grid gap-6 lg:grid-cols-3 h-[calc(100%-5rem)]">
         {/* Products Section */}
         <div className="lg:col-span-2 flex flex-col min-h-0">
-          {/* Search & Categories */}
           <div className="space-y-3 mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -188,7 +188,6 @@ export default function POS() {
             </div>
           </div>
 
-          {/* Products Grid */}
           <div className="flex-1 overflow-auto">
             {filteredProducts.length === 0 ? (
               <div className="flex items-center justify-center h-32 text-muted-foreground">
@@ -223,7 +222,7 @@ export default function POS() {
                           {product.category?.name || "Sans catégorie"}
                         </Badge>
                         <span className="font-bold font-mono-numbers text-primary">
-                          {formatCurrency(product.sell_price)}
+                          {format(product.sell_price)}
                         </span>
                       </div>
                     </CardContent>
@@ -251,7 +250,6 @@ export default function POS() {
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col min-h-0 p-4 pt-0">
-            {/* Customer Selection */}
             <Select
               value={selectedCustomerId || "__none__"}
               onValueChange={(value) => setSelectedCustomerId(value === "__none__" ? "" : value)}
@@ -270,7 +268,6 @@ export default function POS() {
               </SelectContent>
             </Select>
 
-            {/* Cart Items */}
             <div className="flex-1 overflow-auto space-y-2 min-h-0">
               {cart.length === 0 ? (
                 <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
@@ -287,32 +284,14 @@ export default function POS() {
                         <p className="text-sm font-medium truncate">{item.name}</p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, -1)}
-                        >
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, -1)}>
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="w-6 text-center text-sm font-medium">
-                          {item.quantity}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, 1)}
-                          disabled={item.quantity >= item.maxStock}
-                        >
+                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, 1)} disabled={item.quantity >= item.maxStock}>
                           <Plus className="h-3 w-3" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeFromCart(item.id)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeFromCart(item.id)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -328,7 +307,7 @@ export default function POS() {
                       />
                       <span className="text-xs text-muted-foreground">× {item.quantity}</span>
                       <span className="text-xs font-medium font-mono-numbers ml-auto">
-                        {formatCurrency(item.price * item.quantity)}
+                        {format(item.price * item.quantity)}
                       </span>
                       {item.price < item.originalPrice && (
                         <Badge variant="secondary" className="text-[10px] shrink-0">
@@ -341,26 +320,24 @@ export default function POS() {
               )}
             </div>
 
-            {/* Totals */}
             <div className="shrink-0 pt-3 space-y-2">
               <Separator />
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Sous-total</span>
-                <span className="font-mono-numbers">{formatCurrency(subtotal)}</span>
+                <span className="font-mono-numbers">{format(subtotal)}</span>
               </div>
               {settings.tax_enabled && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">TVA ({settings.tax_rate}%)</span>
-                  <span className="font-mono-numbers">{formatCurrency(tax)}</span>
+                  <span className="font-mono-numbers">{format(tax)}</span>
                 </div>
               )}
               <Separator />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
-                <span className="font-mono-numbers text-primary">{formatCurrency(total)}</span>
+                <span className="font-mono-numbers text-primary">{format(total)}</span>
               </div>
 
-              {/* Payment Buttons */}
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Button 
                   variant="outline" 

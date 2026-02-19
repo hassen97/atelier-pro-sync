@@ -34,8 +34,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useSuppliers, useDeleteSupplier, Supplier } from "@/hooks/useSuppliers";
 import { SupplierDialog } from "@/components/suppliers/SupplierDialog";
 import { SupplierPaymentDialog } from "@/components/suppliers/SupplierPaymentDialog";
@@ -49,6 +49,7 @@ export default function Suppliers() {
 
   const { data: suppliers = [], isLoading } = useSuppliers();
   const deleteSupplier = useDeleteSupplier();
+  const { format } = useCurrency();
 
   const filteredSuppliers = suppliers.filter(
     (supplier) =>
@@ -136,7 +137,7 @@ export default function Suppliers() {
         />
         <StatCard
           title="Total dettes"
-          value={formatCurrency(totalDebts)}
+          value={format(totalDebts)}
           icon={CreditCard}
           variant="destructive"
         />
@@ -232,7 +233,7 @@ export default function Suppliers() {
                   )}
                 >
                   {Number(supplier.balance) < 0
-                    ? `À payer: ${formatCurrency(Math.abs(Number(supplier.balance)))}`
+                    ? `À payer: ${format(Math.abs(Number(supplier.balance)))}`
                     : "Soldé"}
                 </Badge>
               </div>

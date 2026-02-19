@@ -19,11 +19,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { useDashboardStats, useRecentRepairs, useLowStockAlerts } from "@/hooks/useDashboard";
 import { useCreateRepair } from "@/hooks/useRepairs";
 import { useDashboardRealtime } from "@/hooks/useRealtimeSubscription";
+import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
@@ -43,6 +43,7 @@ export default function Dashboard() {
   const { data: recentRepairs = [], isLoading: repairsLoading } = useRecentRepairs(5);
   const { data: stockAlerts = [], isLoading: alertsLoading } = useLowStockAlerts(5);
   const createRepair = useCreateRepair();
+  const { format } = useCurrency();
   
   // Enable realtime updates for dashboard data
   useDashboardRealtime();
@@ -75,7 +76,6 @@ export default function Dashboard() {
   }
 
   const handleExport = () => {
-    // Create CSV content for dashboard data
     const csvContent = [
       ["Rapport Dashboard", new Date().toLocaleDateString("fr-FR")],
       [],
@@ -122,7 +122,7 @@ export default function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Ventes du mois"
-          value={formatCurrency(stats?.salesTotal || 0)}
+          value={format(stats?.salesTotal || 0)}
           icon={ShoppingCart}
           variant="success"
         />
@@ -157,7 +157,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Dettes clients</p>
                 <p className="mt-1 text-xl font-bold font-mono-numbers text-warning">
-                  {formatCurrency(stats?.customerDebts || 0)}
+                  {format(stats?.customerDebts || 0)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Dettes fournisseurs</p>
                 <p className="mt-1 text-xl font-bold font-mono-numbers text-destructive">
-                  {formatCurrency(stats?.supplierDebts || 0)}
+                  {format(stats?.supplierDebts || 0)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -236,7 +236,7 @@ export default function Dashboard() {
                           {status.label}
                         </Badge>
                         <span className="text-sm font-medium font-mono-numbers">
-                          {formatCurrency(Number(repair.total_cost) || 0)}
+                          {format(Number(repair.total_cost) || 0)}
                         </span>
                       </div>
                     </div>

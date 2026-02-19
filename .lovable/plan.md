@@ -1,16 +1,33 @@
 
 
-# Fix: Publish Latest Code to Production
+# Add Sitemap.xml and Google Search Console Verification
 
-## Problem
-The signup works perfectly in the preview environment (I tested it - 200 OK, account created successfully). The published version at `atelier-pro-sync.lovable.app` is running an older version of the code that does NOT have the network resilience fixes (`mode: 'cors'`, `credentials: 'omit'`, `cache: 'no-store'`) or possibly has a broken version of `AuthContext.tsx`.
+## What will be done
 
-## Solution
-No code changes needed. The app just needs to be **published** so the production URL gets the latest working code.
+### 1. Google Search Console Verification File
+The uploaded file `googlec592a1b4f388acf9.html` will be placed in the `public/` folder so it's accessible at `https://atelier-pro-sync.lovable.app/googlec592a1b4f388acf9.html`. This allows Google to verify you own the site.
 
-## Steps
-1. Publish the application (click the publish/deploy button)
-2. Test signup on the published URL from your phone
+### 2. Sitemap.xml
+A `public/sitemap.xml` file will be created listing all the public pages of your site. Since RepairPro TN is a single-page app with authentication, only the public-facing URLs will be included:
+- `https://atelier-pro-sync.lovable.app/` (homepage/login)
+- `https://atelier-pro-sync.lovable.app/auth` (authentication page)
 
-## Why This Happened
-The code was modified multiple times (first the auth fix, then the country/currency feature), but the published URL was never updated with the final working version. The preview always runs the latest code, but the published URL only updates when you explicitly publish.
+### 3. Updated robots.txt
+The existing `public/robots.txt` will be updated to reference the sitemap location, helping search engines find it automatically.
+
+---
+
+### Technical details
+
+**Files created:**
+- `public/googlec592a1b4f388acf9.html` - Google verification file (copied from upload)
+- `public/sitemap.xml` - XML sitemap with public URLs and lastmod date
+
+**Files modified:**
+- `public/robots.txt` - Add `Sitemap: https://atelier-pro-sync.lovable.app/sitemap.xml` directive
+
+**After implementation:** You should publish the app, then go to Google Search Console to:
+1. Verify site ownership using the HTML file
+2. Submit the sitemap URL
+3. Use the URL Removal tool to remove the old "Heaven Coin" pages from search results
+

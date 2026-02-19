@@ -22,7 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 async function authFetch(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: Error | null }> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 20000);
 
     try {
       const res = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
@@ -34,6 +34,9 @@ async function authFetch(endpoint: string, body: Record<string, unknown>): Promi
         },
         body: JSON.stringify(body),
         signal: controller.signal,
+        mode: "cors",
+        credentials: "omit",
+        cache: "no-store",
       });
       clearTimeout(timeout);
 
@@ -48,7 +51,9 @@ async function authFetch(endpoint: string, body: Record<string, unknown>): Promi
     } catch (err) {
       clearTimeout(timeout);
       const message = (err as Error).message || "";
-      const isNetworkError = message.includes("Failed to fetch") ||
+      const name = (err as Error).name || "";
+      const isNetworkError = name === "AbortError" ||
+        message.includes("Failed to fetch") ||
         message.includes("NetworkError") ||
         message.includes("Load failed") ||
         message.includes("aborted");

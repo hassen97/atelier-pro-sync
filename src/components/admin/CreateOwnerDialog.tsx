@@ -3,7 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateOwner } from "@/hooks/useAdmin";
+import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 
 interface CreateOwnerDialogProps {
   open: boolean;
@@ -15,6 +17,8 @@ export function CreateOwnerDialog({ open, onOpenChange }: CreateOwnerDialogProps
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [country, setCountry] = useState("TN");
+  const [currency, setCurrency] = useState("TND");
   const createOwner = useCreateOwner();
 
   const isValid =
@@ -23,13 +27,21 @@ export function CreateOwnerDialog({ open, onOpenChange }: CreateOwnerDialogProps
     password.length >= 6 &&
     password === confirmPassword;
 
+  const handleCountryChange = (val: string) => {
+    setCountry(val);
+    const curr = getCurrencyForCountry(val);
+    if (curr) setCurrency(curr.code);
+  };
+
   const handleSubmit = async () => {
     if (!isValid) return;
-    await createOwner.mutateAsync({ fullName: fullName.trim(), username: username.trim(), password });
+    await createOwner.mutateAsync({ fullName: fullName.trim(), username: username.trim(), password, country, currency });
     setFullName("");
     setUsername("");
     setPassword("");
     setConfirmPassword("");
+    setCountry("TN");
+    setCurrency("TND");
     onOpenChange(false);
   };
 
@@ -48,6 +60,30 @@ export function CreateOwnerDialog({ open, onOpenChange }: CreateOwnerDialogProps
             <Label>Username</Label>
             <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
             <p className="text-xs text-muted-foreground mt-1">3-20 caractères alphanumériques</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Pays</Label>
+              <Select value={country} onValueChange={handleCountryChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {countries.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Devise</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {currencies.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>{c.symbol} - {c.code}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div>
             <Label>Mot de passe</Label>

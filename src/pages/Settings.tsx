@@ -15,6 +15,7 @@ import {
   Loader2,
   Key,
   Tag,
+  Globe,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -36,6 +37,8 @@ import { CategoriesSettings } from "@/components/settings/CategoriesSettings";
 import { TeamManagement } from "@/components/settings/TeamManagement";
 import { TaskManagement } from "@/components/settings/TaskManagement";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettingsContext();
@@ -61,6 +64,8 @@ export default function Settings() {
   const { updatePassword } = useAuth();
   
   const [shopName, setShopName] = useState("");
+  const [shopCountry, setShopCountry] = useState("TN");
+  const [shopCurrency, setShopCurrency] = useState("TND");
   const [taxRate, setTaxRate] = useState("");
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [stockThreshold, setStockThreshold] = useState("");
@@ -99,6 +104,8 @@ export default function Settings() {
   useEffect(() => {
     if (!loading) {
       setShopName(settings.shop_name);
+      setShopCountry(settings.country || "TN");
+      setShopCurrency(settings.currency || "TND");
       setTaxRate(String(settings.tax_rate));
       setTaxEnabled(settings.tax_enabled);
       setStockThreshold(String(settings.stock_alert_threshold));
@@ -108,6 +115,8 @@ export default function Settings() {
   const handleSaveGeneralSettings = async () => {
     await saveSettings({
       shop_name: shopName,
+      country: shopCountry,
+      currency: shopCurrency,
       tax_rate: parseFloat(taxRate) || 19,
       tax_enabled: taxEnabled,
       stock_alert_threshold: parseInt(stockThreshold) || 5,
@@ -180,8 +189,34 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="country">Pays</Label>
+                  <Select value={shopCountry} onValueChange={(val) => {
+                    setShopCountry(val);
+                    const curr = getCurrencyForCountry(val);
+                    if (curr) setShopCurrency(curr.code);
+                  }}>
+                    <SelectTrigger id="country">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="currency">Devise</Label>
-                  <Input id="currency" value="TND (Dinar Tunisien)" disabled />
+                  <Select value={shopCurrency} onValueChange={setShopCurrency}>
+                    <SelectTrigger id="currency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>{c.symbol} - {c.name} ({c.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">

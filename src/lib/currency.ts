@@ -1,5 +1,6 @@
-// Currency formatting utilities for Tunisian Dinar (TND)
+import { getCurrencyByCode } from "@/data/countries";
 
+// Default currency for backward compatibility
 export const CURRENCY = {
   code: "TND",
   symbol: "DT",
@@ -7,21 +8,28 @@ export const CURRENCY = {
   decimals: 3,
 } as const;
 
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("fr-TN", {
-    minimumFractionDigits: CURRENCY.decimals,
-    maximumFractionDigits: CURRENCY.decimals,
-  }).format(amount) + " " + CURRENCY.symbol;
+export function formatCurrency(amount: number, currencyCode?: string): string {
+  const currency = currencyCode ? getCurrencyByCode(currencyCode) : undefined;
+  const decimals = currency?.decimals ?? CURRENCY.decimals;
+  const symbol = currency?.symbol ?? CURRENCY.symbol;
+
+  return new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(amount) + " " + symbol;
 }
 
-export function formatCurrencyCompact(amount: number): string {
+export function formatCurrencyCompact(amount: number, currencyCode?: string): string {
+  const currency = currencyCode ? getCurrencyByCode(currencyCode) : undefined;
+  const symbol = currency?.symbol ?? CURRENCY.symbol;
+
   if (amount >= 1000000) {
-    return (amount / 1000000).toFixed(1) + "M " + CURRENCY.symbol;
+    return (amount / 1000000).toFixed(1) + "M " + symbol;
   }
   if (amount >= 1000) {
-    return (amount / 1000).toFixed(1) + "K " + CURRENCY.symbol;
+    return (amount / 1000).toFixed(1) + "K " + symbol;
   }
-  return formatCurrency(amount);
+  return formatCurrency(amount, currencyCode);
 }
 
 export function parseCurrency(value: string): number {

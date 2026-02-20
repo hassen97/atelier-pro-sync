@@ -1,33 +1,49 @@
 
+# Fix Signup Network Error on Mobile
 
-# Add Sitemap.xml and Google Search Console Verification
+## Problem
+The signup fails on mobile Chrome with "Erreur de connexion reseau" because the custom `authFetch` function (direct REST calls to the auth API) is being blocked at the network level. No request reaches the server (confirmed by empty auth logs). This affects users on mobile networks with data savers or unstable connections.
 
-## What will be done
+## Solution
+Switch to a **hybrid approach**: use the Supabase JS client as the primary auth method (it handles retries, token refresh, and connection management internally), and only fall back to the direct REST `authFetch` if the JS client also fails.
 
-### 1. Google Search Console Verification File
-The uploaded file `googlec592a1b4f388acf9.html` will be placed in the `public/` folder so it's accessible at `https://atelier-pro-sync.lovable.app/googlec592a1b4f388acf9.html`. This allows Google to verify you own the site.
+## Changes
 
-### 2. Sitemap.xml
-A `public/sitemap.xml` file will be created listing all the public pages of your site. Since RepairPro TN is a single-page app with authentication, only the public-facing URLs will be included:
-- `https://atelier-pro-sync.lovable.app/` (homepage/login)
-- `https://atelier-pro-sync.lovable.app/auth` (authentication page)
+### File: `src/contexts/AuthContext.tsx`
 
-### 3. Updated robots.txt
-The existing `public/robots.txt` will be updated to reference the sitemap location, helping search engines find it automatically.
+**signUp function:**
+1. First attempt: Use `supabase.auth.signUp()` from the JS client
+2. If that fails with a network error: Fall back to the existing `authFetch("signup", ...)` 
+3. Keep the existing retry/timeout logic in `authFetch` as the fallback
+
+**signIn function:**
+1. First attempt: Use `supabase.auth.signInWithPassword()` from the JS client
+2. If that fails with a network error: Fall back to the existing `authFetch("token?grant_type=password", ...)`
+
+The `authFetch` function will be kept as-is for the fallback, but the primary path will use the standard Supabase client which has better compatibility with mobile browsers.
 
 ---
 
 ### Technical details
 
-**Files created:**
-- `public/googlec592a1b4f388acf9.html` - Google verification file (copied from upload)
-- `public/sitemap.xml` - XML sitemap with public URLs and lastmod date
+The `signUp` method will change from:
+```
+authFetch("signup", { email, password, data })
+```
+to:
+```
+1. Try: supabase.auth.signUp({ email, password, options: { data } })
+2. If network error, retry with: authFetch("signup", { email, password, data })
+```
 
-**Files modified:**
-- `public/robots.txt` - Add `Sitemap: https://atelier-pro-sync.lovable.app/sitemap.xml` directive
+The `signIn` method will change from:
+```
+authFetch("token?grant_type=password", { email, password })
+```
+to:
+```
+1. Try: supabase.auth.signInWithPassword({ email, password })
+2. If network error, retry with: authFetch("token?grant_type=password", { email, password })
+```
 
-**After implementation:** You should publish the app, then go to Google Search Console to:
-1. Verify site ownership using the HTML file
-2. Submit the sitemap URL
-3. Use the URL Removal tool to remove the old "Heaven Coin" pages from search results
-
+A helper function `isNetworkError(error)` will be extracted to detect network failures consistently across both paths.

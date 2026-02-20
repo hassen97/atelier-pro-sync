@@ -26,9 +26,7 @@ function isNetworkError(err: unknown): boolean {
     message.includes("Failed to fetch") ||
     message.includes("NetworkError") ||
     message.includes("Load failed") ||
-    message.includes("aborted") ||
-    message.includes("fetch") ||
-    message.includes("network");
+    message.includes("aborted");
 }
 
 // Fallback: Direct fetch to Supabase Auth REST API with timeout + retries
@@ -90,7 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error || !session) {
+        console.log("[Auth] Clearing stale session data", error?.message);
+        supabase.auth.signOut();
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -111,12 +113,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     // Primary: Supabase JS client
+    console.log("[Auth] signUp: attempting with Supabase client...");
     try {
       const { data, error } = await supabase.auth.signUp({
         email: internalEmail,
         password,
         options: { data: metadata },
       });
+      console.log("[Auth] signUp: client result", { error: error?.message });
       if (!error) return { error: null };
       if (!isNetworkError(error)) return { error };
       // Network error → fall through to fallback
@@ -125,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Fallback: direct REST fetch
+    console.log("[Auth] signUp: falling back to REST...");
     const { data, error } = await authFetch("signup", {
       email: internalEmail,
       password,
@@ -147,11 +152,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const internalEmail = usernameToEmail(username);
 
     // Primary: Supabase JS client
+    console.log("[Auth] signIn: attempting with Supabase client...");
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: internalEmail,
         password,
       });
+      console.log("[Auth] signIn: client result", { error: error?.message });
       if (!error) return { error: null };
       if (!isNetworkError(error)) return { error };
       // Network error → fall through to fallback
@@ -160,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Fallback: direct REST fetch
+    console.log("[Auth] signIn: falling back to REST...");
     const { data, error } = await authFetch("token?grant_type=password", {
       email: internalEmail,
       password,

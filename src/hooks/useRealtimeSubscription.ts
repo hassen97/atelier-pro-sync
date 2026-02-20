@@ -2,8 +2,9 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 
-type TableName = "repairs" | "sales" | "products" | "customers" | "suppliers";
+type TableName = "repairs" | "sales" | "products" | "customers" | "suppliers" | "team_tasks";
 
 interface UseRealtimeSubscriptionOptions {
   tables: TableName[];
@@ -13,21 +14,24 @@ interface UseRealtimeSubscriptionOptions {
 export function useRealtimeSubscription({ tables, queryKeys }: UseRealtimeSubscriptionOptions) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !effectiveUserId) return;
 
     const channel = supabase.channel("dashboard-realtime");
 
     // Subscribe to each table
     tables.forEach((table) => {
+      // team_tasks uses owner_id instead of user_id
+      const filterColumn = table === "team_tasks" ? "owner_id" : "user_id";
       channel.on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table,
-          filter: `user_id=eq.${user.id}`,
+          filter: `${filterColumn}=eq.${effectiveUserId}`,
         },
         (payload) => {
           console.log(`Realtime update on ${table}:`, payload.eventType);
@@ -48,7 +52,7 @@ export function useRealtimeSubscription({ tables, queryKeys }: UseRealtimeSubscr
       console.log("Unsubscribing from realtime");
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient, tables, queryKeys]);
+  }, [user, effectiveUserId, queryClient, tables, queryKeys]);
 }
 
 // Pre-configured hook for dashboard
@@ -61,5 +65,13 @@ export function useDashboardRealtime() {
       ["low-stock-alerts"],
       ["repairs"],
     ],
+  });
+}
+
+// Pre-configured hook for team tasks
+export function useTeamRealtime() {
+  useRealtimeSubscription({
+    tables: ["team_tasks"],
+    queryKeys: [["team-tasks"]],
   });
 }

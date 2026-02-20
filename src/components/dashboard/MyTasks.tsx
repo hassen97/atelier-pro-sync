@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTeamTasks, useUpdateTask } from "@/hooks/useTeam";
+import { useTeamRealtime } from "@/hooks/useRealtimeSubscription";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending: { label: "En attente", className: "bg-warning/10 text-warning border-warning/20" },
@@ -19,6 +20,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 export function MyTasks() {
   const { data: tasks = [], isLoading } = useTeamTasks();
   const updateTask = useUpdateTask();
+  useTeamRealtime();
 
   const pendingTasks = tasks.filter((t) => t.status !== "done");
 

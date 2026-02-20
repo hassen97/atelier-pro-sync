@@ -24,7 +24,7 @@ export function CreateOwnerDialog({ open, onOpenChange }: CreateOwnerDialogProps
   const isValid =
     fullName.trim().length >= 2 &&
     /^[a-zA-Z0-9_]{3,20}$/.test(username) &&
-    password.length >= 6 &&
+    password.length >= 8 &&
     password === confirmPassword;
 
   const handleCountryChange = (val: string) => {
@@ -87,7 +87,8 @@ export function CreateOwnerDialog({ open, onOpenChange }: CreateOwnerDialogProps
           </div>
           <div>
             <Label>Mot de passe</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••" />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+            <p className="text-xs text-muted-foreground mt-1">8 caractères minimum</p>
           </div>
           <div>
             <Label>Confirmer le mot de passe</Label>

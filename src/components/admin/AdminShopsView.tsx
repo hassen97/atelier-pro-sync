@@ -37,38 +37,40 @@ export function AdminShopsView() {
           <div
             key={owner.user_id}
             className={cn(
-              "admin-glass-card rounded-xl p-4 flex items-center gap-4 transition-all",
+              "admin-glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 transition-all",
               owner.is_locked && "border-red-500/30 opacity-70"
             )}
           >
-            <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-              <Store className="h-5 w-5 text-slate-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-white font-medium text-sm truncate">{owner.full_name || owner.username}</span>
-                {owner.is_locked && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                    Verrouillé
-                  </span>
-                )}
+            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                <Store className="h-5 w-5 text-slate-400" />
               </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                <span>@{owner.username}</span>
-                <span>•</span>
-                <span>{owner.shop_name}</span>
-                <span>•</span>
-                <span>{getCountryByCode(owner.country || "TN")?.flag || "🇹🇳"} {getCurrencyByCode(owner.currency || "TND")?.code || "TND"}</span>
-                <span>•</span>
-                <span>{owner.team_count} membres</span>
-                <span>•</span>
-                <span>{owner.repair_count} réparations</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-medium text-sm truncate">{owner.full_name || owner.username}</span>
+                  {owner.is_locked && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                      Verrouillé
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 mt-0.5">
+                  <span>@{owner.username}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>{owner.shop_name}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>{getCountryByCode(owner.country || "TN")?.flag || "🇹🇳"} {getCurrencyByCode(owner.currency || "TND")?.code || "TND"}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>{owner.team_count} membres</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>{owner.repair_count} réparations</span>
+                </div>
+                <p className="text-[10px] text-slate-600 mt-0.5">
+                  Inscrit {format(new Date(owner.created_at), "dd MMM yyyy", { locale: fr })}
+                </p>
               </div>
-              <p className="text-[10px] text-slate-600 mt-0.5">
-                Inscrit {format(new Date(owner.created_at), "dd MMM yyyy", { locale: fr })}
-              </p>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
               <Button
                 variant="ghost"
                 size="icon"

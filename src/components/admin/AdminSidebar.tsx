@@ -7,6 +7,7 @@ type AdminView = "overview" | "shops" | "announcements" | "feedback";
 interface AdminSidebarProps {
   active: AdminView;
   onNavigate: (view: AdminView) => void;
+  onClose?: () => void;
 }
 
 const navItems = [
@@ -16,11 +17,16 @@ const navItems = [
   { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
 ];
 
-export function AdminSidebar({ active, onNavigate }: AdminSidebarProps) {
+export function AdminSidebar({ active, onNavigate, onClose }: AdminSidebarProps) {
   const { signOut } = useAuth();
 
+  const handleNavigate = (view: AdminView) => {
+    onNavigate(view);
+    onClose?.();
+  };
+
   return (
-    <aside className="w-64 shrink-0 admin-glass border-r border-white/10 flex flex-col h-full">
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
@@ -39,7 +45,7 @@ export function AdminSidebar({ active, onNavigate }: AdminSidebarProps) {
         {navItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => onNavigate(item.id)}
+            onClick={() => handleNavigate(item.id)}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
               active === item.id
@@ -63,6 +69,6 @@ export function AdminSidebar({ active, onNavigate }: AdminSidebarProps) {
           Déconnexion
         </button>
       </div>
-    </aside>
+    </div>
   );
 }

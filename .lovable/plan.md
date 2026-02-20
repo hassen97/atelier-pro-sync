@@ -1,49 +1,86 @@
 
-# Fix Signup Network Error on Mobile
 
-## Problem
-The signup fails on mobile Chrome with "Erreur de connexion reseau" because the custom `authFetch` function (direct REST calls to the auth API) is being blocked at the network level. No request reaches the server (confirmed by empty auth logs). This affects users on mobile networks with data savers or unstable connections.
+# Corriger l'inscription bloquée sur Chrome et iPhone
 
-## Solution
-Switch to a **hybrid approach**: use the Supabase JS client as the primary auth method (it handles retries, token refresh, and connection management internally), and only fall back to the direct REST `authFetch` if the JS client also fails.
+## Probleme identifie
 
-## Changes
+1. **Session perimee dans Chrome** : Le localStorage contient un ancien refresh token invalide. Au chargement de la page, `getSession()` echoue avec "Refresh Token Not Found", ce qui peut laisser le client Supabase dans un etat instable ou les appels signUp/signIn se bloquent ensuite.
 
-### File: `src/contexts/AuthContext.tsx`
+2. **iPhone de l'ami** : Les changements (approche hybride) n'ont pas encore ete publies. L'URL publiee utilise encore l'ancien code avec uniquement les appels REST directs.
 
-**signUp function:**
-1. First attempt: Use `supabase.auth.signUp()` from the JS client
-2. If that fails with a network error: Fall back to the existing `authFetch("signup", ...)` 
-3. Keep the existing retry/timeout logic in `authFetch` as the fallback
+3. **Detection d'erreur trop large** : `isNetworkError` contient `message.includes("fetch")` et `message.includes("network")` qui pourraient capturer des erreurs non-reseau et declencher le fallback inutilement.
 
-**signIn function:**
-1. First attempt: Use `supabase.auth.signInWithPassword()` from the JS client
-2. If that fails with a network error: Fall back to the existing `authFetch("token?grant_type=password", ...)`
+## Plan de correction
 
-The `authFetch` function will be kept as-is for the fallback, but the primary path will use the standard Supabase client which has better compatibility with mobile browsers.
+### Fichier : `src/contexts/AuthContext.tsx`
+
+**A. Nettoyage de session perimee au demarrage**
+- Dans le `useEffect` d'initialisation, si `getSession()` echoue ou retourne une session invalide, appeler `supabase.auth.signOut()` pour nettoyer le localStorage
+- Cela garantit un etat propre avant tout signup/signin
+
+**B. Resserrer la detection d'erreur reseau**
+- Retirer `message.includes("fetch")` (deja couvert par "Failed to fetch")
+- Retirer `message.includes("network")` (deja couvert par "NetworkError")
+- Ces patterns trop larges risquent de masquer de vraies erreurs
+
+**C. Ajouter des logs de diagnostic temporaires**
+- Ajouter `console.log` dans signUp et signIn pour tracer exactement ou le processus se bloque
+- Ajouter un log quand `isNetworkError` est detectee pour confirmer le type d'erreur
+- Ces logs aideront a diagnostiquer si le probleme persiste
+
+### Apres implementation
+
+- **Publier l'application** pour que l'ami sur iPhone (et tout le monde) utilise le nouveau code
+- Tester sur Chrome apres avoir vide le cache ou en navigation privee
 
 ---
 
-### Technical details
+### Details techniques
 
-The `signUp` method will change from:
-```
-authFetch("signup", { email, password, data })
-```
-to:
-```
-1. Try: supabase.auth.signUp({ email, password, options: { data } })
-2. If network error, retry with: authFetch("signup", { email, password, data })
+**Nettoyage de session :**
+```typescript
+useEffect(() => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    }
+  );
+
+  supabase.auth.getSession().then(({ data: { session }, error }) => {
+    if (error || !session) {
+      // Clear stale auth data to prevent interference
+      supabase.auth.signOut();
+    }
+    setSession(session);
+    setUser(session?.user ?? null);
+    setLoading(false);
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 ```
 
-The `signIn` method will change from:
-```
-authFetch("token?grant_type=password", { email, password })
-```
-to:
-```
-1. Try: supabase.auth.signInWithPassword({ email, password })
-2. If network error, retry with: authFetch("token?grant_type=password", { email, password })
+**isNetworkError corrige :**
+```typescript
+function isNetworkError(err: unknown): boolean {
+  if (!err) return false;
+  const message = (err as Error).message || "";
+  const name = (err as Error).name || "";
+  return name === "AbortError" ||
+    message.includes("Failed to fetch") ||
+    message.includes("NetworkError") ||
+    message.includes("Load failed") ||
+    message.includes("aborted");
+}
 ```
 
-A helper function `isNetworkError(error)` will be extracted to detect network failures consistently across both paths.
+**Logs de diagnostic dans signUp :**
+```typescript
+console.log("[Auth] signUp: attempting with Supabase client...");
+// ... apres succes ou erreur:
+console.log("[Auth] signUp: client result", { error: error?.message });
+console.log("[Auth] signUp: falling back to REST...");
+```
+

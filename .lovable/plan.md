@@ -1,86 +1,54 @@
 
 
-# Corriger l'inscription bloquée sur Chrome et iPhone
+# Fix Admin Page: Responsive Layout + Shop Creation Error
 
-## Probleme identifie
+## Two Issues
 
-1. **Session perimee dans Chrome** : Le localStorage contient un ancien refresh token invalide. Au chargement de la page, `getSession()` echoue avec "Refresh Token Not Found", ce qui peut laisser le client Supabase dans un etat instable ou les appels signUp/signIn se bloquent ensuite.
+### 1. Shop Creation Error
+The "create" action fails silently because of a **password validation mismatch**:
+- The frontend (`CreateOwnerDialog.tsx`) allows passwords with 6+ characters
+- The backend edge function (`admin-manage-users`) Zod schema requires 8+ characters (`z.string().min(8)`)
+- When a password between 6-7 characters is submitted, the backend rejects it with a 400 error but the frontend shows a generic error
 
-2. **iPhone de l'ami** : Les changements (approche hybride) n'ont pas encore ete publies. L'URL publiee utilise encore l'ancien code avec uniquement les appels REST directs.
+Additionally, the edge function catches all errors and returns "Internal server error" without logging the actual error, making debugging impossible.
 
-3. **Detection d'erreur trop large** : `isNetworkError` contient `message.includes("fetch")` et `message.includes("network")` qui pourraient capturer des erreurs non-reseau et declencher le fallback inutilement.
+**Fix:**
+- Align the frontend validation to require 8+ characters (matching the backend)
+- Add `console.error` in the edge function catch block to log actual errors
+- Show the backend error message in the toast instead of a generic one
 
-## Plan de correction
+### 2. Admin Page Not Responsive
+The sidebar has a fixed `w-64` width and the layout uses `flex` without any mobile adaptation. On mobile, the sidebar takes up most of the screen and the main content is squeezed.
 
-### Fichier : `src/contexts/AuthContext.tsx`
-
-**A. Nettoyage de session perimee au demarrage**
-- Dans le `useEffect` d'initialisation, si `getSession()` echoue ou retourne une session invalide, appeler `supabase.auth.signOut()` pour nettoyer le localStorage
-- Cela garantit un etat propre avant tout signup/signin
-
-**B. Resserrer la detection d'erreur reseau**
-- Retirer `message.includes("fetch")` (deja couvert par "Failed to fetch")
-- Retirer `message.includes("network")` (deja couvert par "NetworkError")
-- Ces patterns trop larges risquent de masquer de vraies erreurs
-
-**C. Ajouter des logs de diagnostic temporaires**
-- Ajouter `console.log` dans signUp et signIn pour tracer exactement ou le processus se bloque
-- Ajouter un log quand `isNetworkError` est detectee pour confirmer le type d'erreur
-- Ces logs aideront a diagnostiquer si le probleme persiste
-
-### Apres implementation
-
-- **Publier l'application** pour que l'ami sur iPhone (et tout le monde) utilise le nouveau code
-- Tester sur Chrome apres avoir vide le cache ou en navigation privee
+**Fix:**
+- On mobile: convert the sidebar to a collapsible sheet/drawer or hide it behind a hamburger menu
+- Use the `useIsMobile` hook already available in the project
+- On mobile, show a top bar with a menu button that opens the sidebar as an overlay
+- The main content should take full width on mobile
 
 ---
 
-### Details techniques
+## Technical Changes
 
-**Nettoyage de session :**
-```typescript
-useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    }
-  );
+### File: `src/components/admin/CreateOwnerDialog.tsx`
+- Change password validation from `password.length >= 6` to `password.length >= 8`
+- Update the placeholder/hint text to indicate 8 character minimum
 
-  supabase.auth.getSession().then(({ data: { session }, error }) => {
-    if (error || !session) {
-      // Clear stale auth data to prevent interference
-      supabase.auth.signOut();
-    }
-    setSession(session);
-    setUser(session?.user ?? null);
-    setLoading(false);
-  });
+### File: `supabase/functions/admin-manage-users/index.ts`
+- Add `console.error("Admin action error:", err)` in the catch block so errors appear in logs
+- Return the actual error message (when safe) instead of generic "Internal server error"
 
-  return () => subscription.unsubscribe();
-}, []);
-```
+### File: `src/components/admin/AdminSidebar.tsx`
+- Accept a new `onClose` prop for mobile dismiss
+- Make the component render as content only (no fixed wrapper) so the parent controls presentation
 
-**isNetworkError corrige :**
-```typescript
-function isNetworkError(err: unknown): boolean {
-  if (!err) return false;
-  const message = (err as Error).message || "";
-  const name = (err as Error).name || "";
-  return name === "AbortError" ||
-    message.includes("Failed to fetch") ||
-    message.includes("NetworkError") ||
-    message.includes("Load failed") ||
-    message.includes("aborted");
-}
-```
+### File: `src/pages/AdminDashboard.tsx`
+- Import `useIsMobile` hook
+- On mobile: show a top header bar with hamburger menu button and title
+- Use a Sheet/Drawer component to show the sidebar as an overlay when the menu button is tapped
+- On desktop: keep the current side-by-side layout unchanged
 
-**Logs de diagnostic dans signUp :**
-```typescript
-console.log("[Auth] signUp: attempting with Supabase client...");
-// ... apres succes ou erreur:
-console.log("[Auth] signUp: client result", { error: error?.message });
-console.log("[Auth] signUp: falling back to REST...");
-```
+### File: `src/components/admin/AdminShopsView.tsx`
+- Make the owner cards stack better on mobile (flex-col instead of flex-row on small screens)
+- Wrap action buttons for smaller viewports
 

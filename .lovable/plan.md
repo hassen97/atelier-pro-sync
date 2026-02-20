@@ -1,54 +1,62 @@
 
 
-# Fix Admin Page: Responsive Layout + Shop Creation Error
+# Fix Real-Time Sync Between Shop Owner and Employees
 
-## Two Issues
+## Problem
 
-### 1. Shop Creation Error
-The "create" action fails silently because of a **password validation mismatch**:
-- The frontend (`CreateOwnerDialog.tsx`) allows passwords with 6+ characters
-- The backend edge function (`admin-manage-users`) Zod schema requires 8+ characters (`z.string().min(8)`)
-- When a password between 6-7 characters is submitted, the backend rejects it with a 400 error but the frontend shows a generic error
+Currently, realtime subscriptions filter by `user_id=eq.${user.id}`. Employees have a different `user_id` than the shop owner, but all shop data (repairs, sales, products, customers) is stored under the **owner's** `user_id`. This means employees never receive realtime updates.
 
-Additionally, the edge function catches all errors and returns "Internal server error" without logging the actual error, making debugging impossible.
+## Solution
 
-**Fix:**
-- Align the frontend validation to require 8+ characters (matching the backend)
-- Add `console.error` in the edge function catch block to log actual errors
-- Show the backend error message in the toast instead of a generic one
+Use the existing `useEffectiveUserId()` hook (which already returns the owner's ID for employees) in the realtime subscription system.
 
-### 2. Admin Page Not Responsive
-The sidebar has a fixed `w-64` width and the layout uses `flex` without any mobile adaptation. On mobile, the sidebar takes up most of the screen and the main content is squeezed.
+## Changes
 
-**Fix:**
-- On mobile: convert the sidebar to a collapsible sheet/drawer or hide it behind a hamburger menu
-- Use the `useIsMobile` hook already available in the project
-- On mobile, show a top bar with a menu button that opens the sidebar as an overlay
-- The main content should take full width on mobile
+### 1. Update `src/hooks/useRealtimeSubscription.ts`
 
----
+- Import `useEffectiveUserId` from `useTeam`
+- Replace `user.id` with `effectiveUserId` in the realtime filter
+- This ensures both owner and employees listen to the same data channel
 
-## Technical Changes
+Before:
+```
+filter: `user_id=eq.${user.id}`
+```
 
-### File: `src/components/admin/CreateOwnerDialog.tsx`
-- Change password validation from `password.length >= 6` to `password.length >= 8`
-- Update the placeholder/hint text to indicate 8 character minimum
+After:
+```
+filter: `user_id=eq.${effectiveUserId}`
+```
 
-### File: `supabase/functions/admin-manage-users/index.ts`
-- Add `console.error("Admin action error:", err)` in the catch block so errors appear in logs
-- Return the actual error message (when safe) instead of generic "Internal server error"
+- Update the `useEffect` dependencies to include `effectiveUserId`
 
-### File: `src/components/admin/AdminSidebar.tsx`
-- Accept a new `onClose` prop for mobile dismiss
-- Make the component render as content only (no fixed wrapper) so the parent controls presentation
+### 2. Add `team_tasks` to realtime subscriptions
 
-### File: `src/pages/AdminDashboard.tsx`
-- Import `useIsMobile` hook
-- On mobile: show a top header bar with hamburger menu button and title
-- Use a Sheet/Drawer component to show the sidebar as an overlay when the menu button is tapped
-- On desktop: keep the current side-by-side layout unchanged
+- Add "team_tasks" as a valid table in the `TableName` type
+- Create a new `useTeamRealtime()` pre-configured hook that subscribes to `team_tasks` changes
+- This ensures task assignments and status changes sync instantly between owner and employees
 
-### File: `src/components/admin/AdminShopsView.tsx`
-- Make the owner cards stack better on mobile (flex-col instead of flex-row on small screens)
-- Wrap action buttons for smaller viewports
+### 3. Use realtime in the Dashboard and Task components
 
+- In `src/pages/Dashboard.tsx`: ensure `useDashboardRealtime()` is called (may already be present)
+- In `src/components/settings/TaskManagement.tsx` and `src/components/dashboard/MyTasks.tsx`: add the new `useTeamRealtime()` hook so tasks update in real-time
+
+### 4. Enable Realtime on `team_tasks` table
+
+- Run a migration: `ALTER PUBLICATION supabase_realtime ADD TABLE public.team_tasks;`
+- Realtime is likely already enabled on repairs, sales, products, customers -- we will verify and add if missing
+
+## What This Achieves
+
+- Owner creates a repair, employee sees it appear instantly
+- Employee updates a task to "done", owner sees the change immediately
+- No offline mode needed -- just proper use of the existing team architecture
+- Zero new dependencies, minimal code changes
+
+## Technical Note
+
+The `useEffectiveUserId()` hook already handles the logic:
+- For owners: returns their own `user.id`
+- For employees: returns `teamInfo.owner_id`
+
+This is the same ID used in all data queries, so realtime will match exactly what the user sees.

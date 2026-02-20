@@ -28,6 +28,7 @@ import {
   useDeleteTask,
   type TeamTask,
 } from "@/hooks/useTeam";
+import { useTeamRealtime } from "@/hooks/useRealtimeSubscription";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
   pending: { label: "En attente", variant: "secondary" },
@@ -184,6 +185,7 @@ function TaskRow({ task }: { task: TeamTask }) {
 export function TaskManagement() {
   const { data: tasks = [], isLoading } = useTeamTasks();
   const { data: members = [] } = useTeamMembers();
+  useTeamRealtime();
 
   return (
     <Card>

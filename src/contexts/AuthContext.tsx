@@ -17,8 +17,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Direct fetch to Supabase Auth REST API with timeout + retries
-// Bypasses Chrome Android Data Saver/proxy issues with the JS client
+// Detect network-level failures consistently
+function isNetworkError(err: unknown): boolean {
+  if (!err) return false;
+  const message = (err as Error).message || "";
+  const name = (err as Error).name || "";
+  return name === "AbortError" ||
+    message.includes("Failed to fetch") ||
+    message.includes("NetworkError") ||
+    message.includes("Load failed") ||
+    message.includes("aborted") ||
+    message.includes("fetch") ||
+    message.includes("network");
+}
+
+// Fallback: Direct fetch to Supabase Auth REST API with timeout + retries
 async function authFetch(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: Error | null }> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const controller = new AbortController();
@@ -50,19 +63,11 @@ async function authFetch(endpoint: string, body: Record<string, unknown>): Promi
       return { data: json, error: null };
     } catch (err) {
       clearTimeout(timeout);
-      const message = (err as Error).message || "";
-      const name = (err as Error).name || "";
-      const isNetworkError = name === "AbortError" ||
-        message.includes("Failed to fetch") ||
-        message.includes("NetworkError") ||
-        message.includes("Load failed") ||
-        message.includes("aborted");
-
-      if (isNetworkError && attempt < 2) {
+      if (isNetworkError(err) && attempt < 2) {
         await new Promise(r => setTimeout(r, (attempt + 1) * 500));
         continue;
       }
-      if (isNetworkError) {
+      if (isNetworkError(err)) {
         return { data: null, error: new Error("Erreur de connexion réseau. Vérifiez votre connexion internet et réessayez.") };
       }
       return { data: null, error: err as Error };
@@ -98,21 +103,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (username: string, password: string, fullName: string, country?: string, currency?: string) => {
     const internalEmail = usernameToEmail(username);
+    const metadata = {
+      full_name: fullName,
+      username: username.toLowerCase(),
+      ...(country && { country }),
+      ...(currency && { currency }),
+    };
 
+    // Primary: Supabase JS client
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: internalEmail,
+        password,
+        options: { data: metadata },
+      });
+      if (!error) return { error: null };
+      if (!isNetworkError(error)) return { error };
+      // Network error → fall through to fallback
+    } catch (err) {
+      if (!isNetworkError(err)) return { error: err as Error };
+    }
+
+    // Fallback: direct REST fetch
     const { data, error } = await authFetch("signup", {
       email: internalEmail,
       password,
-      data: {
-        full_name: fullName,
-        username: username.toLowerCase(),
-        ...(country && { country }),
-        ...(currency && { currency }),
-      },
+      data: metadata,
     });
 
     if (error) return { error };
 
-    // If signup returns a session, set it
     if (data?.access_token && data?.refresh_token) {
       await supabase.auth.setSession({
         access_token: data.access_token,
@@ -126,6 +146,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (username: string, password: string) => {
     const internalEmail = usernameToEmail(username);
 
+    // Primary: Supabase JS client
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: internalEmail,
+        password,
+      });
+      if (!error) return { error: null };
+      if (!isNetworkError(error)) return { error };
+      // Network error → fall through to fallback
+    } catch (err) {
+      if (!isNetworkError(err)) return { error: err as Error };
+    }
+
+    // Fallback: direct REST fetch
     const { data, error } = await authFetch("token?grant_type=password", {
       email: internalEmail,
       password,
@@ -133,7 +167,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) return { error };
 
-    // Sync session with the Supabase client
     const { error: sessionError } = await supabase.auth.setSession({
       access_token: data.access_token,
       refresh_token: data.refresh_token,

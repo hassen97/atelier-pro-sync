@@ -1,4 +1,4 @@
-import { Phone, Wrench as WrenchIcon, Calendar, MoreHorizontal } from "lucide-react";
+import { Phone, Wrench as WrenchIcon, Calendar, MoreHorizontal, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ export interface Repair {
   issue: string; diagnosis?: string; notes?: string; status: RepairStatus;
   depositDate: string; estimatedDate?: string; deliveredDate?: string;
   parts: { name: string; cost: number }[]; labor: number; total: number; paid: number;
+  is_warranty?: boolean;
 }
 
 interface RepairCardProps {
@@ -32,12 +33,20 @@ export function RepairCard({ repair, onViewDetails, onEdit, onPrint, onCancel, o
   const { format } = useCurrency();
 
   return (
-    <Card className="hover:shadow-soft transition-shadow">
+    <Card className={cn(
+      "hover:shadow-soft transition-shadow",
+      repair.is_warranty && "border-orange-500/40 bg-orange-500/5"
+    )}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs text-muted-foreground">{repair.id}</span>
+              {repair.is_warranty && (
+                <Badge className="text-xs bg-orange-500/10 text-orange-500 border-orange-500/20">
+                  <Shield className="h-3 w-3 mr-1" />Garantie
+                </Badge>
+              )}
               <Badge className={cn("text-xs", status.className)}><StatusIcon className="h-3 w-3 mr-1" />{status.label}</Badge>
             </div>
             <h3 className="font-semibold mt-1">{repair.customer}</h3>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { usePresence } from "@/hooks/usePresence";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -196,6 +197,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: error as Error };
     }
   };
+
+  // Track user presence (last_online_at)
+  usePresence(user?.id);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, updatePassword }}>

@@ -67,6 +67,7 @@ function transformRepair(dbRepair: RepairWithCustomer) {
     total: Number(dbRepair.total_cost) || 0,
     paid: Number(dbRepair.amount_paid) || 0,
     notes: dbRepair.notes,
+    is_warranty: (dbRepair as any).is_warranty || false,
     // Original data for editing
     _original: dbRepair,
   };
@@ -113,8 +114,9 @@ export default function Repairs() {
       repair.device.toLowerCase().includes(searchQuery.toLowerCase()) ||
       repair.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (repair.phone && repair.phone.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesTab = activeTab === "all" || repair.status === activeTab;
-    return matchesSearch && matchesTab;
+    const matchesTab = activeTab === "all" || activeTab === "warranty" ? true : repair.status === activeTab;
+    const matchesWarranty = activeTab === "warranty" ? repair.is_warranty : true;
+    return matchesSearch && matchesTab && matchesWarranty;
   });
 
   const getStatusCounts = () => ({
@@ -122,6 +124,7 @@ export default function Repairs() {
     pending: repairs.filter((r) => r.status === "pending").length,
     in_progress: repairs.filter((r) => r.status === "in_progress").length,
     completed: repairs.filter((r) => r.status === "completed").length,
+    warranty: repairs.filter((r) => r.is_warranty).length,
   });
 
   const counts = getStatusCounts();
@@ -342,6 +345,11 @@ export default function Repairs() {
           <TabsTrigger value="pending">En attente ({counts.pending})</TabsTrigger>
           <TabsTrigger value="in_progress">En cours ({counts.in_progress})</TabsTrigger>
           <TabsTrigger value="completed">Terminées ({counts.completed})</TabsTrigger>
+          {counts.warranty > 0 && (
+            <TabsTrigger value="warranty" className="text-orange-500">
+              Garantie ({counts.warranty})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">

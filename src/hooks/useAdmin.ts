@@ -15,12 +15,14 @@ export interface ShopOwner {
   is_locked: boolean;
   country: string;
   currency: string;
+  last_online_at: string | null;
 }
 
 export interface AdminStats {
   total_owners: number;
   total_employees: number;
   total_repairs: number;
+  active_now_count: number;
 }
 
 export interface AdminRevenue {

@@ -1,14 +1,37 @@
-import { useState } from "react";
-import { useAdminData, useDeleteOwner, useResetOwnerPassword, useLockOwner } from "@/hooks/useAdmin";
+import { useState, useMemo } from "react";
+import { useAdminData, useDeleteOwner, useLockOwner } from "@/hooks/useAdmin";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { EditOwnerSettingsDialog } from "./EditOwnerSettingsDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, KeyRound, Lock, Unlock, Store, Settings2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
+
+type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d";
+
+function getOnlineStatus(lastOnline: string | null) {
+  if (!lastOnline) return "offline";
+  const diff = Date.now() - new Date(lastOnline).getTime();
+  if (diff < 5 * 60 * 1000) return "online";
+  if (diff < 60 * 60 * 1000) return "away";
+  return "offline";
+}
+
+const statusDot: Record<string, string> = {
+  online: "bg-emerald-400",
+  away: "bg-amber-400",
+  offline: "bg-red-400",
+};
 
 export function AdminShopsView() {
   const { data } = useAdminData();
@@ -17,12 +40,33 @@ export function AdminShopsView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
+  const [filter, setFilter] = useState<FilterType>("all");
 
   const owners = data?.owners || [];
 
+  const filteredOwners = useMemo(() => {
+    const now = Date.now();
+    return owners.filter((owner) => {
+      if (filter === "all") return true;
+      const lastOnline = owner.last_online_at ? new Date(owner.last_online_at).getTime() : 0;
+      const diff = now - lastOnline;
+      if (filter === "active_now") return diff < 5 * 60 * 1000 && owner.last_online_at;
+      if (filter === "active_24h") return diff < 24 * 60 * 60 * 1000 && owner.last_online_at;
+      if (filter === "inactive_7d") return !owner.last_online_at || diff > 7 * 24 * 60 * 60 * 1000;
+      return true;
+    });
+  }, [owners, filter]);
+
+  const filters: { key: FilterType; label: string }[] = [
+    { key: "all", label: `Toutes (${owners.length})` },
+    { key: "active_now", label: "En ligne" },
+    { key: "active_24h", label: "Actif 24h" },
+    { key: "inactive_7d", label: "Inactif 7j+" },
+  ];
+
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-semibold text-white">Gestion des boutiques</h2>
         <Button
           onClick={() => setCreateOpen(true)}
@@ -32,98 +76,138 @@ export function AdminShopsView() {
         </Button>
       </div>
 
-      <div className="space-y-2">
-        {owners.map((owner) => (
-          <div
-            key={owner.user_id}
+      {/* Smart Filters */}
+      <div className="flex gap-2 flex-wrap">
+        {filters.map((f) => (
+          <Button
+            key={f.key}
+            variant={filter === f.key ? "default" : "outline"}
+            size="sm"
             className={cn(
-              "admin-glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 transition-all",
-              owner.is_locked && "border-red-500/30 opacity-70"
+              "text-xs",
+              filter === f.key
+                ? "bg-[#00D4FF]/20 text-[#00D4FF] border-[#00D4FF]/30"
+                : "border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
             )}
+            onClick={() => setFilter(f.key)}
           >
-            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                <Store className="h-5 w-5 text-slate-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-medium text-sm truncate">{owner.full_name || owner.username}</span>
-                  {owner.is_locked && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                      Verrouillé
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 mt-0.5">
-                  <span>@{owner.username}</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span>{owner.shop_name}</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span>{getCountryByCode(owner.country || "TN")?.flag || "🇹🇳"} {getCurrencyByCode(owner.currency || "TND")?.code || "TND"}</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span>{owner.team_count} membres</span>
-                  <span className="hidden sm:inline">•</span>
-                  <span>{owner.repair_count} réparations</span>
-                </div>
-                <p className="text-[10px] text-slate-600 mt-0.5">
-                  Inscrit {format(new Date(owner.created_at), "dd MMM yyyy", { locale: fr })}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-slate-400 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10"
-                onClick={() => setEditTarget({
-                  userId: owner.user_id,
-                  name: owner.full_name || owner.username || "",
-                  country: owner.country || "TN",
-                  currency: owner.currency || "TND",
-                })}
-                title="Modifier pays/devise"
-              >
-                <Settings2 className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-slate-400 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10"
-                onClick={() => setResetTarget({ userId: owner.user_id, name: owner.full_name || owner.username || "" })}
-                title="Réinitialiser mot de passe"
-              >
-                <KeyRound className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "h-8 w-8",
-                  owner.is_locked
-                    ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-                    : "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
-                )}
-                onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: !owner.is_locked })}
-                title={owner.is_locked ? "Déverrouiller" : "Verrouiller"}
-              >
-                {owner.is_locked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                onClick={() => {
-                  if (confirm(`Supprimer ${owner.full_name || owner.username} ?`)) {
-                    deleteOwner.mutate(owner.user_id);
-                  }
-                }}
-                title="Supprimer"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+            {f.label}
+          </Button>
         ))}
+      </div>
+
+      {/* Table */}
+      <div className="admin-glass-card rounded-xl overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-white/5 hover:bg-transparent">
+              <TableHead className="text-slate-400 text-xs">Boutique</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Propriétaire</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden md:table-cell">Inscription</TableHead>
+              <TableHead className="text-slate-400 text-xs">Statut</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Réparations</TableHead>
+              <TableHead className="text-slate-400 text-xs text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredOwners.map((owner) => {
+              const status = getOnlineStatus(owner.last_online_at);
+              return (
+                <TableRow key={owner.user_id} className={cn("border-white/5", owner.is_locked && "opacity-60")}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col">
+                        <span className="text-white text-sm font-medium">{owner.shop_name}</span>
+                        <span className="text-xs text-slate-500">
+                          {getCountryByCode(owner.country || "TN")?.flag} {getCurrencyByCode(owner.currency || "TND")?.code}
+                        </span>
+                      </div>
+                      {owner.is_locked && (
+                        <Badge variant="outline" className="text-[10px] border-red-500/30 text-red-400 px-1.5 py-0">
+                          Verrouillé
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <div>
+                      <span className="text-white text-sm">{owner.full_name || owner.username}</span>
+                      <p className="text-xs text-slate-500">@{owner.username}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-xs text-slate-500">
+                    {format(new Date(owner.created_at), "dd MMM yyyy", { locale: fr })}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("w-2 h-2 rounded-full", statusDot[status])} />
+                      <span className="text-xs text-slate-400">
+                        {owner.last_online_at
+                          ? formatDistanceToNow(new Date(owner.last_online_at), { addSuffix: true, locale: fr })
+                          : "Jamais"}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <span className="text-sm text-white font-mono-numbers">{owner.repair_count}</span>
+                    <span className="text-xs text-slate-500 ml-1">({owner.team_count} membres)</span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditTarget({
+                          userId: owner.user_id,
+                          name: owner.full_name || owner.username || "",
+                          country: owner.country || "TN",
+                          currency: owner.currency || "TND",
+                        })}>
+                          <Settings2 className="h-4 w-4 mr-2" /> Modifier pays/devise
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setResetTarget({
+                          userId: owner.user_id,
+                          name: owner.full_name || owner.username || "",
+                        })}>
+                          <KeyRound className="h-4 w-4 mr-2" /> Réinitialiser mot de passe
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: !owner.is_locked })}>
+                          {owner.is_locked ? (
+                            <><Unlock className="h-4 w-4 mr-2" /> Déverrouiller</>
+                          ) : (
+                            <><Lock className="h-4 w-4 mr-2" /> Verrouiller</>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-red-400"
+                          onClick={() => {
+                            if (confirm(`Supprimer ${owner.full_name || owner.username} ?`)) {
+                              deleteOwner.mutate(owner.user_id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {filteredOwners.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-slate-500 py-8">
+                  Aucune boutique trouvée
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <CreateOwnerDialog open={createOpen} onOpenChange={setCreateOpen} />

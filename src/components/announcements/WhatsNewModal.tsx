@@ -21,7 +21,7 @@ export function WhatsNewModal() {
 
   return (
     <Dialog open={!!announcement} onOpenChange={(open) => { if (!open) handleClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[90vw] sm:max-w-md mx-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Megaphone className="h-5 w-5 text-primary" />

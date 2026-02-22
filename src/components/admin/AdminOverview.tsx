@@ -1,4 +1,4 @@
-import { Store, Users, Wrench, DollarSign, Activity, ShoppingCart } from "lucide-react";
+import { Store, Users, Wrench, DollarSign, Activity, ShoppingCart, Wifi } from "lucide-react";
 import { useAdminData, useAdminRevenue, useAdminActivity } from "@/hooks/useAdmin";
 import { useAdminFeedback } from "@/hooks/useFeedback";
 import { AdminStatCard } from "./AdminStatCard";
@@ -16,12 +16,18 @@ export function AdminOverview() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Bento Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <AdminStatCard
-          title="Boutiques actives"
+          title="Boutiques enregistrées"
           value={data?.stats.total_owners || 0}
           icon={Store}
           color="blue"
+        />
+        <AdminStatCard
+          title="Boutiques actives"
+          value={data?.stats.active_now_count || 0}
+          icon={Wifi}
+          color="green"
         />
         <AdminStatCard
           title="Employés total"

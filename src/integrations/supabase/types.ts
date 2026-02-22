@@ -106,6 +106,64 @@ export type Database = {
         }
         Relationships: []
       }
+      defective_parts: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          status: string
+          supplier_id: string | null
+          user_id: string
+          warranty_ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          status?: string
+          supplier_id?: string | null
+          user_id: string
+          warranty_ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          status?: string
+          supplier_id?: string | null
+          user_id?: string
+          warranty_ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "defective_parts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "defective_parts_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "defective_parts_warranty_ticket_id_fkey"
+            columns: ["warranty_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -325,6 +383,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_locked: boolean
+          last_online_at: string | null
           phone: string | null
           updated_at: string
           user_id: string
@@ -336,6 +395,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_locked?: boolean
+          last_online_at?: string | null
           phone?: string | null
           updated_at?: string
           user_id: string
@@ -347,6 +407,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_locked?: boolean
+          last_online_at?: string | null
           phone?: string | null
           updated_at?: string
           user_id?: string
@@ -408,6 +469,7 @@ export type Database = {
           diagnosis: string | null
           id: string
           imei: string | null
+          is_warranty: boolean
           labor_cost: number
           notes: string | null
           parts_cost: number
@@ -416,6 +478,7 @@ export type Database = {
           total_cost: number
           updated_at: string
           user_id: string
+          warranty_ticket_id: string | null
         }
         Insert: {
           amount_paid?: number
@@ -428,6 +491,7 @@ export type Database = {
           diagnosis?: string | null
           id?: string
           imei?: string | null
+          is_warranty?: boolean
           labor_cost?: number
           notes?: string | null
           parts_cost?: number
@@ -436,6 +500,7 @@ export type Database = {
           total_cost?: number
           updated_at?: string
           user_id: string
+          warranty_ticket_id?: string | null
         }
         Update: {
           amount_paid?: number
@@ -448,6 +513,7 @@ export type Database = {
           diagnosis?: string | null
           id?: string
           imei?: string | null
+          is_warranty?: boolean
           labor_cost?: number
           notes?: string | null
           parts_cost?: number
@@ -456,6 +522,7 @@ export type Database = {
           total_cost?: number
           updated_at?: string
           user_id?: string
+          warranty_ticket_id?: string | null
         }
         Relationships: [
           {
@@ -470,6 +537,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repairs_warranty_ticket_id_fkey"
+            columns: ["warranty_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -718,6 +792,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      warranty_tickets: {
+        Row: {
+          action_taken: string | null
+          amount_paid: number
+          created_at: string
+          id: string
+          labor_cost: number
+          notes: string | null
+          original_repair_id: string
+          parts_cost: number
+          return_reason: string
+          status: string
+          total_cost: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          labor_cost?: number
+          notes?: string | null
+          original_repair_id: string
+          parts_cost?: number
+          return_reason?: string
+          status?: string
+          total_cost?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          labor_cost?: number
+          notes?: string | null
+          original_repair_id?: string
+          parts_cost?: number
+          return_reason?: string
+          status?: string
+          total_cost?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_tickets_original_repair_id_fkey"
+            columns: ["original_repair_id"]
+            isOneToOne: false
+            referencedRelation: "repairs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

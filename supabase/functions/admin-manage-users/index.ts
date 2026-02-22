@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       if (!action || action === "list") {
         const { data: profiles } = await adminClient
           .from("profiles")
-          .select("user_id, full_name, username, created_at, is_locked")
+          .select("user_id, full_name, username, created_at, is_locked, last_online_at")
           .order("created_at", { ascending: false });
 
         const { data: roles } = await adminClient
@@ -125,10 +125,14 @@ Deno.serve(async (req) => {
             currency: shopMap.get(p.user_id)?.currency || "TND",
           }));
 
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const activeNowCount = owners.filter((o: any) => o.last_online_at && o.last_online_at > fiveMinAgo).length;
+
         const stats = {
           total_owners: owners.length,
           total_employees: (teamCounts || []).length,
           total_repairs: (repairCounts || []).length,
+          active_now_count: activeNowCount,
         };
 
         return new Response(JSON.stringify({ owners, stats }), {

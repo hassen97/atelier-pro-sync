@@ -12,6 +12,7 @@ import {
   XCircle,
   Loader2,
   Download,
+  Shield,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -27,6 +28,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
+import { WarrantyDialog } from "@/components/repairs/WarrantyDialog";
 import { MyTasks } from "@/components/dashboard/MyTasks";
 import { useMyTeamInfo } from "@/hooks/useTeam";
 
@@ -50,6 +52,7 @@ export default function Dashboard() {
   
   const { data: teamInfo } = useMyTeamInfo();
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
+  const [warrantyDialogOpen, setWarrantyDialogOpen] = useState(false);
 
   const isLoading = statsLoading || repairsLoading || alertsLoading;
 
@@ -112,6 +115,10 @@ export default function Dashboard() {
         <Button variant="outline" size="sm" onClick={handleExport}>
           <Download className="h-4 w-4 mr-2" />
           Exporter
+        </Button>
+        <Button variant="outline" size="sm" className="border-orange-500/30 text-orange-500 hover:bg-orange-500/10" onClick={() => setWarrantyDialogOpen(true)}>
+          <Shield className="h-4 w-4 mr-2" />
+          Garantie / Retour
         </Button>
         <Button size="sm" className="bg-gradient-primary hover:opacity-90" onClick={() => setRepairDialogOpen(true)}>
           + Nouvelle réparation
@@ -286,6 +293,9 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Warranty Dialog */}
+      <WarrantyDialog open={warrantyDialogOpen} onOpenChange={setWarrantyDialogOpen} />
 
       {/* Repair Dialog */}
       <RepairDialog

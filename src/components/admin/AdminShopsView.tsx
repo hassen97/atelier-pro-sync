@@ -68,7 +68,8 @@ export function AdminShopsView() {
         (o.full_name || "").toLowerCase().includes(q) ||
         (o.username || "").toLowerCase().includes(q) ||
         (o.phone || "").toLowerCase().includes(q) ||
-        (o.whatsapp_phone || "").toLowerCase().includes(q)
+        (o.whatsapp_phone || "").toLowerCase().includes(q) ||
+        (o.email || "").toLowerCase().includes(q)
       );
     }
 
@@ -149,7 +150,7 @@ export function AdminShopsView() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
         <Input
-          placeholder="Rechercher par boutique, nom, username, téléphone..."
+          placeholder="Rechercher par boutique, nom, username, téléphone, email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-[#00D4FF]/30"

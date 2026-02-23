@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound } from "lucide-react";
+import { LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings";
 
 interface AdminSidebarProps {
   active: AdminView;
@@ -16,6 +16,7 @@ const navItems = [
   { id: "reset_requests" as const, label: "Demandes", icon: KeyRound },
   { id: "announcements" as const, label: "Annonces", icon: Megaphone },
   { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
+  { id: "settings" as const, label: "Paramètres", icon: Settings },
 ];
 
 export function AdminSidebar({ active, onNavigate, onClose }: AdminSidebarProps) {

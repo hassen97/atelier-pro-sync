@@ -17,6 +17,7 @@ import {
   Tag,
   Globe,
   Phone,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,6 +79,7 @@ export default function Settings() {
   const [profileWhatsapp, setProfileWhatsapp] = useState("");
   const [useSameWhatsapp, setUseSameWhatsapp] = useState(true);
   const [savingPhone, setSavingPhone] = useState(false);
+  const [profileEmail, setProfileEmail] = useState("");
 
   // Password change state
   const [newPassword, setNewPassword] = useState("");
@@ -126,13 +128,14 @@ export default function Settings() {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("phone, whatsapp_phone")
+      .select("phone, whatsapp_phone, email")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setProfilePhone(data.phone || "");
           setProfileWhatsapp((data as any).whatsapp_phone || "");
+          setProfileEmail((data as any).email || "");
           const same = !data.phone || (data as any).whatsapp_phone === data.phone || !(data as any).whatsapp_phone;
           setUseSameWhatsapp(same);
         }
@@ -148,6 +151,7 @@ export default function Settings() {
       .update({
         phone: profilePhone.trim(),
         whatsapp_phone: whatsappPhone,
+        email: profileEmail.trim() || null,
       } as any)
       .eq("user_id", user.id);
     if (error) {
@@ -576,7 +580,7 @@ export default function Settings() {
                 Coordonnées
               </CardTitle>
               <CardDescription>
-                Numéro de téléphone et WhatsApp
+                Numéro de téléphone, WhatsApp et email
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -623,7 +627,23 @@ export default function Settings() {
                 </div>
               )}
 
-              <Button 
+              {/* Email field */}
+              <div className="space-y-2">
+                <Label htmlFor="profileEmail">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="profileEmail"
+                    type="email"
+                    placeholder="exemple@email.com"
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <Button
                 onClick={handleSavePhone}
                 disabled={savingPhone}
               >

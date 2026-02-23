@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe, Phone } from "lucide-react";
+import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe, Phone, Mail, MessageCircle } from "lucide-react";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,10 +29,24 @@ export default function Auth() {
   const [registerPhone, setRegisterPhone] = useState("");
   const [useSameWhatsapp, setUseSameWhatsapp] = useState(true);
   const [registerWhatsapp, setRegisterWhatsapp] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [adminWhatsapp, setAdminWhatsapp] = useState("");
+
+  // Load admin WhatsApp number
+  useEffect(() => {
+    supabase
+      .from("platform_settings" as any)
+      .select("value")
+      .eq("key", "admin_whatsapp")
+      .single()
+      .then(({ data }) => {
+        if (data && (data as any).value) setAdminWhatsapp((data as any).value);
+      });
+  }, []);
 
   // Redirect if already logged in
   if (user) {
@@ -122,7 +136,8 @@ export default function Auth() {
     const { error } = await signUp(
       registerUsername, registerPassword, registerFullName, 
       registerCountry, registerCurrency,
-      registerPhone.trim(), whatsappPhone
+      registerPhone.trim(), whatsappPhone,
+      registerEmail.trim() || undefined
     );
     
     if (error) {
@@ -144,6 +159,7 @@ export default function Auth() {
       setRegisterPhone("");
       setUseSameWhatsapp(true);
       setRegisterWhatsapp("");
+      setRegisterEmail("");
     }
     
     setLoading(false);
@@ -375,6 +391,23 @@ export default function Auth() {
                     </div>
                   )}
 
+                  {/* Optional Email */}
+                  <div className="space-y-2">
+                    <Label htmlFor="register-email">Email (optionnel)</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-email"
+                        type="email"
+                        placeholder="exemple@email.com"
+                        value={registerEmail}
+                        onChange={(e) => setRegisterEmail(e.target.value)}
+                        className="pl-10"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Mot de passe</Label>
                     <div className="relative">
@@ -429,6 +462,21 @@ export default function Auth() {
             </CardContent>
           </Tabs>
         </Card>
+
+        {/* Admin WhatsApp Contact */}
+        {adminWhatsapp && (
+          <div className="mt-4">
+            <a
+              href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Contacter l'admin via WhatsApp
+            </a>
+          </div>
+        )}
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           © 2024 RepairPro Tunisie. Tous droits réservés.

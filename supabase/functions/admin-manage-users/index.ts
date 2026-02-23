@@ -12,6 +12,7 @@ const ActionSchema = z.object({
     "list", "delete", "reset-password", "create", "lock", "unlock",
     "get-revenue", "get-activity", "update-settings",
     "list-reset-requests", "update-reset-request", "approve-signup",
+    "get-platform-settings", "update-platform-setting",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
@@ -22,6 +23,8 @@ const ActionSchema = z.object({
   currency: z.string().min(3).max(4).optional(),
   requestId: z.string().uuid().optional(),
   status: z.string().optional(),
+  settingKey: z.string().optional(),
+  settingValue: z.string().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -88,7 +91,7 @@ Deno.serve(async (req) => {
       if (!action || action === "list") {
         const { data: profiles } = await adminClient
           .from("profiles")
-          .select("user_id, full_name, username, created_at, is_locked, last_online_at, phone, whatsapp_phone")
+          .select("user_id, full_name, username, created_at, is_locked, last_online_at, phone, whatsapp_phone, email")
           .order("created_at", { ascending: false });
 
         const { data: roles } = await adminClient
@@ -131,6 +134,7 @@ Deno.serve(async (req) => {
             currency: shopMap.get(p.user_id)?.currency || "TND",
             phone: p.phone || null,
             whatsapp_phone: p.whatsapp_phone || null,
+            email: p.email || null,
           }));
 
         const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -390,6 +394,32 @@ Deno.serve(async (req) => {
           .update({ status: body.status })
           .eq("id", body.requestId);
 
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "get-platform-settings") {
+        const { data, error } = await adminClient
+          .from("platform_settings")
+          .select("key, value, updated_at");
+        if (error) throw error;
+        return new Response(JSON.stringify({ settings: data }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "update-platform-setting") {
+        if (!body.settingKey || body.settingValue === undefined) {
+          return new Response(JSON.stringify({ error: "settingKey and settingValue required" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const { error } = await adminClient
+          .from("platform_settings")
+          .update({ value: body.settingValue, updated_at: new Date().toISOString() })
+          .eq("key", body.settingKey);
         if (error) throw error;
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

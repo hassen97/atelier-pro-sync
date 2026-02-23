@@ -580,7 +580,7 @@ export default function Settings() {
                 Coordonnées
               </CardTitle>
               <CardDescription>
-                Numéro de téléphone et WhatsApp
+                Numéro de téléphone, WhatsApp et email
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

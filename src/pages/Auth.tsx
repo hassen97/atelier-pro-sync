@@ -29,10 +29,24 @@ export default function Auth() {
   const [registerPhone, setRegisterPhone] = useState("");
   const [useSameWhatsapp, setUseSameWhatsapp] = useState(true);
   const [registerWhatsapp, setRegisterWhatsapp] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [adminWhatsapp, setAdminWhatsapp] = useState("");
+
+  // Load admin WhatsApp number
+  useEffect(() => {
+    supabase
+      .from("platform_settings" as any)
+      .select("value")
+      .eq("key", "admin_whatsapp")
+      .single()
+      .then(({ data }) => {
+        if (data && (data as any).value) setAdminWhatsapp((data as any).value);
+      });
+  }, []);
 
   // Redirect if already logged in
   if (user) {

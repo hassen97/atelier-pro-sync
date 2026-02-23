@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe } from "lucide-react";
+import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe, Phone } from "lucide-react";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -24,6 +26,9 @@ export default function Auth() {
   const [registerCountry, setRegisterCountry] = useState("TN");
   const [registerCurrency, setRegisterCurrency] = useState("TND");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [registerPhone, setRegisterPhone] = useState("");
+  const [useSameWhatsapp, setUseSameWhatsapp] = useState(true);
+  const [registerWhatsapp, setRegisterWhatsapp] = useState("");
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,10 +73,14 @@ export default function Auth() {
     setError(null);
     setSuccess(null);
 
-    // Validate username
     const usernameError = validateUsername(registerUsername);
     if (usernameError) {
       setError(usernameError);
+      return;
+    }
+
+    if (!registerPhone.trim()) {
+      setError("Le numéro de téléphone est obligatoire");
       return;
     }
 
@@ -80,8 +89,8 @@ export default function Auth() {
       return;
     }
 
-    if (registerPassword.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères");
+    if (registerPassword.length < 8) {
+      setError("Le mot de passe doit contenir au moins 8 caractères");
       return;
     }
 
@@ -96,6 +105,20 @@ export default function Auth() {
         setError(error.message);
       }
     } else {
+      // Save phone & whatsapp to profile after signup
+      const whatsappPhone = useSameWhatsapp ? registerPhone.trim() : (registerWhatsapp.trim() || null);
+      const internalEmail = `${registerUsername.toLowerCase()}@repairpro.local`;
+      
+      // We need to update the profile with phone data
+      // Since the user was just created via signUp, we use the anon client after a brief moment
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user) {
+        await supabase.from("profiles").update({
+          phone: registerPhone.trim(),
+          whatsapp_phone: whatsappPhone,
+        }).eq("user_id", sessionData.session.user.id);
+      }
+
       setSuccess("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
       setRegisterUsername("");
       setRegisterPassword("");
@@ -103,6 +126,9 @@ export default function Auth() {
       setRegisterCountry("TN");
       setRegisterCurrency("TND");
       setConfirmPassword("");
+      setRegisterPhone("");
+      setUseSameWhatsapp(true);
+      setRegisterWhatsapp("");
     }
     
     setLoading(false);
@@ -195,6 +221,15 @@ export default function Auth() {
                       "Se connecter"
                     )}
                   </Button>
+
+                  <div className="text-center">
+                    <Link 
+                      to="/reset-password" 
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Mot de passe oublié ?
+                    </Link>
+                  </div>
                 </form>
               </TabsContent>
 
@@ -277,6 +312,54 @@ export default function Auth() {
                     </div>
                   </div>
 
+                  {/* Phone & WhatsApp */}
+                  <div className="space-y-2">
+                    <Label htmlFor="register-phone">Numéro de téléphone *</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-phone"
+                        type="tel"
+                        placeholder="+216 XX XXX XXX"
+                        value={registerPhone}
+                        onChange={(e) => setRegisterPhone(e.target.value)}
+                        className="pl-10"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="same-whatsapp"
+                      checked={useSameWhatsapp}
+                      onCheckedChange={(checked) => setUseSameWhatsapp(!!checked)}
+                      disabled={loading}
+                    />
+                    <Label htmlFor="same-whatsapp" className="text-sm cursor-pointer">
+                      Utiliser ce numéro pour WhatsApp
+                    </Label>
+                  </div>
+
+                  {!useSameWhatsapp && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label htmlFor="register-whatsapp">Numéro WhatsApp</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="register-whatsapp"
+                          type="tel"
+                          placeholder="+216 XX XXX XXX"
+                          value={registerWhatsapp}
+                          onChange={(e) => setRegisterWhatsapp(e.target.value)}
+                          className="pl-10"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Mot de passe</Label>
                     <div className="relative">
@@ -289,7 +372,7 @@ export default function Auth() {
                         onChange={(e) => setRegisterPassword(e.target.value)}
                         className="pl-10"
                         required
-                        minLength={6}
+                        minLength={8}
                         disabled={loading}
                       />
                     </div>

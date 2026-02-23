@@ -16,8 +16,10 @@ import {
   Key,
   Tag,
   Globe,
+  Phone,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +30,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useNotificationSettings } from "@/hooks/useNotificationSettings";
 import { useBackup } from "@/hooks/useBackup";
@@ -61,7 +64,7 @@ export default function Settings() {
     resetAllData,
   } = useSecuritySettings();
 
-  const { updatePassword } = useAuth();
+  const { updatePassword, user } = useAuth();
   
   const [shopName, setShopName] = useState("");
   const [shopCountry, setShopCountry] = useState("TN");
@@ -70,6 +73,12 @@ export default function Settings() {
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [stockThreshold, setStockThreshold] = useState("");
   
+  // Phone / WhatsApp state
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileWhatsapp, setProfileWhatsapp] = useState("");
+  const [useSameWhatsapp, setUseSameWhatsapp] = useState(true);
+  const [savingPhone, setSavingPhone] = useState(false);
+
   // Password change state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -111,6 +120,43 @@ export default function Settings() {
       setStockThreshold(String(settings.stock_alert_threshold));
     }
   }, [loading, settings]);
+
+  // Load phone/whatsapp from profile
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("phone, whatsapp_phone")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setProfilePhone(data.phone || "");
+          setProfileWhatsapp((data as any).whatsapp_phone || "");
+          const same = !data.phone || (data as any).whatsapp_phone === data.phone || !(data as any).whatsapp_phone;
+          setUseSameWhatsapp(same);
+        }
+      });
+  }, [user]);
+
+  const handleSavePhone = async () => {
+    if (!user) return;
+    setSavingPhone(true);
+    const whatsappPhone = useSameWhatsapp ? profilePhone.trim() : (profileWhatsapp.trim() || null);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        phone: profilePhone.trim(),
+        whatsapp_phone: whatsappPhone,
+      } as any)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error("Erreur lors de la sauvegarde");
+    } else {
+      toast.success("Coordonnées mises à jour");
+    }
+    setSavingPhone(false);
+  };
 
   const handleSaveGeneralSettings = async () => {
     await saveSettings({
@@ -518,6 +564,75 @@ export default function Settings() {
                   <Key className="h-4 w-4 mr-2" />
                 )}
                 {changingPassword ? "Modification..." : "Modifier le mot de passe"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Phone / WhatsApp Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                Coordonnées
+              </CardTitle>
+              <CardDescription>
+                Numéro de téléphone et WhatsApp
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="profilePhone">Numéro de téléphone</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="profilePhone"
+                    type="tel"
+                    placeholder="+216 XX XXX XXX"
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="same-whatsapp-settings"
+                  checked={useSameWhatsapp}
+                  onCheckedChange={(checked) => setUseSameWhatsapp(!!checked)}
+                />
+                <Label htmlFor="same-whatsapp-settings" className="text-sm cursor-pointer">
+                  Utiliser ce numéro pour WhatsApp
+                </Label>
+              </div>
+
+              {!useSameWhatsapp && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label htmlFor="profileWhatsapp">Numéro WhatsApp</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="profileWhatsapp"
+                      type="tel"
+                      placeholder="+216 XX XXX XXX"
+                      value={profileWhatsapp}
+                      onChange={(e) => setProfileWhatsapp(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <Button 
+                onClick={handleSavePhone}
+                disabled={savingPhone}
+              >
+                {savingPhone ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {savingPhone ? "Enregistrement..." : "Enregistrer les coordonnées"}
               </Button>
             </CardContent>
           </Card>

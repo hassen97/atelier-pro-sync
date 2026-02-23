@@ -16,6 +16,8 @@ export interface ShopOwner {
   country: string;
   currency: string;
   last_online_at: string | null;
+  phone: string | null;
+  whatsapp_phone: string | null;
 }
 
 export interface AdminStats {

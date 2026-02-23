@@ -11,7 +11,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
@@ -65,7 +65,9 @@ export function AdminShopsView() {
       result = result.filter((o) =>
         (o.shop_name || "").toLowerCase().includes(q) ||
         (o.full_name || "").toLowerCase().includes(q) ||
-        (o.username || "").toLowerCase().includes(q)
+        (o.username || "").toLowerCase().includes(q) ||
+        (o.phone || "").toLowerCase().includes(q) ||
+        (o.whatsapp_phone || "").toLowerCase().includes(q)
       );
     }
 
@@ -143,7 +145,7 @@ export function AdminShopsView() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
         <Input
-          placeholder="Rechercher par boutique, nom ou username..."
+          placeholder="Rechercher par boutique, nom, username, téléphone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-[#00D4FF]/30"
@@ -160,6 +162,8 @@ export function AdminShopsView() {
               </TableHead>
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Propriétaire</TableHead>
               <TableHead className="text-slate-400 text-xs hidden md:table-cell">Inscription</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">Téléphone</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">WhatsApp</TableHead>
               <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("status")}>
                 Statut <SortIcon col="status" />
               </TableHead>
@@ -195,6 +199,31 @@ export function AdminShopsView() {
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-xs text-slate-500">
                     {format(new Date(owner.created_at), "dd MMM yyyy", { locale: fr })}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {owner.phone ? (
+                      <a href={`tel:${owner.phone}`} className="text-xs text-[#00D4FF] hover:underline flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {owner.phone}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-600">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {(owner.whatsapp_phone || owner.phone) ? (
+                      <a 
+                        href={`https://wa.me/${(owner.whatsapp_phone || owner.phone || "").replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+                      >
+                        <MessageCircle className="h-3 w-3" />
+                        {owner.whatsapp_phone || owner.phone}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-600">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -259,7 +288,7 @@ export function AdminShopsView() {
             })}
             {filteredOwners.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-slate-500 py-8">
+                <TableCell colSpan={8} className="text-center text-slate-500 py-8">
                   Aucune boutique trouvée
                 </TableCell>
               </TableRow>

@@ -159,6 +159,7 @@ export default function Auth() {
       setRegisterPhone("");
       setUseSameWhatsapp(true);
       setRegisterWhatsapp("");
+      setRegisterEmail("");
     }
     
     setLoading(false);

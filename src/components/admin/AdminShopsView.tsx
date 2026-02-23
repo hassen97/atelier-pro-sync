@@ -11,14 +11,15 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2 } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
 
 type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d";
-
+type SortKey = "name" | "status" | null;
 function getOnlineStatus(lastOnline: string | null) {
   if (!lastOnline) return "offline";
   const diff = Date.now() - new Date(lastOnline).getTime();
@@ -41,12 +42,14 @@ export function AdminShopsView() {
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
-
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const owners = data?.owners || [];
 
   const filteredOwners = useMemo(() => {
     const now = Date.now();
-    return owners.filter((owner) => {
+    let result = owners.filter((owner) => {
       if (filter === "all") return true;
       const lastOnline = owner.last_online_at ? new Date(owner.last_online_at).getTime() : 0;
       const diff = now - lastOnline;
@@ -55,7 +58,47 @@ export function AdminShopsView() {
       if (filter === "inactive_7d") return !owner.last_online_at || diff > 7 * 24 * 60 * 60 * 1000;
       return true;
     });
-  }, [owners, filter]);
+
+    // Search filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((o) =>
+        (o.shop_name || "").toLowerCase().includes(q) ||
+        (o.full_name || "").toLowerCase().includes(q) ||
+        (o.username || "").toLowerCase().includes(q)
+      );
+    }
+
+    // Sort
+    if (sortKey) {
+      const statusOrder: Record<string, number> = { online: 0, away: 1, offline: 2 };
+      result = [...result].sort((a, b) => {
+        let cmp = 0;
+        if (sortKey === "name") {
+          cmp = (a.shop_name || "").localeCompare(b.shop_name || "");
+        } else if (sortKey === "status") {
+          cmp = (statusOrder[getOnlineStatus(a.last_online_at)] ?? 2) - (statusOrder[getOnlineStatus(b.last_online_at)] ?? 2);
+        }
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+
+    return result;
+  }, [owners, filter, search, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return null;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 inline ml-1" /> : <ArrowDown className="h-3 w-3 inline ml-1" />;
+  };
 
   const filters: { key: FilterType; label: string }[] = [
     { key: "all", label: `Toutes (${owners.length})` },
@@ -96,15 +139,30 @@ export function AdminShopsView() {
         ))}
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+        <Input
+          placeholder="Rechercher par boutique, nom ou username..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-[#00D4FF]/30"
+        />
+      </div>
+
       {/* Table */}
       <div className="admin-glass-card rounded-xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-white/5 hover:bg-transparent">
-              <TableHead className="text-slate-400 text-xs">Boutique</TableHead>
+              <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("name")}>
+                Boutique <SortIcon col="name" />
+              </TableHead>
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Propriétaire</TableHead>
               <TableHead className="text-slate-400 text-xs hidden md:table-cell">Inscription</TableHead>
-              <TableHead className="text-slate-400 text-xs">Statut</TableHead>
+              <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("status")}>
+                Statut <SortIcon col="status" />
+              </TableHead>
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Réparations</TableHead>
               <TableHead className="text-slate-400 text-xs text-right">Actions</TableHead>
             </TableRow>

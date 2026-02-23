@@ -6,10 +6,11 @@ import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AdminShopsView } from "@/components/admin/AdminShopsView";
 import { AdminAnnouncementsView } from "@/components/admin/AdminAnnouncementsView";
 import { AdminFeedbackInbox } from "@/components/admin/AdminFeedbackInbox";
+import { AdminResetRequests } from "@/components/admin/AdminResetRequests";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests";
 
 const AdminDashboard = () => {
   const { isLoading } = useAdminData();
@@ -75,6 +76,7 @@ const AdminDashboard = () => {
         <main className="flex-1 overflow-auto p-4 sm:p-6">
           {activeView === "overview" && <AdminOverview />}
           {activeView === "shops" && <AdminShopsView />}
+          {activeView === "reset_requests" && <AdminResetRequests />}
           {activeView === "announcements" && <AdminAnnouncementsView />}
           {activeView === "feedback" && <AdminFeedbackInbox />}
         </main>

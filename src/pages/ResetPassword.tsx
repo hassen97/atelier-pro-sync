@@ -2,11 +2,45 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wrench, ArrowLeft, MessageCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Wrench, ArrowLeft, Send, AtSign, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const trimmed = username.trim().toLowerCase();
+    if (!trimmed || trimmed.length < 3) {
+      setError("Veuillez saisir un nom d'utilisateur valide (min. 3 caractères)");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Insert directly into password_reset_requests (anonymous insert allowed by RLS)
+      const { error: insertError } = await supabase
+        .from("password_reset_requests" as any)
+        .insert({ username: trimmed } as any);
+
+      if (insertError) throw insertError;
+      setSuccess(true);
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de l'envoi de la demande");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
@@ -22,39 +56,93 @@ export default function ResetPassword() {
         <Card className="border-border/50 shadow-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              Contactez l'administrateur
+              <Send className="h-5 w-5" />
+              Demande de réinitialisation
             </CardTitle>
             <CardDescription>
-              Pour réinitialiser votre mot de passe
+              Saisissez votre nom d'utilisateur pour envoyer une demande à l'administrateur
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert className="border-primary/30 bg-primary/5">
-              <AlertDescription className="text-sm">
-                Comme votre compte utilise un nom d'utilisateur (sans email), la réinitialisation 
-                du mot de passe doit être effectuée par un administrateur.
-              </AlertDescription>
-            </Alert>
-            
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>Pour récupérer votre compte, veuillez :</p>
-              <ol className="list-decimal list-inside space-y-2">
-                <li>Contacter l'administrateur de la plateforme</li>
-                <li>Fournir votre <strong className="text-foreground">nom d'utilisateur</strong></li>
-                <li>L'administrateur réinitialisera votre mot de passe</li>
-                <li>Vous pourrez ensuite vous connecter et changer votre mot de passe dans les paramètres</li>
-              </ol>
-            </div>
+            {success ? (
+              <div className="space-y-4">
+                <Alert className="border-emerald-500/30 bg-emerald-500/10">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  <AlertDescription className="text-emerald-600 dark:text-emerald-400">
+                    Votre demande a été envoyée avec succès. L'administrateur vous contactera 
+                    par téléphone ou WhatsApp pour vous fournir un nouveau mot de passe.
+                  </AlertDescription>
+                </Alert>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate("/auth")}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Retour à la connexion
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
 
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => navigate("/auth")}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour à la connexion
-            </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="reset-username">Nom d'utilisateur</Label>
+                  <div className="relative">
+                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reset-username"
+                      type="text"
+                      placeholder="votre_username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="pl-10"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <Alert className="border-primary/30 bg-primary/5">
+                  <AlertDescription className="text-sm">
+                    L'administrateur recevra votre demande et vous contactera via le numéro 
+                    de téléphone ou WhatsApp associé à votre compte.
+                  </AlertDescription>
+                </Alert>
+
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-primary hover:opacity-90"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Envoyer une demande de réinitialisation
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate("/auth")}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Retour à la connexion
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 

@@ -10,7 +10,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (username: string, password: string, fullName: string, country?: string, currency?: string) => Promise<{ error: Error | null }>;
+  signUp: (username: string, password: string, fullName: string, country?: string, currency?: string, phone?: string, whatsappPhone?: string) => Promise<{ error: Error | null }>;
   signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
@@ -104,13 +104,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const usernameToEmail = (username: string) => `${username.toLowerCase()}@repairpro.local`;
 
-  const signUp = async (username: string, password: string, fullName: string, country?: string, currency?: string) => {
+  const signUp = async (username: string, password: string, fullName: string, country?: string, currency?: string, phone?: string, whatsappPhone?: string) => {
     const internalEmail = usernameToEmail(username);
     const metadata = {
       full_name: fullName,
       username: username.toLowerCase(),
       ...(country && { country }),
       ...(currency && { currency }),
+      ...(phone && { phone }),
+      ...(whatsappPhone && { whatsapp_phone: whatsappPhone }),
     };
 
     // Primary: Supabase JS client

@@ -266,6 +266,27 @@ export type Database = {
           },
         ]
       }
+      password_reset_requests: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          username?: string
+        }
+        Relationships: []
+      }
       platform_announcements: {
         Row: {
           changes_fixes: string | null

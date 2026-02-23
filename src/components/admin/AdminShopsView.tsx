@@ -11,14 +11,14 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
 
-type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d";
+type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d" | "pending";
 type SortKey = "name" | "status" | null;
 function getOnlineStatus(lastOnline: string | null) {
   if (!lastOnline) return "offline";
@@ -51,6 +51,7 @@ export function AdminShopsView() {
     const now = Date.now();
     let result = owners.filter((owner) => {
       if (filter === "all") return true;
+      if (filter === "pending") return owner.is_locked && !owner.last_online_at;
       const lastOnline = owner.last_online_at ? new Date(owner.last_online_at).getTime() : 0;
       const diff = now - lastOnline;
       if (filter === "active_now") return diff < 5 * 60 * 1000 && owner.last_online_at;
@@ -102,8 +103,11 @@ export function AdminShopsView() {
     return sortDir === "asc" ? <ArrowUp className="h-3 w-3 inline ml-1" /> : <ArrowDown className="h-3 w-3 inline ml-1" />;
   };
 
+  const pendingCount = owners.filter(o => o.is_locked && !o.last_online_at).length;
+
   const filters: { key: FilterType; label: string }[] = [
     { key: "all", label: `Toutes (${owners.length})` },
+    { key: "pending", label: `En attente (${pendingCount})` },
     { key: "active_now", label: "En ligne" },
     { key: "active_24h", label: "Actif 24h" },
     { key: "inactive_7d", label: "Inactif 7j+" },
@@ -184,11 +188,15 @@ export function AdminShopsView() {
                           {getCountryByCode(owner.country || "TN")?.flag} {getCurrencyByCode(owner.currency || "TND")?.code}
                         </span>
                       </div>
-                      {owner.is_locked && (
+                      {owner.is_locked && !owner.last_online_at ? (
+                        <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400 bg-amber-500/10 px-1.5 py-0">
+                          En attente
+                        </Badge>
+                      ) : owner.is_locked ? (
                         <Badge variant="outline" className="text-[10px] border-red-500/30 text-red-400 px-1.5 py-0">
                           Verrouillé
                         </Badge>
-                      )}
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
@@ -262,13 +270,22 @@ export function AdminShopsView() {
                           <KeyRound className="h-4 w-4 mr-2" /> Réinitialiser mot de passe
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: !owner.is_locked })}>
-                          {owner.is_locked ? (
-                            <><Unlock className="h-4 w-4 mr-2" /> Déverrouiller</>
-                          ) : (
-                            <><Lock className="h-4 w-4 mr-2" /> Verrouiller</>
-                          )}
-                        </DropdownMenuItem>
+                        {owner.is_locked && !owner.last_online_at ? (
+                          <DropdownMenuItem 
+                            className="text-emerald-400"
+                            onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: false })}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" /> Approuver l'inscription
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: !owner.is_locked })}>
+                            {owner.is_locked ? (
+                              <><Unlock className="h-4 w-4 mr-2" /> Déverrouiller</>
+                            ) : (
+                              <><Lock className="h-4 w-4 mr-2" /> Verrouiller</>
+                            )}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-red-400"

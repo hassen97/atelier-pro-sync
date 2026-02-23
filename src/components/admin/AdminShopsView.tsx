@@ -18,7 +18,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
 
-type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d";
+type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d" | "pending";
 type SortKey = "name" | "status" | null;
 function getOnlineStatus(lastOnline: string | null) {
   if (!lastOnline) return "offline";

@@ -26,6 +26,9 @@ export default function Auth() {
   const [registerCountry, setRegisterCountry] = useState("TN");
   const [registerCurrency, setRegisterCurrency] = useState("TND");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [registerPhone, setRegisterPhone] = useState("");
+  const [useSameWhatsapp, setUseSameWhatsapp] = useState(true);
+  const [registerWhatsapp, setRegisterWhatsapp] = useState("");
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

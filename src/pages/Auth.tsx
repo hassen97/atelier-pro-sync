@@ -312,8 +312,54 @@ export default function Auth() {
                     </div>
                   </div>
 
+                  {/* Phone & WhatsApp */}
                   <div className="space-y-2">
-                    <Label htmlFor="register-password">Mot de passe</Label>
+                    <Label htmlFor="register-phone">Numéro de téléphone *</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-phone"
+                        type="tel"
+                        placeholder="+216 XX XXX XXX"
+                        value={registerPhone}
+                        onChange={(e) => setRegisterPhone(e.target.value)}
+                        className="pl-10"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="same-whatsapp"
+                      checked={useSameWhatsapp}
+                      onCheckedChange={(checked) => setUseSameWhatsapp(!!checked)}
+                      disabled={loading}
+                    />
+                    <Label htmlFor="same-whatsapp" className="text-sm cursor-pointer">
+                      Utiliser ce numéro pour WhatsApp
+                    </Label>
+                  </div>
+
+                  {!useSameWhatsapp && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label htmlFor="register-whatsapp">Numéro WhatsApp</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="register-whatsapp"
+                          type="tel"
+                          placeholder="+216 XX XXX XXX"
+                          value={registerWhatsapp}
+                          onChange={(e) => setRegisterWhatsapp(e.target.value)}
+                          className="pl-10"
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input

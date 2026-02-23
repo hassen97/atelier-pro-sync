@@ -7,10 +7,11 @@ import { AdminShopsView } from "@/components/admin/AdminShopsView";
 import { AdminAnnouncementsView } from "@/components/admin/AdminAnnouncementsView";
 import { AdminFeedbackInbox } from "@/components/admin/AdminFeedbackInbox";
 import { AdminResetRequests } from "@/components/admin/AdminResetRequests";
+import { AdminSettingsView } from "@/components/admin/AdminSettingsView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings";
 
 const AdminDashboard = () => {
   const { isLoading } = useAdminData();

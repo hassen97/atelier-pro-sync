@@ -128,13 +128,14 @@ export default function Settings() {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("phone, whatsapp_phone")
+      .select("phone, whatsapp_phone, email")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setProfilePhone(data.phone || "");
           setProfileWhatsapp((data as any).whatsapp_phone || "");
+          setProfileEmail((data as any).email || "");
           const same = !data.phone || (data as any).whatsapp_phone === data.phone || !(data as any).whatsapp_phone;
           setUseSameWhatsapp(same);
         }

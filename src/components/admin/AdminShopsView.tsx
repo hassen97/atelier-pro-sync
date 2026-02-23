@@ -42,7 +42,9 @@ export function AdminShopsView() {
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
-
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const owners = data?.owners || [];
 
   const filteredOwners = useMemo(() => {

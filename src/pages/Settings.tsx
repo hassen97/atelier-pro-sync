@@ -64,7 +64,7 @@ export default function Settings() {
     resetAllData,
   } = useSecuritySettings();
 
-  const { updatePassword } = useAuth();
+  const { updatePassword, user } = useAuth();
   
   const [shopName, setShopName] = useState("");
   const [shopCountry, setShopCountry] = useState("TN");
@@ -73,6 +73,12 @@ export default function Settings() {
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [stockThreshold, setStockThreshold] = useState("");
   
+  // Phone / WhatsApp state
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileWhatsapp, setProfileWhatsapp] = useState("");
+  const [useSameWhatsapp, setUseSameWhatsapp] = useState(true);
+  const [savingPhone, setSavingPhone] = useState(false);
+
   // Password change state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

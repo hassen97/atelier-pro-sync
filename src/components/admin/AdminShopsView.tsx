@@ -200,6 +200,31 @@ export function AdminShopsView() {
                   <TableCell className="hidden md:table-cell text-xs text-slate-500">
                     {format(new Date(owner.created_at), "dd MMM yyyy", { locale: fr })}
                   </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {owner.phone ? (
+                      <a href={`tel:${owner.phone}`} className="text-xs text-[#00D4FF] hover:underline flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {owner.phone}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-600">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {(owner.whatsapp_phone || owner.phone) ? (
+                      <a 
+                        href={`https://wa.me/${(owner.whatsapp_phone || owner.phone || "").replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+                      >
+                        <MessageCircle className="h-3 w-3" />
+                        {owner.whatsapp_phone || owner.phone}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-600">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className={cn("w-2 h-2 rounded-full", statusDot[status])} />

@@ -12,6 +12,7 @@ const ActionSchema = z.object({
     "list", "delete", "reset-password", "create", "lock", "unlock",
     "get-revenue", "get-activity", "update-settings",
     "list-reset-requests", "update-reset-request", "approve-signup",
+    "get-platform-settings", "update-platform-setting",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),

@@ -136,7 +136,8 @@ export default function Auth() {
     const { error } = await signUp(
       registerUsername, registerPassword, registerFullName, 
       registerCountry, registerCurrency,
-      registerPhone.trim(), whatsappPhone
+      registerPhone.trim(), whatsappPhone,
+      registerEmail.trim() || undefined
     );
     
     if (error) {

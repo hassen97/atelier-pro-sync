@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
             currency: shopMap.get(p.user_id)?.currency || "TND",
             phone: p.phone || null,
             whatsapp_phone: p.whatsapp_phone || null,
+            email: p.email || null,
           }));
 
         const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();

@@ -79,6 +79,7 @@ export default function Settings() {
   const [profileWhatsapp, setProfileWhatsapp] = useState("");
   const [useSameWhatsapp, setUseSameWhatsapp] = useState(true);
   const [savingPhone, setSavingPhone] = useState(false);
+  const [profileEmail, setProfileEmail] = useState("");
 
   // Password change state
   const [newPassword, setNewPassword] = useState("");

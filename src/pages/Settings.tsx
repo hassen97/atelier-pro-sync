@@ -151,6 +151,7 @@ export default function Settings() {
       .update({
         phone: profilePhone.trim(),
         whatsapp_phone: whatsappPhone,
+        email: profileEmail.trim() || null,
       } as any)
       .eq("user_id", user.id);
     if (error) {

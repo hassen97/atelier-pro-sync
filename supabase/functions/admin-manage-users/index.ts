@@ -8,7 +8,11 @@ const corsHeaders = {
 };
 
 const ActionSchema = z.object({
-  action: z.enum(["list", "delete", "reset-password", "create", "lock", "unlock", "get-revenue", "get-activity", "update-settings"]).optional(),
+  action: z.enum([
+    "list", "delete", "reset-password", "create", "lock", "unlock",
+    "get-revenue", "get-activity", "update-settings",
+    "list-reset-requests", "update-reset-request", "approve-signup",
+  ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
   fullName: z.string().trim().min(1).max(100).optional(),
@@ -16,6 +20,8 @@ const ActionSchema = z.object({
   password: z.string().min(8).max(128).optional(),
   country: z.string().min(2).max(3).optional(),
   currency: z.string().min(3).max(4).optional(),
+  requestId: z.string().uuid().optional(),
+  status: z.string().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -214,7 +220,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      if (action === "unlock") {
+      if (action === "unlock" || action === "approve-signup") {
         if (!body.userId) {
           return new Response(JSON.stringify({ error: "userId required" }), {
             status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -333,6 +339,56 @@ Deno.serve(async (req) => {
           .from("shop_settings")
           .update(updateData)
           .eq("user_id", body.userId);
+
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "list-reset-requests") {
+        const { data: requests, error } = await adminClient
+          .from("password_reset_requests")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        // Join with profiles to get phone/whatsapp for each username
+        const usernames = (requests || []).map((r: any) => r.username);
+        const { data: profiles } = await adminClient
+          .from("profiles")
+          .select("username, phone, whatsapp_phone, user_id, full_name")
+          .in("username", usernames);
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.username, p]));
+
+        const enrichedRequests = (requests || []).map((r: any) => {
+          const profile = profileMap.get(r.username);
+          return {
+            ...r,
+            phone: profile?.phone || null,
+            whatsapp_phone: profile?.whatsapp_phone || null,
+            user_id: profile?.user_id || null,
+            full_name: profile?.full_name || null,
+          };
+        });
+
+        return new Response(JSON.stringify({ requests: enrichedRequests }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "update-reset-request") {
+        if (!body.requestId || !body.status) {
+          return new Response(JSON.stringify({ error: "requestId and status required" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const { error } = await adminClient
+          .from("password_reset_requests")
+          .update({ status: body.status })
+          .eq("id", body.requestId);
 
         if (error) throw error;
         return new Response(JSON.stringify({ success: true }), {

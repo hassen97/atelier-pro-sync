@@ -13,6 +13,7 @@ interface AdminSidebarProps {
 const navItems = [
   { id: "overview" as const, label: "Dashboard", icon: LayoutDashboard },
   { id: "shops" as const, label: "Boutiques", icon: Store },
+  { id: "reset_requests" as const, label: "Demandes", icon: KeyRound },
   { id: "announcements" as const, label: "Annonces", icon: Megaphone },
   { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
 ];

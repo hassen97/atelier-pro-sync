@@ -75,6 +75,7 @@ const AdminDashboard = () => {
         <main className="flex-1 overflow-auto p-4 sm:p-6">
           {activeView === "overview" && <AdminOverview />}
           {activeView === "shops" && <AdminShopsView />}
+          {activeView === "reset_requests" && <AdminResetRequests />}
           {activeView === "announcements" && <AdminAnnouncementsView />}
           {activeView === "feedback" && <AdminFeedbackInbox />}
         </main>

@@ -162,6 +162,8 @@ export function AdminShopsView() {
               </TableHead>
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Propriétaire</TableHead>
               <TableHead className="text-slate-400 text-xs hidden md:table-cell">Inscription</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">Téléphone</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">WhatsApp</TableHead>
               <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("status")}>
                 Statut <SortIcon col="status" />
               </TableHead>

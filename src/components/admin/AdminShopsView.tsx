@@ -65,7 +65,9 @@ export function AdminShopsView() {
       result = result.filter((o) =>
         (o.shop_name || "").toLowerCase().includes(q) ||
         (o.full_name || "").toLowerCase().includes(q) ||
-        (o.username || "").toLowerCase().includes(q)
+        (o.username || "").toLowerCase().includes(q) ||
+        (o.phone || "").toLowerCase().includes(q) ||
+        (o.whatsapp_phone || "").toLowerCase().includes(q)
       );
     }
 

@@ -18,6 +18,7 @@ export interface ShopOwner {
   last_online_at: string | null;
   phone: string | null;
   whatsapp_phone: string | null;
+  email: string | null;
 }
 
 export interface AdminStats {

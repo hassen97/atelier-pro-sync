@@ -270,13 +270,22 @@ export function AdminShopsView() {
                           <KeyRound className="h-4 w-4 mr-2" /> Réinitialiser mot de passe
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: !owner.is_locked })}>
-                          {owner.is_locked ? (
-                            <><Unlock className="h-4 w-4 mr-2" /> Déverrouiller</>
-                          ) : (
-                            <><Lock className="h-4 w-4 mr-2" /> Verrouiller</>
-                          )}
-                        </DropdownMenuItem>
+                        {owner.is_locked && !owner.last_online_at ? (
+                          <DropdownMenuItem 
+                            className="text-emerald-400"
+                            onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: false })}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" /> Approuver l'inscription
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: !owner.is_locked })}>
+                            {owner.is_locked ? (
+                              <><Unlock className="h-4 w-4 mr-2" /> Déverrouiller</>
+                            ) : (
+                              <><Lock className="h-4 w-4 mr-2" /> Verrouiller</>
+                            )}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-red-400"

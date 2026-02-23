@@ -9,7 +9,7 @@ import { AdminFeedbackInbox } from "@/components/admin/AdminFeedbackInbox";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests";
 
 const AdminDashboard = () => {
   const { isLoading } = useAdminData();

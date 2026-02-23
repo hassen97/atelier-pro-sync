@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       if (!action || action === "list") {
         const { data: profiles } = await adminClient
           .from("profiles")
-          .select("user_id, full_name, username, created_at, is_locked, last_online_at, phone, whatsapp_phone")
+          .select("user_id, full_name, username, created_at, is_locked, last_online_at, phone, whatsapp_phone, email")
           .order("created_at", { ascending: false });
 
         const { data: roles } = await adminClient

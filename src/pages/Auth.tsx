@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe, Phone } from "lucide-react";
+import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe, Phone, Mail, MessageCircle } from "lucide-react";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";

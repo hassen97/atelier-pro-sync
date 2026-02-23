@@ -51,6 +51,7 @@ export function AdminShopsView() {
     const now = Date.now();
     let result = owners.filter((owner) => {
       if (filter === "all") return true;
+      if (filter === "pending") return owner.is_locked && !owner.last_online_at;
       const lastOnline = owner.last_online_at ? new Date(owner.last_online_at).getTime() : 0;
       const diff = now - lastOnline;
       if (filter === "active_now") return diff < 5 * 60 * 1000 && owner.last_online_at;

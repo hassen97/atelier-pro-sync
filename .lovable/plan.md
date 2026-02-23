@@ -1,143 +1,131 @@
 
 
-# Plan: Password Reset Requests, Profile Contact Editing, Admin Search, and Signup Confirmation
+# Plan: Enhanced Auth Pages, Email Support, Admin Settings & WhatsApp Contact
 
 ---
 
-## Summary
+## Overview
 
-This plan covers 4 features:
-1. **Reset Password page refonte** -- Replace static instructions with a form that sends a reset request ticket to the admin inbox
-2. **Profile phone/WhatsApp editing** -- Already partially implemented; ensure the checkbox sync logic works properly in Settings
-3. **Admin search by phone/WhatsApp** -- Already implemented; no changes needed
-4. **Admin confirmation of new signups** -- New accounts start as "pending" and need admin approval before they can log in
-
----
-
-## 1. Password Reset Request System
-
-### What changes
-- **`src/pages/ResetPassword.tsx`** -- Replace the current static instruction card with:
-  - A "Username" input field
-  - A "Send Reset Request" button
-  - On submit: insert a row into `platform_feedback` with type `"password_reset"`, the username, and auto-fetched phone/WhatsApp from the profile
-  - Show a success message: "Votre demande a ete envoyee. L'administrateur vous contactera."
-  - No authentication required for this action -- needs a new approach (see below)
-
-### Database Changes
-- **New table: `password_reset_requests`**
-  - `id` (uuid, PK, default gen_random_uuid())
-  - `username` (text, NOT NULL)
-  - `status` (text, default 'pending') -- pending, contacted, resolved
-  - `created_at` (timestamptz, default now())
-  - RLS: Allow anonymous INSERT (anyone can submit a request). Only platform_admin can SELECT/UPDATE.
-  - This is separate from `platform_feedback` because reset requests don't require authentication.
-
-### Edge Function Changes
-- **`supabase/functions/admin-manage-users/index.ts`** -- Add a new action `"list-reset-requests"` that returns all pending reset requests joined with the profile's phone/whatsapp_phone for that username.
-- Add action `"update-reset-request"` to mark requests as contacted/resolved.
-
-### Admin UI Changes
-- **`src/components/admin/AdminSidebar.tsx`** -- Add a new nav item: "Demandes" (Key icon) pointing to a new `"reset_requests"` view
-- **`src/pages/AdminDashboard.tsx`** -- Add the new view rendering
-- **New file: `src/components/admin/AdminResetRequests.tsx`** -- List of pending password reset requests showing:
-  - Username
-  - Phone number (fetched from profile)
-  - WhatsApp number (with click-to-contact link)
-  - Submission date
-  - Status badge (pending/contacted/resolved)
-  - Action buttons to change status and a direct "Reset Password" button that opens the existing ResetPasswordDialog
+This plan adds 7 features:
+1. Username existence check on the forgot password page
+2. Optional phone number field on forgot password (for users who forgot their username too)
+3. Optional email field on signup + email editing in Settings
+4. Admin WhatsApp contact button on login/signup/forgot password pages
+5. Email search in admin shops table
+6. Admin Settings page (WhatsApp number + auto-confirm signups toggle)
+7. Store admin WhatsApp number in a new `platform_settings` table
 
 ---
 
-## 2. Profile Phone/WhatsApp Editing
+## 1. Database Migration
 
-Already implemented in `src/pages/Settings.tsx` (Security tab). The phone and WhatsApp fields with checkbox sync logic are functional. No additional changes needed.
+### New table: `platform_settings`
+A key-value settings table for admin-level configuration:
+- `id` (uuid, PK)
+- `key` (text, UNIQUE) -- e.g. "admin_whatsapp", "auto_confirm_signups"
+- `value` (text)
+- `updated_at` (timestamptz)
 
----
+RLS: Anyone can SELECT (needed for displaying the WhatsApp button on public pages). Only platform_admin can INSERT/UPDATE.
 
-## 3. Admin Search by Phone/WhatsApp
+### Add `email` column to `profiles`
+- `email` (text, nullable) -- optional contact email for owners
 
-Already implemented in `AdminShopsView.tsx` -- search filters by phone and whatsapp_phone. Phone and WhatsApp columns are displayed with click-to-call/WhatsApp links. No changes needed.
-
----
-
-## 4. Admin Confirmation of Signups
-
-### Concept
-New shop owner signups will require admin approval. Until approved, the account is locked (banned) and the user sees a message saying their account is pending approval.
-
-### Flow
-1. User signs up normally via `/auth`
-2. After signup, the account is automatically locked (ban_duration set)
-3. User sees: "Votre compte est en attente de validation par l'administrateur."
-4. Admin sees pending accounts in the shops table with a "Pending" badge
-5. Admin clicks "Approve" to unlock the account
-
-### Implementation
-
-**`src/contexts/AuthContext.tsx`** (signUp function):
-- After successful signup, immediately lock the account by calling a new edge function action `"pending-signup"` (or handle via database trigger)
-- Actually: simpler approach -- use the `is_locked` flag on profiles. After signup, set `is_locked = true` on the new profile.
-
-**`supabase/functions/admin-manage-users/index.ts`**:
-- Add action `"approve-signup"` -- unlocks the account (same as "unlock" but with a semantic name)
-- In the `"list"` action, include a `is_pending` computed field for accounts that are locked and were created recently / never logged in
-
-**`src/pages/Auth.tsx`**:
-- After signup, show message: "Votre compte a ete cree. Il est en attente de validation par l'administrateur."
-- On login, if the error indicates the account is banned, show: "Votre compte est en attente de validation."
-
-**`src/components/admin/AdminShopsView.tsx`**:
-- Add a "Pending" filter button
-- Show a "En attente" badge on locked accounts that have never been online
-- Add an "Approve" action in the dropdown menu that calls unlock
-
-**Database trigger** (migration):
-- After a new profile is created with role `super_admin`, automatically set `is_locked = true`
-- This ensures all new signups start locked
+### Update `handle_new_user` trigger
+- Capture `email` from user metadata if provided.
 
 ---
 
-## Technical Summary
+## 2. Reset Password Page Enhancement (`src/pages/ResetPassword.tsx`)
 
-### Database Migration
-```sql
--- Password reset requests table (anonymous access)
-CREATE TABLE password_reset_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  username text NOT NULL,
-  status text NOT NULL DEFAULT 'pending',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE password_reset_requests ENABLE ROW LEVEL SECURITY;
--- Anonymous can insert
-CREATE POLICY "Anyone can submit reset request" ON password_reset_requests
-  FOR INSERT WITH CHECK (true);
--- Only platform admins can view/update
-CREATE POLICY "Platform admins can view reset requests" ON password_reset_requests
-  FOR SELECT USING (has_role(auth.uid(), 'platform_admin'));
-CREATE POLICY "Platform admins can update reset requests" ON password_reset_requests
-  FOR UPDATE USING (has_role(auth.uid(), 'platform_admin'));
-```
+- After the user types a username and before submitting, check if the username exists by querying the `password_reset_requests` insert (we can't query profiles without auth).
+- **Alternative approach**: Add an edge function action `"check-username"` that takes a username and returns whether it exists (without requiring auth). This will be a **public** endpoint via a new lightweight edge function `check-username`.
+- If the username doesn't exist, show an error: "Nom d'utilisateur introuvable".
+- Add an optional phone number field: "Vous avez oublie votre nom d'utilisateur ? Entrez votre numero de telephone". The phone will be included in the reset request so the admin can find the account.
+- Add an "Admin WhatsApp" contact button at the bottom that links to `wa.me/{admin_whatsapp}` fetched from `platform_settings`.
 
-### New Files (2)
-- `src/components/admin/AdminResetRequests.tsx` -- Reset requests inbox
-- `src/hooks/useResetRequests.ts` -- Hook for submitting (unauthenticated) and listing reset requests
+---
+
+## 3. Signup Page Enhancement (`src/pages/Auth.tsx`)
+
+- Add an optional "Email" field in the registration form.
+- Pass email to `signUp()` in AuthContext, store it in user metadata.
+- Add the admin WhatsApp contact button at the bottom of login and signup tabs.
+- Fetch admin WhatsApp number from `platform_settings` on mount (public access).
+
+---
+
+## 4. Settings Page -- Email Editing (`src/pages/Settings.tsx`)
+
+- In the Security tab "Coordonnees" card, add an Email field.
+- Load email from profiles, save it on update.
+
+---
+
+## 5. Admin Search by Email (`src/components/admin/AdminShopsView.tsx`)
+
+- Add `email` to the search filter logic.
+- Display email in a new column (or in the existing owner info).
+- Update the edge function `list` action to fetch email from profiles.
+
+---
+
+## 6. Admin Settings Page
+
+### New file: `src/components/admin/AdminSettingsView.tsx`
+- Card 1: "WhatsApp Admin" -- Input to set the admin WhatsApp number (stored in `platform_settings` with key `admin_whatsapp`)
+- Card 2: "Confirmation des inscriptions" -- Toggle switch for auto-confirm signups (stored in `platform_settings` with key `auto_confirm_signups`). When enabled, new accounts will NOT be locked automatically.
+
+### Navigation
+- Add "Parametres" nav item (Settings icon) in `AdminSidebar.tsx`
+- Add `"settings"` to the `AdminView` type
+- Render in `AdminDashboard.tsx`
+
+### Edge function updates (`admin-manage-users/index.ts`)
+- Add action `"get-platform-settings"` -- returns all platform_settings rows
+- Add action `"update-platform-setting"` -- upserts a key/value pair
+
+---
+
+## 7. Auto-Confirm Signup Logic
+
+### In `handle_new_user` trigger (database)
+- Check `platform_settings` for `auto_confirm_signups`. If its value is `'true'`, set `is_locked = false` instead of `true`.
+
+### In Auth pages
+- When auto-confirm is on, after signup show "Votre compte a ete cree. Vous pouvez vous connecter." instead of the pending message.
+
+---
+
+## 8. Public Check-Username Edge Function
+
+### New file: `supabase/functions/check-username/index.ts`
+- Accepts POST with `{ username }` or `{ phone }`
+- Returns `{ exists: boolean }` by querying profiles with service role
+- No auth required (public endpoint)
+- Rate-limit protection: simple validation only
+
+---
+
+## Files Summary
+
+### Database Migration (1 SQL file)
+- Create `platform_settings` table with RLS
+- Add `email` column to `profiles`
+- Update `handle_new_user` trigger to capture email and check auto-confirm setting
+- Insert default platform settings rows
+
+### New Files (3)
+- `supabase/functions/check-username/index.ts` -- public username/phone lookup
+- `src/components/admin/AdminSettingsView.tsx` -- admin settings page
 
 ### Modified Files (7)
-- `src/pages/ResetPassword.tsx` -- Username input + submit form
-- `src/pages/Auth.tsx` -- Post-signup "pending approval" message, login ban detection
-- `src/contexts/AuthContext.tsx` -- Lock profile after signup
-- `src/components/admin/AdminSidebar.tsx` -- Add "Demandes" nav item
-- `src/pages/AdminDashboard.tsx` -- Render reset requests view
-- `src/components/admin/AdminShopsView.tsx` -- Pending filter + approve button
-- `supabase/functions/admin-manage-users/index.ts` -- list-reset-requests, update-reset-request, approve-signup actions
-
-### Execution Order
-1. Database migration (password_reset_requests table)
-2. Edge function updates (new actions)
-3. Reset password page refonte
-4. Signup approval flow (Auth + admin UI)
-5. Admin reset requests inbox
+- `src/pages/ResetPassword.tsx` -- username check, optional phone, admin WhatsApp button
+- `src/pages/Auth.tsx` -- optional email field, admin WhatsApp button on login/signup
+- `src/contexts/AuthContext.tsx` -- pass email in signUp metadata
+- `src/pages/Settings.tsx` -- add email field in Coordonnees card
+- `src/components/admin/AdminShopsView.tsx` -- email in search + display
+- `src/components/admin/AdminSidebar.tsx` -- add Settings nav item
+- `src/pages/AdminDashboard.tsx` -- render AdminSettingsView
+- `supabase/functions/admin-manage-users/index.ts` -- platform settings actions, email in list
 

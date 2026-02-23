@@ -123,6 +123,8 @@ Deno.serve(async (req) => {
             shop_name: shopMap.get(p.user_id)?.shop_name || "Mon Atelier",
             country: shopMap.get(p.user_id)?.country || "TN",
             currency: shopMap.get(p.user_id)?.currency || "TND",
+            phone: p.phone || null,
+            whatsapp_phone: p.whatsapp_phone || null,
           }));
 
         const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();

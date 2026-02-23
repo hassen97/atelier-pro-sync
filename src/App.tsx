@@ -39,6 +39,7 @@ const Settings = lazyWithRetry(() => import("./pages/Settings"));
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 
 const queryClient = new QueryClient();
 

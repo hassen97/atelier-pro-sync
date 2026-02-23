@@ -19,7 +19,7 @@ import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
 
 type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d";
-
+type SortKey = "name" | "status" | null;
 function getOnlineStatus(lastOnline: string | null) {
   if (!lastOnline) return "offline";
   const diff = Date.now() - new Date(lastOnline).getTime();

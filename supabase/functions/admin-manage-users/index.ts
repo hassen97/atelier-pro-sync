@@ -23,6 +23,8 @@ const ActionSchema = z.object({
   currency: z.string().min(3).max(4).optional(),
   requestId: z.string().uuid().optional(),
   status: z.string().optional(),
+  settingKey: z.string().optional(),
+  settingValue: z.string().optional(),
 });
 
 Deno.serve(async (req) => {

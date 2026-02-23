@@ -80,6 +80,7 @@ const AdminDashboard = () => {
           {activeView === "reset_requests" && <AdminResetRequests />}
           {activeView === "announcements" && <AdminAnnouncementsView />}
           {activeView === "feedback" && <AdminFeedbackInbox />}
+          {activeView === "settings" && <AdminSettingsView />}
         </main>
       </div>
     </div>

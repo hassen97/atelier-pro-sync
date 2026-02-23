@@ -16,6 +16,7 @@ const navItems = [
   { id: "reset_requests" as const, label: "Demandes", icon: KeyRound },
   { id: "announcements" as const, label: "Annonces", icon: Megaphone },
   { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
+  { id: "settings" as const, label: "Paramètres", icon: Settings },
 ];
 
 export function AdminSidebar({ active, onNavigate, onClose }: AdminSidebarProps) {

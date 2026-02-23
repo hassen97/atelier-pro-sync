@@ -73,10 +73,14 @@ export default function Auth() {
     setError(null);
     setSuccess(null);
 
-    // Validate username
     const usernameError = validateUsername(registerUsername);
     if (usernameError) {
       setError(usernameError);
+      return;
+    }
+
+    if (!registerPhone.trim()) {
+      setError("Le numéro de téléphone est obligatoire");
       return;
     }
 
@@ -85,8 +89,8 @@ export default function Auth() {
       return;
     }
 
-    if (registerPassword.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères");
+    if (registerPassword.length < 8) {
+      setError("Le mot de passe doit contenir au moins 8 caractères");
       return;
     }
 
@@ -101,6 +105,20 @@ export default function Auth() {
         setError(error.message);
       }
     } else {
+      // Save phone & whatsapp to profile after signup
+      const whatsappPhone = useSameWhatsapp ? registerPhone.trim() : (registerWhatsapp.trim() || null);
+      const internalEmail = `${registerUsername.toLowerCase()}@repairpro.local`;
+      
+      // We need to update the profile with phone data
+      // Since the user was just created via signUp, we use the anon client after a brief moment
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user) {
+        await supabase.from("profiles").update({
+          phone: registerPhone.trim(),
+          whatsapp_phone: whatsappPhone,
+        }).eq("user_id", sessionData.session.user.id);
+      }
+
       setSuccess("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
       setRegisterUsername("");
       setRegisterPassword("");
@@ -108,6 +126,9 @@ export default function Auth() {
       setRegisterCountry("TN");
       setRegisterCurrency("TND");
       setConfirmPassword("");
+      setRegisterPhone("");
+      setUseSameWhatsapp(true);
+      setRegisterWhatsapp("");
     }
     
     setLoading(false);

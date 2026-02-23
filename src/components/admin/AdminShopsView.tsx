@@ -49,7 +49,7 @@ export function AdminShopsView() {
 
   const filteredOwners = useMemo(() => {
     const now = Date.now();
-    return owners.filter((owner) => {
+    let result = owners.filter((owner) => {
       if (filter === "all") return true;
       const lastOnline = owner.last_online_at ? new Date(owner.last_online_at).getTime() : 0;
       const diff = now - lastOnline;
@@ -58,7 +58,47 @@ export function AdminShopsView() {
       if (filter === "inactive_7d") return !owner.last_online_at || diff > 7 * 24 * 60 * 60 * 1000;
       return true;
     });
-  }, [owners, filter]);
+
+    // Search filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((o) =>
+        (o.shop_name || "").toLowerCase().includes(q) ||
+        (o.full_name || "").toLowerCase().includes(q) ||
+        (o.username || "").toLowerCase().includes(q)
+      );
+    }
+
+    // Sort
+    if (sortKey) {
+      const statusOrder: Record<string, number> = { online: 0, away: 1, offline: 2 };
+      result = [...result].sort((a, b) => {
+        let cmp = 0;
+        if (sortKey === "name") {
+          cmp = (a.shop_name || "").localeCompare(b.shop_name || "");
+        } else if (sortKey === "status") {
+          cmp = (statusOrder[getOnlineStatus(a.last_online_at)] ?? 2) - (statusOrder[getOnlineStatus(b.last_online_at)] ?? 2);
+        }
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+
+    return result;
+  }, [owners, filter, search, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return null;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 inline ml-1" /> : <ArrowDown className="h-3 w-3 inline ml-1" />;
+  };
 
   const filters: { key: FilterType; label: string }[] = [
     { key: "all", label: `Toutes (${owners.length})` },

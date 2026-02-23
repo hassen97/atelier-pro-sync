@@ -10,7 +10,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (username: string, password: string, fullName: string, country?: string, currency?: string, phone?: string, whatsappPhone?: string) => Promise<{ error: Error | null }>;
+  signUp: (username: string, password: string, fullName: string, country?: string, currency?: string, phone?: string, whatsappPhone?: string, email?: string) => Promise<{ error: Error | null }>;
   signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;

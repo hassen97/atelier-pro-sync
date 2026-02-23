@@ -188,11 +188,15 @@ export function AdminShopsView() {
                           {getCountryByCode(owner.country || "TN")?.flag} {getCurrencyByCode(owner.currency || "TND")?.code}
                         </span>
                       </div>
-                      {owner.is_locked && (
+                      {owner.is_locked && !owner.last_online_at ? (
+                        <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400 bg-amber-500/10 px-1.5 py-0">
+                          En attente
+                        </Badge>
+                      ) : owner.is_locked ? (
                         <Badge variant="outline" className="text-[10px] border-red-500/30 text-red-400 px-1.5 py-0">
                           Verrouillé
                         </Badge>
-                      )}
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">

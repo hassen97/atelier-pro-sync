@@ -103,8 +103,11 @@ export function AdminShopsView() {
     return sortDir === "asc" ? <ArrowUp className="h-3 w-3 inline ml-1" /> : <ArrowDown className="h-3 w-3 inline ml-1" />;
   };
 
+  const pendingCount = owners.filter(o => o.is_locked && !o.last_online_at).length;
+
   const filters: { key: FilterType; label: string }[] = [
     { key: "all", label: `Toutes (${owners.length})` },
+    { key: "pending", label: `En attente (${pendingCount})` },
     { key: "active_now", label: "En ligne" },
     { key: "active_24h", label: "Actif 24h" },
     { key: "inactive_7d", label: "Inactif 7j+" },

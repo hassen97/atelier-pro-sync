@@ -627,7 +627,23 @@ export default function Settings() {
                 </div>
               )}
 
-              <Button 
+              {/* Email field */}
+              <div className="space-y-2">
+                <Label htmlFor="profileEmail">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="profileEmail"
+                    type="email"
+                    placeholder="exemple@email.com"
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <Button
                 onClick={handleSavePhone}
                 disabled={savingPhone}
               >

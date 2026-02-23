@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound } from "lucide-react";
+import { LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings";
 
 interface AdminSidebarProps {
   active: AdminView;

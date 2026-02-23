@@ -121,6 +121,43 @@ export default function Settings() {
     }
   }, [loading, settings]);
 
+  // Load phone/whatsapp from profile
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("phone, whatsapp_phone")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setProfilePhone(data.phone || "");
+          setProfileWhatsapp((data as any).whatsapp_phone || "");
+          const same = !data.phone || (data as any).whatsapp_phone === data.phone || !(data as any).whatsapp_phone;
+          setUseSameWhatsapp(same);
+        }
+      });
+  }, [user]);
+
+  const handleSavePhone = async () => {
+    if (!user) return;
+    setSavingPhone(true);
+    const whatsappPhone = useSameWhatsapp ? profilePhone.trim() : (profileWhatsapp.trim() || null);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        phone: profilePhone.trim(),
+        whatsapp_phone: whatsappPhone,
+      } as any)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error("Erreur lors de la sauvegarde");
+    } else {
+      toast.success("Coordonnées mises à jour");
+    }
+    setSavingPhone(false);
+  };
+
   const handleSaveGeneralSettings = async () => {
     await saveSettings({
       shop_name: shopName,

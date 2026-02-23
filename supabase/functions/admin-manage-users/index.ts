@@ -400,6 +400,32 @@ Deno.serve(async (req) => {
         });
       }
 
+      if (action === "get-platform-settings") {
+        const { data, error } = await adminClient
+          .from("platform_settings")
+          .select("key, value, updated_at");
+        if (error) throw error;
+        return new Response(JSON.stringify({ settings: data }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "update-platform-setting") {
+        if (!body.settingKey || body.settingValue === undefined) {
+          return new Response(JSON.stringify({ error: "settingKey and settingValue required" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const { error } = await adminClient
+          .from("platform_settings")
+          .update({ value: body.settingValue, updated_at: new Date().toISOString() })
+          .eq("key", body.settingKey);
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       return new Response(JSON.stringify({ error: "Unknown action" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

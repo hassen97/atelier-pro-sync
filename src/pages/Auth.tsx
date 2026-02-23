@@ -391,6 +391,23 @@ export default function Auth() {
                     </div>
                   )}
 
+                  {/* Optional Email */}
+                  <div className="space-y-2">
+                    <Label htmlFor="register-email">Email (optionnel)</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-email"
+                        type="email"
+                        placeholder="exemple@email.com"
+                        value={registerEmail}
+                        onChange={(e) => setRegisterEmail(e.target.value)}
+                        className="pl-10"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Mot de passe</Label>
                     <div className="relative">

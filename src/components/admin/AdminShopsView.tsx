@@ -139,15 +139,30 @@ export function AdminShopsView() {
         ))}
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+        <Input
+          placeholder="Rechercher par boutique, nom ou username..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-[#00D4FF]/30"
+        />
+      </div>
+
       {/* Table */}
       <div className="admin-glass-card rounded-xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-white/5 hover:bg-transparent">
-              <TableHead className="text-slate-400 text-xs">Boutique</TableHead>
+              <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("name")}>
+                Boutique <SortIcon col="name" />
+              </TableHead>
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Propriétaire</TableHead>
               <TableHead className="text-slate-400 text-xs hidden md:table-cell">Inscription</TableHead>
-              <TableHead className="text-slate-400 text-xs">Statut</TableHead>
+              <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("status")}>
+                Statut <SortIcon col="status" />
+              </TableHead>
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Réparations</TableHead>
               <TableHead className="text-slate-400 text-xs text-right">Actions</TableHead>
             </TableRow>

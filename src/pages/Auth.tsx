@@ -221,6 +221,15 @@ export default function Auth() {
                       "Se connecter"
                     )}
                   </Button>
+
+                  <div className="text-center">
+                    <Link 
+                      to="/reset-password" 
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Mot de passe oublié ?
+                    </Link>
+                  </div>
                 </form>
               </TabsContent>
 

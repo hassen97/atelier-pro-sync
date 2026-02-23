@@ -6,6 +6,7 @@ import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AdminShopsView } from "@/components/admin/AdminShopsView";
 import { AdminAnnouncementsView } from "@/components/admin/AdminAnnouncementsView";
 import { AdminFeedbackInbox } from "@/components/admin/AdminFeedbackInbox";
+import { AdminResetRequests } from "@/components/admin/AdminResetRequests";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 

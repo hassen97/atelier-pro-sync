@@ -117,7 +117,13 @@ export default function Auth() {
 
     setLoading(true);
 
-    const { error } = await signUp(registerUsername, registerPassword, registerFullName, registerCountry, registerCurrency);
+    const whatsappPhone = useSameWhatsapp ? registerPhone.trim() : (registerWhatsapp.trim() || registerPhone.trim());
+
+    const { error } = await signUp(
+      registerUsername, registerPassword, registerFullName, 
+      registerCountry, registerCurrency,
+      registerPhone.trim(), whatsappPhone
+    );
     
     if (error) {
       if (error.message.includes("already registered")) {
@@ -126,21 +132,9 @@ export default function Auth() {
         setError(error.message);
       }
     } else {
-      // Save phone & whatsapp to profile after signup
-      const whatsappPhone = useSameWhatsapp ? registerPhone.trim() : (registerWhatsapp.trim() || null);
-      const internalEmail = `${registerUsername.toLowerCase()}@repairpro.local`;
-      
-      // We need to update the profile with phone data
-      // Since the user was just created via signUp, we use the anon client after a brief moment
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session?.user) {
-        await supabase.from("profiles").update({
-          phone: registerPhone.trim(),
-          whatsapp_phone: whatsappPhone,
-        }).eq("user_id", sessionData.session.user.id);
-      }
-
-      setSuccess("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
+      setSuccess("Votre compte a été créé avec succès ! Il est en attente de validation par l'administrateur. Vous serez contacté une fois approuvé.");
+      // Sign out since account is locked
+      await supabase.auth.signOut();
       setRegisterUsername("");
       setRegisterPassword("");
       setRegisterFullName("");

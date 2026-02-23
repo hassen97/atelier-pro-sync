@@ -463,6 +463,21 @@ export default function Auth() {
           </Tabs>
         </Card>
 
+        {/* Admin WhatsApp Contact */}
+        {adminWhatsapp && (
+          <div className="mt-4">
+            <a
+              href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Contacter l'admin via WhatsApp
+            </a>
+          </div>
+        )}
+
         <p className="text-center text-sm text-muted-foreground mt-6">
           © 2024 RepairPro Tunisie. Tous droits réservés.
         </p>

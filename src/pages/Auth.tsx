@@ -57,10 +57,31 @@ export default function Auth() {
     const { error } = await signIn(loginUsername, loginPassword);
     
     if (error) {
-      setError(error.message === "Invalid login credentials" 
-        ? "Nom d'utilisateur ou mot de passe incorrect" 
-        : error.message);
+      const msg = error.message || "";
+      if (msg === "Invalid login credentials") {
+        setError("Nom d'utilisateur ou mot de passe incorrect");
+      } else if (msg.includes("banned") || msg.includes("User is banned")) {
+        setError("Votre compte est en attente de validation par l'administrateur. Vous serez contacté une fois approuvé.");
+      } else {
+        setError(msg);
+      }
     } else {
+      // Check if account is locked (pending approval)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_locked")
+          .eq("user_id", sessionData.session.user.id)
+          .single();
+        
+        if (profile?.is_locked) {
+          await supabase.auth.signOut();
+          setError("Votre compte est en attente de validation par l'administrateur. Vous serez contacté une fois approuvé.");
+          setLoading(false);
+          return;
+        }
+      }
       const from = (location.state as { from?: Location })?.from?.pathname || "/";
       navigate(from, { replace: true });
     }

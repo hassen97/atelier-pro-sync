@@ -568,7 +568,75 @@ export default function Settings() {
             </CardContent>
           </Card>
 
+          {/* Phone / WhatsApp Card */}
           <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                Coordonnées
+              </CardTitle>
+              <CardDescription>
+                Numéro de téléphone et WhatsApp
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="profilePhone">Numéro de téléphone</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="profilePhone"
+                    type="tel"
+                    placeholder="+216 XX XXX XXX"
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="same-whatsapp-settings"
+                  checked={useSameWhatsapp}
+                  onCheckedChange={(checked) => setUseSameWhatsapp(!!checked)}
+                />
+                <Label htmlFor="same-whatsapp-settings" className="text-sm cursor-pointer">
+                  Utiliser ce numéro pour WhatsApp
+                </Label>
+              </div>
+
+              {!useSameWhatsapp && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label htmlFor="profileWhatsapp">Numéro WhatsApp</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="profileWhatsapp"
+                      type="tel"
+                      placeholder="+216 XX XXX XXX"
+                      value={profileWhatsapp}
+                      onChange={(e) => setProfileWhatsapp(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <Button 
+                onClick={handleSavePhone}
+                disabled={savingPhone}
+              >
+                {savingPhone ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {savingPhone ? "Enregistrement..." : "Enregistrer les coordonnées"}
+              </Button>
+            </CardContent>
+          </Card>
+
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />

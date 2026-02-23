@@ -288,7 +288,7 @@ export function AdminShopsView() {
             })}
             {filteredOwners.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-slate-500 py-8">
+                <TableCell colSpan={8} className="text-center text-slate-500 py-8">
                   Aucune boutique trouvée
                 </TableCell>
               </TableRow>

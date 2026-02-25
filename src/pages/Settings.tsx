@@ -40,11 +40,9 @@ import { ResetDataDialog } from "@/components/settings/ResetDataDialog";
 import { CategoriesSettings } from "@/components/settings/CategoriesSettings";
 import { TeamManagement } from "@/components/settings/TeamManagement";
 import { TaskManagement } from "@/components/settings/TaskManagement";
-import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettingsContext();
@@ -68,7 +66,6 @@ export default function Settings() {
   } = useSecuritySettings();
 
   const { updatePassword, user } = useAuth();
-  const { t } = useLanguage();
   
   const [shopName, setShopName] = useState("");
   const [shopCountry, setShopCountry] = useState("TN");
@@ -203,21 +200,20 @@ export default function Settings() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title={t("settings.title")}
-        description={t("settings.description")}
+        title="Paramètres"
+        description="Configuration du système"
       />
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="categories">
             <Tag className="h-3.5 w-3.5 mr-1" />
-            {t("settings.categories")}
+            Catégories
           </TabsTrigger>
-          <TabsTrigger value="backup">{t("settings.backup")}</TabsTrigger>
-          <TabsTrigger value="users">{t("settings.users")}</TabsTrigger>
-          <TabsTrigger value="security">{t("settings.security")}</TabsTrigger>
-          <TabsTrigger value="preferences">{t("settings.preferences")}</TabsTrigger>
+          <TabsTrigger value="backup">Sauvegarde</TabsTrigger>
+          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+          <TabsTrigger value="security">Sécurité</TabsTrigger>
         </TabsList>
 
         {/* General Settings */}
@@ -729,11 +725,6 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Preferences - Language, Theme, Logo */}
-        <TabsContent value="preferences" className="space-y-6">
-          <AppearanceSettings />
         </TabsContent>
       </Tabs>
     </div>

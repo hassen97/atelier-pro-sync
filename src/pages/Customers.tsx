@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, Phone, Mail, User, CreditCard, MoreHorizontal, Eye } from "lucide-react";
+import { Search, Plus, Phone, Mail, User, CreditCard, MoreHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,21 +13,17 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, type Customer } from "@/hooks/useCustomers";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
-import { CustomerDossierDialog } from "@/components/customers/CustomerDossierDialog";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [dossierCustomer, setDossierCustomer] = useState<Customer | null>(null);
 
   const { data: customers = [], isLoading } = useCustomers();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
   const { format } = useCurrency();
-  const { t } = useLanguage();
 
   const filteredCustomers = customers.filter((customer) => customer.name.toLowerCase().includes(searchQuery.toLowerCase()) || (customer.phone?.includes(searchQuery) ?? false));
   const totalCustomers = customers.length;
@@ -48,7 +44,7 @@ export default function Customers() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <PageHeader title={t("customers.title")} description={t("customers.description")} />
+        <PageHeader title="Gestion des Clients" description="Fiches clients et historique" />
         <div className="grid gap-4 sm:grid-cols-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48" />)}</div>
       </div>
@@ -57,24 +53,24 @@ export default function Customers() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader title={t("customers.title")} description={t("customers.description")}>
-        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleCreate}><Plus className="h-4 w-4 mr-2" />{t("customers.newCustomer")}</Button>
+      <PageHeader title="Gestion des Clients" description="Fiches clients et historique">
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleCreate}><Plus className="h-4 w-4 mr-2" />Nouveau client</Button>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title={t("customers.totalCustomers")} value={totalCustomers} icon={User} variant="default" />
-        <StatCard title={t("customers.withCredit")} value={customersWithDebts} icon={CreditCard} variant="warning" />
-        <StatCard title={t("customers.totalDebts")} value={format(totalDebts)} icon={CreditCard} variant="destructive" />
+        <StatCard title="Total clients" value={totalCustomers} icon={User} variant="default" />
+        <StatCard title="Clients avec crédit" value={customersWithDebts} icon={CreditCard} variant="warning" />
+        <StatCard title="Total créances" value={format(totalDebts)} icon={CreditCard} variant="destructive" />
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder={t("customers.searchByNamePhone")} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 max-w-md" />
+        <Input placeholder="Rechercher par nom ou téléphone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 max-w-md" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filteredCustomers.map((customer) => (
-          <Card key={customer.id} className="hover:shadow-soft transition-shadow cursor-pointer" onClick={() => setDossierCustomer(customer)}>
+          <Card key={customer.id} className="hover:shadow-soft transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -85,19 +81,18 @@ export default function Customers() {
                   </div>
                 </div>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDossierCustomer(customer); }}><Eye className="h-4 w-4 mr-2" />{t("customers.dossier")}</DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}>{t("action.edit")}</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(customer.id, customer.name); }}>{t("action.delete")}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleEdit(customer)}>Modifier</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(customer.id, customer.name)}>Supprimer</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
               {customer.email && <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3"><Mail className="h-3 w-3" /><span className="truncate">{customer.email}</span></div>}
               <div className="flex items-center justify-between pt-3 border-t border-border">
-                <span className="text-sm text-muted-foreground">{t("customers.balance")}</span>
+                <span className="text-sm text-muted-foreground">Solde</span>
                 <Badge className={cn(Number(customer.balance) < 0 ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-success/10 text-success border-success/20")}>
-                  {Number(customer.balance) < 0 ? `${t("customers.owes")}: ${format(Math.abs(Number(customer.balance)))}` : t("customers.upToDate")}
+                  {Number(customer.balance) < 0 ? `Doit: ${format(Math.abs(Number(customer.balance)))}` : "À jour"}
                 </Badge>
               </div>
             </CardContent>
@@ -105,10 +100,9 @@ export default function Customers() {
         ))}
       </div>
 
-      {filteredCustomers.length === 0 && !isLoading && <div className="text-center py-12 text-muted-foreground">{customers.length === 0 ? t("customers.noCustomers") : t("common.noResults")}</div>}
+      {filteredCustomers.length === 0 && !isLoading && <div className="text-center py-12 text-muted-foreground">{customers.length === 0 ? "Aucun client enregistré. Cliquez sur 'Nouveau client' pour commencer." : "Aucun client trouvé"}</div>}
 
       <CustomerDialog open={dialogOpen} onOpenChange={setDialogOpen} customer={editingCustomer} onSubmit={handleSubmit} isLoading={createCustomer.isPending || updateCustomer.isPending} />
-      <CustomerDossierDialog open={!!dossierCustomer} onOpenChange={(open) => !open && setDossierCustomer(null)} customer={dossierCustomer} />
     </div>
   );
 }

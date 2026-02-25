@@ -681,13 +681,10 @@ export type Database = {
       }
       shop_settings: {
         Row: {
-          brand_color: string | null
           country: string
           created_at: string
           currency: string
           id: string
-          language: string | null
-          logo_url: string | null
           shop_name: string
           stock_alert_threshold: number
           tax_enabled: boolean
@@ -696,13 +693,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          brand_color?: string | null
           country?: string
           created_at?: string
           currency?: string
           id?: string
-          language?: string | null
-          logo_url?: string | null
           shop_name?: string
           stock_alert_threshold?: number
           tax_enabled?: boolean
@@ -711,13 +705,10 @@ export type Database = {
           user_id: string
         }
         Update: {
-          brand_color?: string | null
           country?: string
           created_at?: string
           currency?: string
           id?: string
-          language?: string | null
-          logo_url?: string | null
           shop_name?: string
           stock_alert_threshold?: number
           tax_enabled?: boolean

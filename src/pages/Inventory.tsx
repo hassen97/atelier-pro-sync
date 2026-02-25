@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from "react";
-import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, Upload, ScanBarcode } from "lucide-react";
+import { useState } from "react";
+import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, Upload } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +16,6 @@ import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useU
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { toast } from "sonner";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ProductWithCategory {
   id: string; name: string; sku: string | null; description: string | null;
@@ -29,8 +28,6 @@ export default function Inventory() {
   const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductWithCategory | null>(null);
-  const [scanInput, setScanInput] = useState("");
-  const scanInputRef = useRef<HTMLInputElement>(null);
 
   const { data: rawProducts = [], isLoading } = useProducts();
   const createProduct = useCreateProduct();
@@ -38,7 +35,6 @@ export default function Inventory() {
   const deleteProduct = useDeleteProduct();
   const updateStock = useUpdateProductStock();
   const { format } = useCurrency();
-  const { t } = useLanguage();
 
   useRealtimeSubscription({ tables: ["products"], queryKeys: [["products"], ["low-stock-alerts"], ["dashboard-stats"]] });
 
@@ -69,19 +65,6 @@ export default function Inventory() {
     if (newStock !== null) { const qty = parseInt(newStock); if (!isNaN(qty) && qty >= 0) updateStock.mutate({ id, quantity: qty }); else toast.error("Quantité invalide"); }
   };
 
-  const handleScanAdd = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter" || !scanInput.trim()) return;
-    const scannedSku = scanInput.trim();
-    const found = products.find((p) => p.sku.toLowerCase() === scannedSku.toLowerCase());
-    if (found) {
-      updateStock.mutate({ id: found.id, quantity: found.stock + 1 });
-      toast.success(`${found.name} ${t("inventory.scanned")}`);
-    } else {
-      toast.error(`SKU "${scannedSku}" non trouvé`);
-    }
-    setScanInput("");
-  }, [scanInput, products, updateStock, t]);
-
   const handleSubmit = async (data: { name: string; sku?: string; description?: string; category_id?: string; cost_price: number; sell_price: number; quantity: number; min_quantity: number }) => {
     const submitData = { ...data, category_id: data.category_id || null };
     if (editingProduct) await updateProduct.mutateAsync({ id: editingProduct.id, ...submitData });
@@ -92,7 +75,7 @@ export default function Inventory() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <PageHeader title={t("inventory.title")} description={t("inventory.description")} />
+        <PageHeader title="Gestion du Stock" description="Inventaire des produits, pièces et accessoires" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
         <Skeleton className="h-96" />
       </div>
@@ -101,41 +84,28 @@ export default function Inventory() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader title={t("inventory.title")} description={t("inventory.description")}>
-        <Button variant="outline"><Download className="h-4 w-4 mr-2" />{t("action.export")}</Button>
-        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleNewProduct}><Plus className="h-4 w-4 mr-2" />{t("inventory.newProduct")}</Button>
+      <PageHeader title="Gestion du Stock" description="Inventaire des produits, pièces et accessoires">
+        <Button variant="outline"><Download className="h-4 w-4 mr-2" />Exporter</Button>
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleNewProduct}><Plus className="h-4 w-4 mr-2" />Nouveau produit</Button>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title={t("inventory.totalProducts")} value={totalItems} icon={Package} variant="default" />
-        <StatCard title={t("inventory.stockValue")} value={format(totalValue)} icon={Package} variant="accent" />
-        <StatCard title={t("inventory.lowStock")} value={lowStockItems} icon={AlertTriangle} variant="warning" />
-        <StatCard title={t("inventory.outOfStock")} value={outOfStockItems} icon={AlertTriangle} variant="destructive" />
-      </div>
-
-      {/* Barcode Scan Input */}
-      <div className="relative">
-        <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-        <Input
-          ref={scanInputRef}
-          placeholder={t("inventory.scanToAdd")}
-          value={scanInput}
-          onChange={(e) => setScanInput(e.target.value)}
-          onKeyDown={handleScanAdd}
-          className="pl-9 border-primary/30 focus:border-primary"
-        />
+        <StatCard title="Total produits" value={totalItems} icon={Package} variant="default" />
+        <StatCard title="Valeur du stock" value={format(totalValue)} icon={Package} variant="accent" />
+        <StatCard title="Stock faible" value={lowStockItems} subtitle="Sous le seuil d'alerte" icon={AlertTriangle} variant="warning" />
+        <StatCard title="Rupture de stock" value={outOfStockItems} icon={AlertTriangle} variant="destructive" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t("inventory.searchBySku")} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+          <Input placeholder="Rechercher par nom ou SKU..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
         </div>
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder={t("inventory.category")} /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>
           <SelectContent>{categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
         </Select>
-        <Button variant="outline"><Upload className="h-4 w-4 mr-2" />{t("action.import")}</Button>
+        <Button variant="outline"><Upload className="h-4 w-4 mr-2" />Importer</Button>
       </div>
 
       <Card>
@@ -143,14 +113,14 @@ export default function Inventory() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("inventory.product")}</TableHead><TableHead>{t("inventory.sku")}</TableHead><TableHead>{t("inventory.category")}</TableHead>
-                <TableHead className="text-right">{t("inventory.cost")}</TableHead><TableHead className="text-right">{t("inventory.sellPrice")}</TableHead>
-                <TableHead className="text-right">{t("inventory.margin")}</TableHead><TableHead className="text-center">{t("inventory.stock")}</TableHead><TableHead className="w-12"></TableHead>
+                <TableHead>Produit</TableHead><TableHead>SKU</TableHead><TableHead>Catégorie</TableHead>
+                <TableHead className="text-right">Coût</TableHead><TableHead className="text-right">Prix vente</TableHead>
+                <TableHead className="text-right">Marge</TableHead><TableHead className="text-center">Stock</TableHead><TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredInventory.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">{products.length === 0 ? t("common.noResults") : t("common.noResults")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">{products.length === 0 ? "Aucun produit enregistré. Cliquez sur 'Nouveau produit' pour commencer." : "Aucun produit trouvé"}</TableCell></TableRow>
               ) : (
                 filteredInventory.map((item) => {
                   const margin = item.cost > 0 ? ((item.price - item.cost) / item.cost) * 100 : 0;
@@ -171,9 +141,9 @@ export default function Inventory() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(item._original)}>{t("action.edit")}</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAdjustStock(item.id, item.name, item.stock)}>{t("inventory.adjustStock")}</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id, item.name)}>{t("action.delete")}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEdit(item._original)}>Modifier</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleAdjustStock(item.id, item.name, item.stock)}>Ajuster stock</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id, item.name)}>Supprimer</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

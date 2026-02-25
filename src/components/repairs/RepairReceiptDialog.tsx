@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect } from "react";
-import { Printer, FileDown } from "lucide-react";
+import { useRef } from "react";
+import { Printer } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -7,9 +7,6 @@ import { useCurrency } from "@/hooks/useCurrency";
 import type { Repair } from "./RepairCard";
 import { statusConfig } from "./RepairStatusSelect";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
-import { generateRepairPdf } from "@/lib/pdf-generator";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface RepairReceiptDialogProps {
   repair: Repair | null;
@@ -21,14 +18,6 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
   const receiptRef = useRef<HTMLDivElement>(null);
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<{ phone?: string; whatsapp_phone?: string } | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase.from("profiles").select("phone, whatsapp_phone").eq("user_id", user.id).single()
-      .then(({ data }) => { if (data) setProfile(data as any); });
-  }, [user]);
 
   const handlePrint = () => {
     if (receiptRef.current) {
@@ -39,12 +28,6 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
         printWindow.document.close(); printWindow.focus(); printWindow.print(); printWindow.close();
       }
     }
-  };
-
-  const handleDownloadPdf = () => {
-    if (!repair) return;
-    const statusLabel = statusConfig[repair.status]?.label || repair.status;
-    generateRepairPdf(repair, settings, statusLabel, profile || undefined);
   };
 
   if (!repair) return null;
@@ -58,10 +41,7 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Fiche de Réparation</span>
-            <div className="flex gap-2">
-              <Button onClick={handleDownloadPdf} size="sm" variant="default"><FileDown className="h-4 w-4 mr-2" />PDF</Button>
-              <Button onClick={handlePrint} size="sm" variant="outline"><Printer className="h-4 w-4 mr-2" />Imprimer</Button>
-            </div>
+            <Button onClick={handlePrint} size="sm"><Printer className="h-4 w-4 mr-2" />Imprimer</Button>
           </DialogTitle>
         </DialogHeader>
 

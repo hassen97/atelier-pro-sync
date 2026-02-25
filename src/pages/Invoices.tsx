@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Search,
   Plus,
@@ -50,9 +50,6 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useInvoices, useUpdateInvoice, useDeleteInvoice, InvoiceWithRelations } from "@/hooks/useInvoices";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { generateInvoicePdf } from "@/lib/pdf-generator";
 import { toast } from "sonner";
 
 const statusConfig = {
@@ -73,14 +70,6 @@ export default function Invoices() {
   const deleteInvoice = useDeleteInvoice();
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<{ phone?: string; whatsapp_phone?: string } | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase.from("profiles").select("phone, whatsapp_phone").eq("user_id", user.id).single()
-      .then(({ data }: any) => { if (data) setProfile(data); });
-  }, [user]);
 
   const filteredInvoices = invoices.filter(
     (invoice) =>
@@ -106,21 +95,30 @@ export default function Invoices() {
   };
 
   const handleDownloadPDF = (invoice: InvoiceWithRelations) => {
-    const type = invoice.repair ? "Réparation" : "Vente";
-    generateInvoicePdf(
-      {
-        invoiceNumber: invoice.invoice_number,
-        customerName: invoice.customer?.name || "Client passager",
-        customerPhone: invoice.customer?.phone || undefined,
-        date: new Date(invoice.created_at).toLocaleDateString("fr-TN"),
-        totalAmount: Number(invoice.total_amount),
-        status: statusConfig[invoice.status as keyof typeof statusConfig]?.label || invoice.status,
-        repairDevice: invoice.repair?.device_model,
-        type,
-      },
-      settings,
-      profile || undefined
-    );
+    const content = `
+FACTURE: ${invoice.invoice_number}
+${settings.shop_name}
+================================
+Date: ${new Date(invoice.created_at).toLocaleDateString("fr-TN")}
+Client: ${invoice.customer?.name || "Client passager"}
+${invoice.customer?.phone ? `Tél: ${invoice.customer.phone}` : ""}
+================================
+${invoice.repair ? `Réparation: ${invoice.repair.device_model}` : ""}
+${invoice.sale ? `Vente - Montant: ${format(invoice.sale.total_amount)}` : ""}
+================================
+TOTAL: ${format(Number(invoice.total_amount))}
+Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || invoice.status}
+================================
+    `.trim();
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${invoice.invoice_number}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Facture téléchargée");
   };
 
   const handleCancel = async (invoice: InvoiceWithRelations) => {

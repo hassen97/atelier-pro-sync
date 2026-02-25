@@ -11,6 +11,9 @@ export interface ShopSettings {
   tax_rate: number;
   tax_enabled: boolean;
   stock_alert_threshold: number;
+  brand_color: string;
+  language: string;
+  logo_url: string | null;
 }
 
 const defaultSettings: ShopSettings = {
@@ -20,6 +23,9 @@ const defaultSettings: ShopSettings = {
   tax_rate: 19,
   tax_enabled: true,
   stock_alert_threshold: 5,
+  brand_color: "blue",
+  language: "fr",
+  logo_url: null,
 };
 
 export function useShopSettings() {
@@ -52,10 +58,13 @@ export function useShopSettings() {
           id: data.id,
           shop_name: data.shop_name,
           currency: data.currency,
-          country: (data as any).country || "TN",
+          country: data.country || "TN",
           tax_rate: Number(data.tax_rate),
           tax_enabled: data.tax_enabled ?? true,
           stock_alert_threshold: data.stock_alert_threshold,
+          brand_color: data.brand_color || "blue",
+          language: data.language || "fr",
+          logo_url: data.logo_url || null,
         });
       }
     } catch (error) {
@@ -87,8 +96,11 @@ export function useShopSettings() {
             tax_rate: updatedSettings.tax_rate,
             tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
+            brand_color: updatedSettings.brand_color,
+            language: updatedSettings.language,
+            logo_url: updatedSettings.logo_url,
             updated_at: new Date().toISOString(),
-          } as any)
+          })
           .eq("id", settings.id);
 
         if (error) throw error;
@@ -104,7 +116,10 @@ export function useShopSettings() {
             tax_rate: updatedSettings.tax_rate,
             tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
-          } as any)
+            brand_color: updatedSettings.brand_color,
+            language: updatedSettings.language,
+            logo_url: updatedSettings.logo_url,
+          })
           .select()
           .single();
 

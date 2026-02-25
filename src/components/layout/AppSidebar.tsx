@@ -29,23 +29,24 @@ import {
 } from "@/components/ui/tooltip";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useAllowedPages } from "@/hooks/useTeam";
+import { useI18n } from "@/contexts/I18nContext";
 
 const navigation = [
-  { name: "Tableau de bord", href: "/", icon: LayoutDashboard },
-  { name: "Point de Vente", href: "/pos", icon: ShoppingCart },
-  { name: "Réparations", href: "/repairs", icon: Wrench },
-  { name: "Stock", href: "/inventory", icon: Package },
-  { name: "Clients", href: "/customers", icon: Users },
-  { name: "Fournisseurs", href: "/suppliers", icon: Truck },
-  { name: "Dépenses", href: "/expenses", icon: Receipt },
-  { name: "Dettes Clients", href: "/customer-debts", icon: CreditCard },
-  { name: "Factures", href: "/invoices", icon: FileText },
-  { name: "Statistiques", href: "/statistics", icon: BarChart3 },
-  { name: "Profit", href: "/profit", icon: TrendingUp },
+  { nameKey: "nav.dashboard" as const, href: "/", icon: LayoutDashboard },
+  { nameKey: "nav.pos" as const, href: "/pos", icon: ShoppingCart },
+  { nameKey: "nav.repairs" as const, href: "/repairs", icon: Wrench },
+  { nameKey: "nav.inventory" as const, href: "/inventory", icon: Package },
+  { nameKey: "nav.customers" as const, href: "/customers", icon: Users },
+  { nameKey: "nav.suppliers" as const, href: "/suppliers", icon: Truck },
+  { nameKey: "nav.expenses" as const, href: "/expenses", icon: Receipt },
+  { nameKey: "nav.debts" as const, href: "/customer-debts", icon: CreditCard },
+  { nameKey: "nav.invoices" as const, href: "/invoices", icon: FileText },
+  { nameKey: "nav.statistics" as const, href: "/statistics", icon: BarChart3 },
+  { nameKey: "nav.profit" as const, href: "/profit", icon: TrendingUp },
 ];
 
 const bottomNav = [
-  { name: "Paramètres", href: "/settings", icon: Settings },
+  { nameKey: "nav.settings" as const, href: "/settings", icon: Settings },
 ];
 
 interface AppSidebarProps {
@@ -60,6 +61,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
   const { settings } = useShopSettingsContext();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { allowedPages } = useAllowedPages();
+  const { t } = useI18n();
 
   // Filter navigation based on allowed pages
   const filteredNavigation = allowedPages
@@ -71,9 +73,10 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
     return location.pathname.startsWith(path);
   };
 
-  const NavItem = ({ item }: { item: typeof navigation[0] }) => {
+  const NavItem = ({ item }: { item: { nameKey: string; href: string; icon: any } }) => {
     const active = isActive(item.href);
     const Icon = item.icon;
+    const name = t(item.nameKey as any);
 
     const linkContent = (
       <NavLink
@@ -89,7 +92,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
       >
         <Icon className={cn("h-5 w-5 shrink-0", active && "text-sidebar-primary-foreground")} />
         {(!collapsed || isMobile) && (
-          <span className="truncate">{item.name}</span>
+          <span className="truncate">{name}</span>
         )}
       </NavLink>
     );
@@ -99,7 +102,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
           <TooltipContent side="right" className="font-medium">
-            {item.name}
+            {name}
           </TooltipContent>
         </Tooltip>
       );
@@ -107,6 +110,8 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
 
     return linkContent;
   };
+
+  const logoUrl = settings.logo_url;
 
   return (
     <aside
@@ -123,19 +128,34 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
       )}>
         {(!collapsed || isMobile) && (
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-primary">
-              <Smartphone className="h-5 w-5 text-primary-foreground" />
-            </div>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={settings.shop_name}
+                className="w-9 h-9 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-primary">
+                <Smartphone className="h-5 w-5 text-primary-foreground" />
+              </div>
+            )}
             <div className="flex flex-col">
               <span className="font-semibold text-sidebar-foreground text-sm truncate max-w-[140px]">{settings.shop_name}</span>
-              <span className="text-[10px] text-sidebar-foreground/60">Tunisie</span>
             </div>
           </div>
         )}
         {collapsed && !isMobile && (
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-primary">
-            <Smartphone className="h-5 w-5 text-primary-foreground" />
-          </div>
+          logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={settings.shop_name}
+              className="w-9 h-9 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-primary">
+              <Smartphone className="h-5 w-5 text-primary-foreground" />
+            </div>
+          )
         )}
         {!isMobile && (
           <Button
@@ -173,7 +193,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
           )}
         >
           <MessageSquareWarning className="h-5 w-5 shrink-0" />
-          {(!collapsed || isMobile) && <span className="truncate">Signaler / Suggérer</span>}
+          {(!collapsed || isMobile) && <span className="truncate">{t("nav.feedback")}</span>}
         </button>
         {bottomNav.map((item) => (
           <NavItem key={item.href} item={item} />

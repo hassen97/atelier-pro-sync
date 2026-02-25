@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Store,
   Save,
@@ -18,10 +18,15 @@ import {
   Globe,
   Phone,
   Mail,
+  Palette,
+  Image,
+  Trash2,
+  Languages,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +48,8 @@ import { TaskManagement } from "@/components/settings/TaskManagement";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
+import { BRAND_COLOR_PRESETS, useBrandTheme } from "@/contexts/BrandThemeContext";
+import { useI18n } from "@/contexts/I18nContext";
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettingsContext();
@@ -66,6 +73,12 @@ export default function Settings() {
   } = useSecuritySettings();
 
   const { updatePassword, user } = useAuth();
+  const { applyColor } = useBrandTheme();
+  const { language, setLanguage, t } = useI18n();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [brandColor, setBrandColor] = useState("blue");
+  const [customHex, setCustomHex] = useState("");
   
   const [shopName, setShopName] = useState("");
   const [shopCountry, setShopCountry] = useState("TN");
@@ -120,6 +133,7 @@ export default function Settings() {
       setTaxRate(String(settings.tax_rate));
       setTaxEnabled(settings.tax_enabled);
       setStockThreshold(String(settings.stock_alert_threshold));
+      setBrandColor(settings.brand_color || "blue");
     }
   }, [loading, settings]);
 
@@ -173,6 +187,45 @@ export default function Settings() {
     });
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Le fichier est trop volumineux (max 2 MB)");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/logo.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("shop-logos")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("shop-logos").getPublicUrl(path);
+      const logoUrl = urlData.publicUrl + "?t=" + Date.now();
+      await saveSettings({ logo_url: logoUrl });
+      toast.success("Logo mis à jour");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur lors du téléchargement du logo");
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    await saveSettings({ logo_url: null });
+    toast.success("Logo supprimé");
+  };
+
+  const handleBrandColorChange = async (color: string) => {
+    setBrandColor(color);
+    applyColor(color);
+    await saveSettings({ brand_color: color });
+  };
+
   const formatLastSyncTime = (time: string | null) => {
     if (!time) return "Jamais";
     const date = new Date(time);
@@ -205,11 +258,15 @@ export default function Settings() {
       />
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="general">Général</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
+          <TabsTrigger value="preferences">
+            <Palette className="h-3.5 w-3.5 mr-1" />
+            {t("settings.preferences")}
+          </TabsTrigger>
           <TabsTrigger value="categories">
             <Tag className="h-3.5 w-3.5 mr-1" />
-            Catégories
+            {t("settings.categories")}
           </TabsTrigger>
           <TabsTrigger value="backup">Sauvegarde</TabsTrigger>
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>
@@ -396,6 +453,134 @@ export default function Settings() {
                   }}
                 />
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Preferences - Appearance, Logo, Brand Color, Language */}
+        <TabsContent value="preferences" className="space-y-6">
+          {/* Logo Upload */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Image className="h-5 w-5" />
+                {t("settings.shopLogo")}
+              </CardTitle>
+              <CardDescription>{t("settings.logoHint")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                {settings.logo_url ? (
+                  <img src={settings.logo_url} alt="Logo" className="w-16 h-16 rounded-lg object-cover border" />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center border border-dashed">
+                    <Image className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                  >
+                    {uploadingLogo ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                    {t("settings.uploadLogo")}
+                  </Button>
+                  {settings.logo_url && (
+                    <Button variant="ghost" size="sm" className="text-destructive" onClick={handleRemoveLogo}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t("settings.removeLogo")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Brand Color */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="h-5 w-5" />
+                {t("settings.brandColor")}
+              </CardTitle>
+              <CardDescription>{t("settings.appearanceDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                {BRAND_COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    onClick={() => handleBrandColorChange(preset.hex)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all hover:scale-105",
+                      brandColor === preset.hex || brandColor === preset.name.toLowerCase()
+                        ? "border-foreground shadow-soft"
+                        : "border-transparent hover:border-muted-foreground/30"
+                    )}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-full shadow-sm"
+                      style={{ backgroundColor: preset.hex }}
+                    />
+                    <span className="text-[10px] text-muted-foreground text-center leading-tight">{preset.name}</span>
+                  </button>
+                ))}
+              </div>
+              <Separator />
+              <div className="flex items-center gap-3">
+                <Label htmlFor="customHex" className="shrink-0">Code Hex</Label>
+                <Input
+                  id="customHex"
+                  placeholder="#1447b3"
+                  value={customHex}
+                  onChange={(e) => setCustomHex(e.target.value)}
+                  className="max-w-[140px] font-mono"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!customHex.match(/^#[0-9a-fA-F]{6}$/)}
+                  onClick={() => {
+                    handleBrandColorChange(customHex);
+                    setCustomHex("");
+                  }}
+                >
+                  Appliquer
+                </Button>
+                {customHex.match(/^#[0-9a-fA-F]{6}$/) && (
+                  <div className="w-8 h-8 rounded-full border" style={{ backgroundColor: customHex }} />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Language */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Languages className="h-5 w-5" />
+                {t("settings.language")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select value={language} onValueChange={(val) => setLanguage(val as "fr" | "en")}>
+                <SelectTrigger className="max-w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                  <SelectItem value="en">🇬🇧 English</SelectItem>
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
         </TabsContent>

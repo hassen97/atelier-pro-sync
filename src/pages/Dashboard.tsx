@@ -26,9 +26,9 @@ import { useCreateRepair } from "@/hooks/useRepairs";
 import { useDashboardRealtime } from "@/hooks/useRealtimeSubscription";
 import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
-import { WarrantyDialog } from "@/components/repairs/WarrantyDialog";
+
 import { MyTasks } from "@/components/dashboard/MyTasks";
 import { useMyTeamInfo } from "@/hooks/useTeam";
 
@@ -52,7 +52,7 @@ export default function Dashboard() {
   
   const { data: teamInfo } = useMyTeamInfo();
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
-  const [warrantyDialogOpen, setWarrantyDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   const isLoading = statsLoading || repairsLoading || alertsLoading;
 
@@ -116,7 +116,7 @@ export default function Dashboard() {
           <Download className="h-4 w-4 mr-2" />
           Exporter
         </Button>
-        <Button variant="outline" size="sm" className="border-orange-500/30 text-orange-500 hover:bg-orange-500/10" onClick={() => setWarrantyDialogOpen(true)}>
+        <Button variant="outline" size="sm" className="border-orange-500/30 text-orange-500 hover:bg-orange-500/10" onClick={() => navigate("/warranty")}>
           <Shield className="h-4 w-4 mr-2" />
           Garantie / Retour
         </Button>
@@ -294,8 +294,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Warranty Dialog */}
-      <WarrantyDialog open={warrantyDialogOpen} onOpenChange={setWarrantyDialogOpen} />
+      {/* Repair Dialog */}
 
       {/* Repair Dialog */}
       <RepairDialog

@@ -42,6 +42,7 @@ const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const Warranty = lazyWithRetry(() => import("./pages/Warranty"));
 
 const queryClient = new QueryClient();
 
@@ -97,6 +98,7 @@ const App = () => (
                 <Route path="/invoices" element={<Invoices />} />
                 <Route path="/statistics" element={<Statistics />} />
                 <Route path="/profit" element={<Profit />} />
+                <Route path="/warranty" element={<Warranty />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
               

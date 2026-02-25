@@ -4,9 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
-export type Product = Tables<"products">;
-export type ProductInsert = TablesInsert<"products">;
-export type ProductUpdate = TablesUpdate<"products">;
+export type Product = Tables<"products"> & { barcodes: string[] };
+export type ProductInsert = TablesInsert<"products"> & { barcodes?: string[] };
+export type ProductUpdate = TablesUpdate<"products"> & { barcodes?: string[] };
 
 export function useProducts() {
   const { user } = useAuth();
@@ -26,7 +26,7 @@ export function useProducts() {
         .order("name");
 
       if (error) throw error;
-      return data;
+      return data as (typeof data[0] & { barcodes: string[] })[];
     },
     enabled: !!user,
   });
@@ -65,9 +65,10 @@ export function useCreateProduct() {
     mutationFn: async (product: Omit<ProductInsert, "user_id">) => {
       if (!user) throw new Error("Non authentifié");
 
+      const { barcodes, ...rest } = product as any;
       const { data, error } = await supabase
         .from("products")
-        .insert({ ...product, user_id: user.id })
+        .insert({ ...rest, barcodes: barcodes || [], user_id: user.id })
         .select()
         .single();
 
@@ -135,7 +136,6 @@ export function useUpdateProductStock() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["low-stock-alerts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast.success("Stock mis à jour");
     },
     onError: (error) => {
       console.error("Error updating stock:", error);
@@ -181,11 +181,10 @@ export function useLowStockProducts() {
         .from("products")
         .select("*")
         .eq("user_id", user.id)
-        .lte("quantity", supabase.rpc ? 5 : 5); // Default threshold
+        .lte("quantity", 5);
 
       if (error) throw error;
       
-      // Filter products where quantity <= min_quantity
       return (data as Product[]).filter(p => p.quantity <= p.min_quantity);
     },
     enabled: !!user,

@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, Upload, ScanBarcode, Lock, Unlock, History } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,23 +16,42 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useUpdateProductStock } from "@/hooks/useProducts";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
+import { ProductSheet, ProductSheetRef } from "@/components/inventory/ProductSheet";
+import { SmartScanBar, SmartScanBarRef } from "@/components/inventory/SmartScanBar";
+import { VariationMatrixDialog } from "@/components/inventory/VariationMatrixDialog";
 import { InventoryUnlockDialog } from "@/components/inventory/InventoryUnlockDialog";
 import { ActivityLogTab } from "@/components/inventory/ActivityLogTab";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
+import { Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
 
 interface ProductWithCategory {
-  id: string; name: string; sku: string | null; description: string | null;
+  id: string; name: string; sku: string | null; barcodes: string[]; description: string | null;
   cost_price: number; sell_price: number; quantity: number; min_quantity: number;
   category?: { id: string; name: string } | null;
+  category_id?: string | null;
 }
 
 export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tous");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Edit dialog (existing products)
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductWithCategory | null>(null);
+  
+  // New product sheet
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [prefillBarcode, setPrefillBarcode] = useState<string | undefined>();
+  
+  // Matrix dialog
+  const [matrixOpen, setMatrixOpen] = useState(false);
+  
+  // Unlock dialog
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  
+  // Pulse animation
+  const [pulsedProductId, setPulsedProductId] = useState<string | null>(null);
 
   const { data: rawProducts = [], isLoading } = useProducts();
   const createProduct = useCreateProduct();
@@ -42,53 +61,113 @@ export default function Inventory() {
   const { format } = useCurrency();
   const { isLocked, isEmployee, inventoryLocked, verifyCode, verifying, unlocked } = useInventoryAccess();
 
+  const scanBarRef = useRef<SmartScanBarRef>(null);
+  const sheetRef = useRef<ProductSheetRef>(null);
+
   useRealtimeSubscription({ tables: ["products"], queryKeys: [["products"], ["low-stock-alerts"], ["dashboard-stats"]] });
 
   const products = (rawProducts as ProductWithCategory[]).map((p) => ({
-    id: p.id, name: p.name, category: p.category?.name || "Non catégorisé", sku: p.sku || "",
-    cost: Number(p.cost_price) || 0, price: Number(p.sell_price) || 0, stock: p.quantity || 0, threshold: p.min_quantity || 5, _original: p,
+    id: p.id,
+    name: p.name,
+    category: p.category?.name || "Non catégorisé",
+    sku: p.sku || "",
+    barcodes: p.barcodes || (p.sku ? [p.sku] : []),
+    cost: Number(p.cost_price) || 0,
+    price: Number(p.sell_price) || 0,
+    stock: p.quantity || 0,
+    threshold: p.min_quantity || 5,
+    _original: p,
   }));
 
   const categories = ["Tous", ...new Set(products.map((p) => p.category))];
 
-  const filteredInventory = products.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "Tous" || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredInventory = (() => {
+    let list = products.filter((item) => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.barcodes.some((b) => b.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory = selectedCategory === "Tous" || item.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+
+    // Pulsed product always first
+    if (pulsedProductId) {
+      const idx = list.findIndex((p) => p.id === pulsedProductId);
+      if (idx > 0) {
+        const [item] = list.splice(idx, 1);
+        list = [item, ...list];
+      }
+    }
+    return list;
+  })();
 
   const totalItems = products.length;
   const totalValue = products.reduce((sum, item) => sum + item.cost * item.stock, 0);
   const lowStockItems = products.filter((item) => item.stock <= item.threshold).length;
   const outOfStockItems = products.filter((item) => item.stock === 0).length;
 
-  const handleNewProduct = () => { setEditingProduct(null); setDialogOpen(true); };
-  const handleEdit = (product: ProductWithCategory) => { setEditingProduct(product); setDialogOpen(true); };
-  const handleDelete = (id: string, name: string) => { if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) deleteProduct.mutate(id); };
+  const returnFocusToScanBar = useCallback(() => {
+    setTimeout(() => scanBarRef.current?.focus(), 50);
+  }, []);
+
+  const handleNewProduct = () => {
+    setPrefillBarcode(undefined);
+    setSheetOpen(true);
+  };
+
+  const handleEdit = (product: ProductWithCategory) => {
+    setEditingProduct(product);
+    setEditDialogOpen(true);
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer ${name} ?`)) {
+      deleteProduct.mutate(id);
+    }
+  };
 
   const handleAdjustStock = (id: string, name: string, currentStock: number) => {
     const newStock = prompt(`Nouveau stock pour ${name}:`, String(currentStock));
-    if (newStock !== null) { const qty = parseInt(newStock); if (!isNaN(qty) && qty >= 0) updateStock.mutate({ id, quantity: qty }); else toast.error("Quantité invalide"); }
-  };
-
-  const [scanStockInput, setScanStockInput] = useState("");
-  const handleScanStock = (value: string) => {
-    if (!value.trim()) return;
-    const product = products.find((p) => p.sku === value.trim());
-    if (product) {
-      updateStock.mutate({ id: product.id, quantity: product.stock + 1 });
-      toast.success(`+1 ${product.name} (Stock: ${product.stock + 1})`);
-    } else {
-      toast.error(`SKU non trouvé: ${value}`);
+    if (newStock !== null) {
+      const qty = parseInt(newStock);
+      if (!isNaN(qty) && qty >= 0) updateStock.mutate({ id, quantity: qty });
+      else toast.error("Quantité invalide");
     }
-    setScanStockInput("");
+    returnFocusToScanBar();
   };
 
-  const handleSubmit = async (data: { name: string; sku?: string; description?: string; category_id?: string; cost_price: number; sell_price: number; quantity: number; min_quantity: number }) => {
-    const submitData = { ...data, category_id: data.category_id || null };
-    if (editingProduct) await updateProduct.mutateAsync({ id: editingProduct.id, ...submitData });
-    else await createProduct.mutateAsync(submitData);
-    setDialogOpen(false); setEditingProduct(null);
+  // Smart Scan callbacks
+  const handleProductScanned = useCallback((productId: string, _name: string, _newStock: number) => {
+    setPulsedProductId(productId);
+    setTimeout(() => setPulsedProductId(null), 1400);
+  }, []);
+
+  const handleUnknownBarcode = useCallback((barcode: string) => {
+    setPrefillBarcode(barcode);
+    setSheetOpen(true);
+  }, []);
+
+  const handleStockIncrement = useCallback((id: string, quantity: number) => {
+    updateStock.mutate({ id, quantity });
+  }, [updateStock]);
+
+  // Sheet submit (new product)
+  const handleSheetSubmit = async (data: any) => {
+    await createProduct.mutateAsync(data);
+    setSheetOpen(false);
+    setPrefillBarcode(undefined);
+    returnFocusToScanBar();
+  };
+
+  // Edit dialog submit
+  const handleEditSubmit = async (data: any) => {
+    if (editingProduct) {
+      await updateProduct.mutateAsync({ id: editingProduct.id, ...data });
+    }
+    setEditDialogOpen(false);
+    setEditingProduct(null);
+    returnFocusToScanBar();
   };
 
   if (isLoading) {
@@ -117,6 +196,15 @@ export default function Inventory() {
           </Badge>
         )}
         <Button variant="outline"><Download className="h-4 w-4 mr-2" />Exporter</Button>
+        <Button
+          variant="outline"
+          onClick={() => setMatrixOpen(true)}
+          disabled={isLocked}
+          className="gap-2 border-warning/30 text-warning hover:bg-warning/10"
+        >
+          <Zap className="h-4 w-4" />
+          Générateur
+        </Button>
         <Button className="bg-gradient-primary hover:opacity-90" onClick={handleNewProduct} disabled={isLocked}>
           <Plus className="h-4 w-4 mr-2" />Nouveau produit
         </Button>
@@ -145,24 +233,28 @@ export default function Inventory() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Rechercher par nom ou SKU..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
-            </div>
-            <div className="relative w-full sm:w-56">
-              <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Scanner +1 stock..."
-                value={scanStockInput}
-                onChange={(e) => setScanStockInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScanStock(scanStockInput); } }}
-                className="pl-9 font-mono text-sm"
-                disabled={isLocked}
+                placeholder="Rechercher par nom, SKU ou code-barres..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
               />
             </div>
+
+            {/* Smart Scan Bar */}
+            <SmartScanBar
+              ref={scanBarRef}
+              products={products}
+              isLocked={isLocked}
+              onProductScanned={handleProductScanned}
+              onUnknownBarcode={handleUnknownBarcode}
+              onStockIncrement={handleStockIncrement}
+            />
+
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>
               <SelectContent>{categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
             </Select>
-            <Button variant="outline"><Upload className="h-4 w-4 mr-2" />Importer</Button>
           </div>
 
           <Card>
@@ -170,33 +262,75 @@ export default function Inventory() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Produit</TableHead><TableHead>SKU</TableHead><TableHead>Catégorie</TableHead>
-                    <TableHead className="text-right">Coût</TableHead><TableHead className="text-right">Prix vente</TableHead>
-                    <TableHead className="text-right">Marge</TableHead><TableHead className="text-center">Stock</TableHead><TableHead className="w-12"></TableHead>
+                    <TableHead>Produit</TableHead>
+                    <TableHead>Codes-barres</TableHead>
+                    <TableHead>Catégorie</TableHead>
+                    <TableHead className="text-right">Coût</TableHead>
+                    <TableHead className="text-right">Prix vente</TableHead>
+                    <TableHead className="text-right">Marge</TableHead>
+                    <TableHead className="text-center">Stock</TableHead>
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredInventory.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">{products.length === 0 ? "Aucun produit enregistré. Cliquez sur 'Nouveau produit' pour commencer." : "Aucun produit trouvé"}</TableCell></TableRow>
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                        {products.length === 0
+                          ? "Aucun produit enregistré. Cliquez sur 'Nouveau produit' pour commencer."
+                          : "Aucun produit trouvé"}
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     filteredInventory.map((item) => {
                       const margin = item.cost > 0 ? ((item.price - item.cost) / item.cost) * 100 : 0;
                       const isLowStock = item.stock <= item.threshold;
                       const isOutOfStock = item.stock === 0;
+                      const isPulsed = item.id === pulsedProductId;
                       return (
-                        <TableRow key={item.id}>
+                        <TableRow
+                          key={item.id}
+                          className={cn(isPulsed && "animate-neon-pulse")}
+                        >
                           <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell className="font-mono text-xs text-muted-foreground">{item.sku || "-"}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {item.barcodes.length > 0 ? (
+                                item.barcodes.map((b) => (
+                                  <span key={b} className="font-mono text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                    {b}
+                                  </span>
+                                ))
+                              ) : item.sku ? (
+                                <span className="font-mono text-xs text-muted-foreground">{item.sku}</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell><Badge variant="secondary">{item.category}</Badge></TableCell>
                           <TableCell className="text-right font-mono-numbers">{format(item.cost)}</TableCell>
                           <TableCell className="text-right font-mono-numbers">{format(item.price)}</TableCell>
-                          <TableCell className="text-right"><span className="text-success font-medium">+{margin.toFixed(0)}%</span></TableCell>
+                          <TableCell className="text-right">
+                            <span className="text-success font-medium">+{margin.toFixed(0)}%</span>
+                          </TableCell>
                           <TableCell className="text-center">
-                            <Badge className={cn("font-mono", isOutOfStock && "bg-destructive/10 text-destructive border-destructive/20", isLowStock && !isOutOfStock && "bg-warning/10 text-warning border-warning/20", !isLowStock && "bg-success/10 text-success border-success/20")}>{item.stock}</Badge>
+                            <Badge className={cn(
+                              "font-mono",
+                              isOutOfStock && "bg-destructive/10 text-destructive border-destructive/20",
+                              isLowStock && !isOutOfStock && "bg-warning/10 text-warning border-warning/20",
+                              !isLowStock && "bg-success/10 text-success border-success/20"
+                            )}>
+                              {item.stock}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLocked}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLocked}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => handleEdit(item._original)}>Modifier</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleAdjustStock(item.id, item.name, item.stock)}>Ajuster stock</DropdownMenuItem>
@@ -219,8 +353,52 @@ export default function Inventory() {
         </TabsContent>
       </Tabs>
 
-      <ProductDialog open={dialogOpen} onOpenChange={setDialogOpen} product={editingProduct} onSubmit={handleSubmit} isLoading={createProduct.isPending || updateProduct.isPending} />
-      <InventoryUnlockDialog open={unlockDialogOpen} onOpenChange={setUnlockDialogOpen} onVerify={verifyCode} verifying={verifying} />
+      {/* New Product Sheet (slide-over) */}
+      <ProductSheet
+        ref={sheetRef}
+        open={sheetOpen}
+        onOpenChange={(open) => {
+          setSheetOpen(open);
+          if (!open) {
+            setPrefillBarcode(undefined);
+            returnFocusToScanBar();
+          }
+        }}
+        prefillBarcode={prefillBarcode}
+        onSubmit={handleSheetSubmit}
+        isLoading={createProduct.isPending}
+        onSaved={returnFocusToScanBar}
+      />
+
+      {/* Edit Dialog (existing products) */}
+      <ProductDialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) returnFocusToScanBar();
+        }}
+        product={editingProduct}
+        onSubmit={handleEditSubmit}
+        isLoading={updateProduct.isPending}
+      />
+
+      {/* Variation Matrix */}
+      <VariationMatrixDialog
+        open={matrixOpen}
+        onOpenChange={(open) => {
+          setMatrixOpen(open);
+          if (!open) returnFocusToScanBar();
+        }}
+        onSaved={returnFocusToScanBar}
+      />
+
+      {/* Unlock Dialog */}
+      <InventoryUnlockDialog
+        open={unlockDialogOpen}
+        onOpenChange={setUnlockDialogOpen}
+        onVerify={verifyCode}
+        verifying={verifying}
+      />
     </div>
   );
 }

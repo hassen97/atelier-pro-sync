@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Smartphone,
   MessageSquareWarning,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ const navigation = [
   { nameKey: "nav.invoices" as const, href: "/invoices", icon: FileText },
   { nameKey: "nav.statistics" as const, href: "/statistics", icon: BarChart3 },
   { nameKey: "nav.profit" as const, href: "/profit", icon: TrendingUp },
+  { nameKey: "nav.warranty" as const, href: "/warranty", icon: Shield },
 ];
 
 const bottomNav = [

@@ -16,6 +16,7 @@ const translations = {
     "nav.invoices": "Factures",
     "nav.statistics": "Statistiques",
     "nav.profit": "Profit",
+    "nav.warranty": "Garantie",
     "nav.settings": "Paramètres",
     "nav.feedback": "Signaler / Suggérer",
 
@@ -127,6 +128,7 @@ const translations = {
     "nav.invoices": "Invoices",
     "nav.statistics": "Statistics",
     "nav.profit": "Profit",
+    "nav.warranty": "Warranty",
     "nav.settings": "Settings",
     "nav.feedback": "Report / Suggest",
 

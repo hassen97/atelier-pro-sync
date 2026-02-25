@@ -24,6 +24,7 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
       type: "repair",
       id: repair.id,
       date: new Date(repair.depositDate).toLocaleDateString("fr-TN"),
+      time: new Date().toLocaleTimeString("fr-TN", { hour: "2-digit", minute: "2-digit" }),
       customer: { name: repair.customer, phone: repair.phone },
       device: repair.device,
       imei: repair.imei,

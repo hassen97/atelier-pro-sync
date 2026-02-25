@@ -22,7 +22,8 @@ import {
   Image,
   Trash2,
   Languages,
-} from "lucide-react";
+ } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -90,6 +92,7 @@ export default function Settings() {
   const [shopPhone, setShopPhone] = useState("");
   const [shopWhatsapp, setShopWhatsapp] = useState("");
   const [shopEmail, setShopEmail] = useState("");
+  const [receiptTerms, setReceiptTerms] = useState("");
   
   // Phone / WhatsApp state
   const [profilePhone, setProfilePhone] = useState("");
@@ -142,6 +145,7 @@ export default function Settings() {
       setShopPhone(settings.phone || "");
       setShopWhatsapp(settings.whatsapp_phone || "");
       setShopEmail(settings.email || "");
+      setReceiptTerms(settings.receipt_terms || "");
     }
   }, [loading, settings]);
 
@@ -196,6 +200,7 @@ export default function Settings() {
       phone: shopPhone.trim() || null,
       whatsapp_phone: shopWhatsapp.trim() || null,
       email: shopEmail.trim() || null,
+      receipt_terms: receiptTerms.trim() || null,
     });
   };
 
@@ -439,6 +444,22 @@ export default function Settings() {
                     placeholder="contact@monmagasin.com"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="receiptTerms" className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4" />
+                  Conditions / Garantie (reçu)
+                </Label>
+                <Textarea
+                  id="receiptTerms"
+                  value={receiptTerms}
+                  onChange={(e) => setReceiptTerms(e.target.value)}
+                  placeholder={"Garantie de 90 jours sur toutes les pièces.\nLes appareils non récupérés après 30 jours\nne sont plus sous notre responsabilité.\nMerci pour votre confiance !"}
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ce texte apparaîtra en bas de vos reçus. Laissez vide pour utiliser le texte par défaut.
+                </p>
               </div>
               <Button 
                 className="bg-gradient-primary hover:opacity-90"

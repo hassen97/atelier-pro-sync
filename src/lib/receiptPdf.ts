@@ -34,6 +34,7 @@ interface ReceiptData {
   paid: number;
   remaining: number;
   paymentMethod?: string;
+  time?: string;
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -160,6 +161,9 @@ export async function generateThermalReceipt(
   // Receipt ID & date
   leftRight("N°", data.id.slice(0, 8).toUpperCase(), 7, true);
   leftRight("Date", data.date, 7);
+  if (data.time) {
+    leftRight("Heure", data.time, 7);
+  }
 
   dashedLine();
 
@@ -255,12 +259,15 @@ export async function generateThermalReceipt(
   // Terms & warranty
   doc.setFontSize(6);
   doc.setTextColor(120);
-  const terms = [
+  const defaultTerms = [
     "Garantie de 90 jours sur toutes les pièces.",
     "Les appareils non récupérés après 30 jours",
     "ne sont plus sous notre responsabilité.",
     "Merci pour votre confiance !",
   ];
+  const terms = (settings as any).receipt_terms
+    ? (settings as any).receipt_terms.split('\n').filter((l: string) => l.trim())
+    : defaultTerms;
   terms.forEach((line) => {
     centerText(line, 6);
   });

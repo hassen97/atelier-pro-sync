@@ -430,6 +430,7 @@ export type Database = {
       }
       products: {
         Row: {
+          barcodes: string[]
           category_id: string | null
           cost_price: number
           created_at: string
@@ -444,6 +445,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          barcodes?: string[]
           category_id?: string | null
           cost_price?: number
           created_at?: string
@@ -458,6 +460,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          barcodes?: string[]
           category_id?: string | null
           cost_price?: number
           created_at?: string

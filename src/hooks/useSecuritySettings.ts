@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export interface SecuritySettings {
@@ -22,6 +23,7 @@ export function useSecuritySettings() {
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -161,6 +163,14 @@ export function useSecuritySettings() {
       }
 
       localStorage.removeItem("app_notifications");
+      queryClient.invalidateQueries({ queryKey: ["profit"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["repairs"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       toast.success("Les données sélectionnées ont été supprimées");
       window.location.reload();
       return true;

@@ -283,7 +283,7 @@ export default function Inventory() {
                     </TableRow>
                   ) : (
                     filteredInventory.map((item) => {
-                      const margin = item.cost > 0 ? ((item.price - item.cost) / item.cost) * 100 : 0;
+                      const margin = item.cost > 0 && isFinite(item.cost) && isFinite(item.price) ? ((item.price - item.cost) / item.cost) * 100 : 0;
                       const isLowStock = item.stock <= item.threshold;
                       const isOutOfStock = item.stock === 0;
                       const isPulsed = item.id === pulsedProductId;

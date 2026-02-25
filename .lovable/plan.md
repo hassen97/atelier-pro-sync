@@ -1,38 +1,46 @@
 
 
-# Add Shop Contact Details to Settings Page
+# Selective Data Reset - Choose What to Delete
 
-## Problem
-The Settings page's "General" tab is missing input fields for the shop's address, phone, WhatsApp, and email. These fields were added to the database and receipt PDF, but never added to the settings UI -- so there's no way to fill them in.
+## Overview
+Replace the current "delete everything" button with a dialog that lets you pick exactly which data categories to delete. You'll see checkboxes for each type (products, customers, repairs, etc.) and can choose one or multiple.
 
-## Solution
-Add a new "Coordonnees du magasin" (Shop Contact Details) card to the General tab with fields for:
-- Address (text input)
-- Phone number
-- WhatsApp number
-- Email
+## How It Will Work
+1. Click "Reinitialiser les donnees" in Settings > Security
+2. A dialog opens with checkboxes for each data category:
+   - Produits et categories
+   - Clients
+   - Fournisseurs
+   - Reparations (et pieces utilisees)
+   - Ventes (et articles vendus)
+   - Factures
+   - Depenses
+3. Select which ones to delete (or "Select all")
+4. Type SUPPRIMER to confirm
+5. Only the selected categories are deleted
 
-These will be saved as part of the shop settings (not the user profile) and will appear on receipts/PDFs.
+## Technical Details
 
-## Technical Changes
+### File: `src/components/settings/ResetDataDialog.tsx`
+- Add checkboxes for each data category using the existing Checkbox component
+- Add a "Select all / Deselect all" toggle
+- Pass selected categories to `onConfirm`
+- Update the confirmation list to only show selected items
+- Disable confirm button if nothing is selected
 
-**File: `src/pages/Settings.tsx`**
+### File: `src/hooks/useSecuritySettings.ts`
+- Change `resetAllData` to accept a `categories: string[]` parameter
+- Conditionally delete only the selected tables:
+  - `"products"` -> deletes products + categories
+  - `"customers"` -> deletes customers
+  - `"suppliers"` -> deletes suppliers
+  - `"repairs"` -> deletes repairs + repair_parts
+  - `"sales"` -> deletes sales + sale_items
+  - `"invoices"` -> deletes invoices
+  - `"expenses"` -> deletes expenses
+- Maintain proper deletion order (child tables before parent tables)
+- Only reload if at least one category was successfully deleted
 
-1. Add local state variables for the new fields:
-   - `shopAddress`, `shopPhone`, `shopWhatsapp`, `shopEmail`
-
-2. Sync them from `settings` in the existing `useEffect` (around line 128-138):
-   - `setShopAddress(settings.address || "")`
-   - `setShopPhone(settings.phone || "")`
-   - `setShopWhatsapp(settings.whatsapp_phone || "")`
-   - `setShopEmail(settings.email || "")`
-
-3. Include the new fields in `handleSaveGeneralSettings` (line 179-188):
-   - Add `address`, `phone`, `whatsapp_phone`, `email` to the save call
-
-4. Add a new Card after the existing "Informations du magasin" card (after line 378) with:
-   - MapPin icon + title "Coordonnees du magasin"
-   - Input for address (full width)
-   - Grid with phone, WhatsApp, and email inputs
-   - The existing "Enregistrer" button in the first card will save everything together
+### File: `src/pages/Settings.tsx`
+- Minor update to pass the new signature through (the `ResetDataDialog` will now pass categories to `onConfirm`)
 

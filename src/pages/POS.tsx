@@ -211,10 +211,10 @@ export default function POS() {
 
   if (productsLoading) {
     return (
-      <div className="h-[calc(100vh-8rem)] animate-fade-in">
+    <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in">
         <PageHeader title="Point de Vente" description="Encaissement et ventes" />
-        <div className="grid gap-6 lg:grid-cols-3 h-[calc(100%-5rem)]">
-          <div className="lg:col-span-2"><Skeleton className="h-10 w-full mb-4" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div></div>
+        <div className="grid gap-6 lg:grid-cols-3 lg:h-[calc(100%-5rem)]">
+          <div className="lg:col-span-2 min-h-[50vh] lg:min-h-0"><Skeleton className="h-10 w-full mb-4" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div></div>
           <Skeleton className="h-96" />
         </div>
       </div>
@@ -222,12 +222,12 @@ export default function POS() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] animate-fade-in">
+    <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in">
       <PageHeader title="Point de Vente" description="Encaissement et ventes" />
 
-      <div className="grid gap-6 lg:grid-cols-3 h-[calc(100%-5rem)]">
+      <div className="grid gap-6 lg:grid-cols-3 lg:h-[calc(100%-5rem)]">
         {/* Products & Repairs Section */}
-        <div className="lg:col-span-2 flex flex-col min-h-0">
+        <div className="lg:col-span-2 flex flex-col min-h-[50vh] lg:min-h-0">
           <Tabs defaultValue="products" className="flex flex-col flex-1 min-h-0">
             <TabsList className="mb-3 w-fit">
               <TabsTrigger value="products">Produits</TabsTrigger>

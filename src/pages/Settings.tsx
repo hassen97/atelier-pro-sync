@@ -86,6 +86,10 @@ export default function Settings() {
   const [taxRate, setTaxRate] = useState("");
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [stockThreshold, setStockThreshold] = useState("");
+  const [shopAddress, setShopAddress] = useState("");
+  const [shopPhone, setShopPhone] = useState("");
+  const [shopWhatsapp, setShopWhatsapp] = useState("");
+  const [shopEmail, setShopEmail] = useState("");
   
   // Phone / WhatsApp state
   const [profilePhone, setProfilePhone] = useState("");
@@ -134,6 +138,10 @@ export default function Settings() {
       setTaxEnabled(settings.tax_enabled);
       setStockThreshold(String(settings.stock_alert_threshold));
       setBrandColor(settings.brand_color || "blue");
+      setShopAddress(settings.address || "");
+      setShopPhone(settings.phone || "");
+      setShopWhatsapp(settings.whatsapp_phone || "");
+      setShopEmail(settings.email || "");
     }
   }, [loading, settings]);
 
@@ -184,6 +192,10 @@ export default function Settings() {
       tax_rate: parseFloat(taxRate) || 19,
       tax_enabled: taxEnabled,
       stock_alert_threshold: parseInt(stockThreshold) || 5,
+      address: shopAddress.trim() || null,
+      phone: shopPhone.trim() || null,
+      whatsapp_phone: shopWhatsapp.trim() || null,
+      email: shopEmail.trim() || null,
     });
   };
 
@@ -360,6 +372,71 @@ export default function Settings() {
                     type="number"
                     value={stockThreshold}
                     onChange={(e) => setStockThreshold(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Button 
+                className="bg-gradient-primary hover:opacity-90"
+                onClick={handleSaveGeneralSettings}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {saving ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                Coordonnées du magasin
+              </CardTitle>
+              <CardDescription>
+                Ces informations apparaîtront sur vos reçus et factures
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="shopAddress">Adresse</Label>
+                <Input
+                  id="shopAddress"
+                  value={shopAddress}
+                  onChange={(e) => setShopAddress(e.target.value)}
+                  placeholder="Adresse du magasin"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="shopPhoneNum">Téléphone</Label>
+                  <Input
+                    id="shopPhoneNum"
+                    value={shopPhone}
+                    onChange={(e) => setShopPhone(e.target.value)}
+                    placeholder="+216 XX XXX XXX"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="shopWhatsappNum">WhatsApp</Label>
+                  <Input
+                    id="shopWhatsappNum"
+                    value={shopWhatsapp}
+                    onChange={(e) => setShopWhatsapp(e.target.value)}
+                    placeholder="+216 XX XXX XXX"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="shopEmailAddr">Email</Label>
+                  <Input
+                    id="shopEmailAddr"
+                    type="email"
+                    value={shopEmail}
+                    onChange={(e) => setShopEmail(e.target.value)}
+                    placeholder="contact@monmagasin.com"
                   />
                 </div>
               </div>

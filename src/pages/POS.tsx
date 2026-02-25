@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, Loader2, ScanBarcode, Wrench, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, Loader2, ScanBarcode, Wrench, CheckCircle2, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,17 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useProducts } from "@/hooks/useProducts";
 import { useRepairs } from "@/hooks/useRepairs";
 import { useCreateSale } from "@/hooks/useSales";
-import { useCreateCustomer } from "@/hooks/useCustomers";
+import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers";
+import { useCustomers } from "@/hooks/useCustomers";
 import { useUpdateRepairStatus } from "@/hooks/useRepairs";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
-// Dynamic import to prevent jsPDF from crashing the module
 import { toast } from "sonner";
 
 interface CartItem {
@@ -39,6 +41,9 @@ export default function POS() {
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [scanInput, setScanInput] = useState("");
   const [scanFlash, setScanFlash] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>("");
+  const [amountPaidInput, setAmountPaidInput] = useState<string>("");
   const scanRef = useRef<HTMLInputElement>(null);
   const beepRef = useRef<AudioContext | null>(null);
 
@@ -46,7 +51,9 @@ export default function POS() {
   const { data: rawRepairs = [], isLoading: repairsLoading } = useRepairs();
   const createSale = useCreateSale();
   const createCustomer = useCreateCustomer();
+  const updateCustomer = useUpdateCustomer();
   const updateRepairStatus = useUpdateRepairStatus();
+  const { data: customers = [] } = useCustomers();
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
 
@@ -161,8 +168,26 @@ export default function POS() {
 
   const clearCart = () => setCart([]);
 
-  const handlePayment = async (paymentMethod: string) => {
+  const openPaymentDialog = (method: string) => {
     if (cart.length === 0) return;
+    setPendingPaymentMethod(method);
+    setAmountPaidInput(total.toFixed(3));
+    setPaymentDialogOpen(true);
+  };
+
+  const parsedAmountPaid = parseFloat(amountPaidInput) || 0;
+  const remainder = Math.max(0, total - parsedAmountPaid);
+  const isPartialPayment = parsedAmountPaid < total && parsedAmountPaid > 0;
+  const selectedCustomer = customers.find((c: any) => c.id === selectedCustomerId);
+
+  const handlePayment = async () => {
+    if (cart.length === 0) return;
+    if (isPartialPayment && !selectedCustomerId) {
+      toast.error("Veuillez sélectionner un client pour un paiement partiel");
+      return;
+    }
+
+    const actualPaid = Math.min(parsedAmountPaid, total);
 
     const productItems = cart.filter((i) => i.type === "product");
     const repairItems = cart.filter((i) => i.type === "repair");
@@ -171,11 +196,15 @@ export default function POS() {
     if (productItems.length > 0) {
       const productSubtotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
       const productTax = productSubtotal * taxRate;
+      const productTotal = productSubtotal + productTax;
+      const productPaid = repairItems.length > 0
+        ? Math.min(actualPaid, productTotal)
+        : actualPaid;
       await createSale.mutateAsync({
         customer_id: selectedCustomerId || null,
-        payment_method: paymentMethod,
-        total_amount: productSubtotal + productTax,
-        amount_paid: productSubtotal + productTax,
+        payment_method: pendingPaymentMethod,
+        total_amount: productTotal,
+        amount_paid: Math.min(productPaid, productTotal),
         items: productItems.map((item) => ({ product_id: item.id, quantity: item.quantity, unit_price: item.price })),
       });
     }
@@ -183,6 +212,14 @@ export default function POS() {
     // Mark repairs as delivered
     for (const repairItem of repairItems) {
       await updateRepairStatus.mutateAsync({ id: repairItem.id, status: "delivered" });
+    }
+
+    // Update customer balance if partial payment
+    if (remainder > 0 && selectedCustomerId && selectedCustomer) {
+      await updateCustomer.mutateAsync({
+        id: selectedCustomerId,
+        balance: (selectedCustomer.balance || 0) + remainder,
+      });
     }
 
     // Generate receipt via dynamic import
@@ -197,14 +234,15 @@ export default function POS() {
         taxRate: settings.tax_enabled ? settings.tax_rate : undefined,
         taxAmount: settings.tax_enabled ? tax : undefined,
         total,
-        paid: total,
-        remaining: 0,
-        paymentMethod,
+        paid: actualPaid,
+        remaining: remainder,
+        paymentMethod: pendingPaymentMethod,
       }, settings, format);
     } catch (e) {
       console.error("Receipt generation error:", e);
     }
 
+    setPaymentDialogOpen(false);
     clearCart();
     setSelectedCustomerId("");
   };
@@ -392,17 +430,94 @@ export default function POS() {
               <Separator />
               <div className="flex justify-between text-lg font-bold"><span>Total</span><span className="font-mono-numbers text-primary">{format(total)}</span></div>
               <div className="grid grid-cols-2 gap-2 pt-2">
-                <Button variant="outline" className="h-12" disabled={cart.length === 0 || createSale.isPending} onClick={() => handlePayment("card")}>
-                  {createSale.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CreditCard className="h-4 w-4 mr-2" />Carte</>}
+                <Button variant="outline" className="h-12" disabled={cart.length === 0 || createSale.isPending} onClick={() => openPaymentDialog("card")}>
+                  <CreditCard className="h-4 w-4 mr-2" />Carte
                 </Button>
-                <Button className="h-12 bg-gradient-success hover:opacity-90" disabled={cart.length === 0 || createSale.isPending} onClick={() => handlePayment("cash")}>
-                  {createSale.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Banknote className="h-4 w-4 mr-2" />Espèces</>}
+                <Button className="h-12 bg-gradient-success hover:opacity-90" disabled={cart.length === 0 || createSale.isPending} onClick={() => openPaymentDialog("cash")}>
+                  <Banknote className="h-4 w-4 mr-2" />Espèces
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Confirmation Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {pendingPaymentMethod === "card" ? <CreditCard className="h-5 w-5" /> : <Banknote className="h-5 w-5" />}
+              Confirmer le paiement
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+              <span className="text-sm text-muted-foreground">Total à payer</span>
+              <span className="text-lg font-bold font-mono-numbers text-primary">{format(total)}</span>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="amount-paid">Montant payé</Label>
+              <Input
+                id="amount-paid"
+                type="number"
+                step="0.001"
+                min="0"
+                max={total}
+                value={amountPaidInput}
+                onChange={(e) => setAmountPaidInput(e.target.value)}
+                className="font-mono-numbers text-right text-lg"
+                autoFocus
+              />
+            </div>
+
+            {isPartialPayment && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-destructive">Paiement partiel</p>
+                    <p className="text-xs text-muted-foreground">
+                      Reste à payer: <span className="font-bold font-mono-numbers text-destructive">{format(remainder)}</span>
+                    </p>
+                  </div>
+                </div>
+                {!selectedCustomerId && (
+                  <p className="text-xs text-destructive font-medium">⚠ Veuillez sélectionner un client pour enregistrer la dette</p>
+                )}
+                {selectedCustomer && (
+                  <p className="text-xs text-muted-foreground">
+                    La dette de <span className="font-medium">{selectedCustomer.name}</span> passera de{" "}
+                    <span className="font-mono-numbers">{format(selectedCustomer.balance || 0)}</span> à{" "}
+                    <span className="font-mono-numbers font-medium text-destructive">{format((selectedCustomer.balance || 0) + remainder)}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {selectedCustomer && !isPartialPayment && (
+              <p className="text-xs text-muted-foreground">
+                Client: <span className="font-medium">{selectedCustomer.name}</span>
+                {selectedCustomer.balance > 0 && (
+                  <> — Dette actuelle: <span className="font-mono-numbers text-destructive">{format(selectedCustomer.balance)}</span></>
+                )}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Annuler</Button>
+            <Button
+              onClick={handlePayment}
+              disabled={parsedAmountPaid <= 0 || createSale.isPending || (isPartialPayment && !selectedCustomerId)}
+              className={isPartialPayment ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-success hover:opacity-90"}
+            >
+              {createSale.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {isPartialPayment ? `Encaisser ${format(parsedAmountPaid)}` : "Confirmer le paiement"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CustomerDialog
         open={customerDialogOpen}

@@ -1,39 +1,39 @@
 
+# Garantie et Produits Retournes - Fonctionnalite Complete
 
-# Raccourcis clavier pour le POS
+## Probleme actuel
+- Le bouton "Garantie / Retour" sur le Dashboard ouvre uniquement le formulaire de creation d'un ticket, mais ne permet pas de consulter les tickets existants.
+- Le composant `DefectivePartsList` (pieces defectueuses/retournees) existe dans le code mais n'est utilise nulle part dans l'application.
+- Il manque une vue complete pour gerer les garanties et les produits retournes.
 
-## Ce qui change
-Trois raccourcis clavier seront actifs sur la page POS pour accelerer l'encaissement :
+## Solution proposee
+Creer une page dediee `/warranty` accessible depuis le bouton "Garantie / Retour" du Dashboard et depuis la sidebar. Cette page affichera :
+1. La liste des tickets de garantie existants avec leur statut
+2. La liste des pieces defectueuses/retournees (composant `DefectivePartsList` deja pret)
+3. Le bouton pour creer un nouveau ticket (ouvre le `WarrantyDialog` existant)
 
-- **F1** : Paiement rapide (equivalent du bouton eclair)
-- **F2** : Paiement par carte (ouvre le dialogue)
-- **F3** : Paiement en especes (ouvre le dialogue)
-
-Les raccourcis seront affiches sous forme de petits badges sur les boutons correspondants pour que l'equipe les apprenne facilement.
-
-## Fonctionnement
-- Les raccourcis fonctionnent uniquement quand le panier contient des articles et qu'aucun paiement n'est en cours
-- Ils sont desactives quand le dialogue de paiement est ouvert (pour eviter les conflits avec la saisie)
-- `e.preventDefault()` empeche le comportement par defaut du navigateur (ex: F1 ouvre normalement l'aide)
+## Ce que l'utilisateur verra
+- En cliquant sur "Garantie / Retour" sur le Dashboard, il sera redirige vers la page `/warranty`
+- La page affiche deux sections : tickets de garantie (en haut) et pieces defectueuses (en bas)
+- Chaque ticket montre : client, appareil original, raison du retour, cout, statut, date
+- Un bouton "Nouveau ticket" ouvre le dialogue de creation existant
+- Un lien dans la sidebar pour acceder a la page directement
 
 ## Details techniques
 
-### Fichier: `src/pages/POS.tsx`
+### 1. Nouveau fichier: `src/pages/Warranty.tsx`
+- Page complete avec `PageHeader`
+- Utilise `useWarrantyTickets()` et affiche les tickets dans des cartes
+- Integre le composant `DefectivePartsList` existant
+- Integre le `WarrantyDialog` existant pour la creation
+- Chaque ticket affiche les infos de la reparation originale (via la relation `original_repair`)
 
-**Ajout d'un `useEffect` avec un ecouteur `keydown`:**
-- Ecoute les touches `F1`, `F2`, `F3` sur le document
-- `F1` appelle `handleQuickPayment()`
-- `F2` appelle `openPaymentDialog("card")`
-- `F3` appelle `openPaymentDialog("cash")`
-- Conditions de garde : ignore si `cart.length === 0`, `createSale.isPending`, ou `paymentDialogOpen`
-- Cleanup avec `removeEventListener` au demontage
+### 2. Fichier: `src/pages/Dashboard.tsx`
+- Changer le bouton "Garantie / Retour" pour naviguer vers `/warranty` au lieu d'ouvrir le dialogue directement
+- Supprimer l'import et l'etat du `WarrantyDialog` (deplace dans la page Warranty)
 
-**Import supplementaire:**
-- `useEffect` depuis `react` (deja present dans la ligne d'imports, juste a ajouter)
+### 3. Fichier: `src/App.tsx`
+- Ajouter la route `/warranty` pointant vers la nouvelle page
 
-**Modification UI des boutons:**
-- Ajouter un petit `<kbd>` ou texte secondaire sur chaque bouton indiquant le raccourci :
-  - Bouton Paiement rapide : affiche "F1"
-  - Bouton Carte : affiche "F2"
-  - Bouton Especes : affiche "F3"
-
+### 4. Fichier: `src/components/layout/AppSidebar.tsx`
+- Ajouter un lien "Garantie" dans la navigation avec l'icone `Shield`

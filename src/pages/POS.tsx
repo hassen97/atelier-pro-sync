@@ -18,7 +18,7 @@ import { useUpdateRepairStatus } from "@/hooks/useRepairs";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
-import { generateThermalReceipt } from "@/lib/receiptPdf";
+// Dynamic import to prevent jsPDF from crashing the module
 import { toast } from "sonner";
 
 interface CartItem {
@@ -185,8 +185,9 @@ export default function POS() {
       await updateRepairStatus.mutateAsync({ id: repairItem.id, status: "delivered" });
     }
 
-    // Generate receipt
+    // Generate receipt via dynamic import
     try {
+      const { generateThermalReceipt } = await import("@/lib/receiptPdf");
       await generateThermalReceipt({
         type: repairItems.length > 0 && productItems.length === 0 ? "repair" : "sale",
         id: Date.now().toString(36),

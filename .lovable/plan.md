@@ -1,46 +1,53 @@
 
 
-# Selective Data Reset - Choose What to Delete
+# Paiement partiel et dette client dans le POS
 
-## Overview
-Replace the current "delete everything" button with a dialog that lets you pick exactly which data categories to delete. You'll see checkboxes for each type (products, customers, repairs, etc.) and can choose one or multiple.
+## Ce qui change pour l'utilisateur
+Quand vous cliquez sur "Carte" ou "Especes" dans le POS, au lieu de facturer automatiquement le montant total, une fenetre de confirmation s'ouvrira pour vous permettre de :
+- Voir le total a payer
+- Saisir le montant reellement paye (pre-rempli avec le total)
+- Voir en temps reel le montant restant qui sera enregistre comme dette
+- Un client **doit** etre selectionne si le paiement est partiel (sinon on ne sait pas a qui attribuer la dette)
 
-## How It Will Work
-1. Click "Reinitialiser les donnees" in Settings > Security
-2. A dialog opens with checkboxes for each data category:
-   - Produits et categories
-   - Clients
-   - Fournisseurs
-   - Reparations (et pieces utilisees)
-   - Ventes (et articles vendus)
-   - Factures
-   - Depenses
-3. Select which ones to delete (or "Select all")
-4. Type SUPPRIMER to confirm
-5. Only the selected categories are deleted
+## Fonctionnement
+1. Cliquez sur Carte ou Especes
+2. Une boite de dialogue s'ouvre avec le recapitulatif
+3. Modifiez le montant paye si necessaire
+4. Si montant paye < total : le reste est automatiquement ajoute a la balance (dette) du client
+5. Confirmez -> la vente est enregistree avec `amount_paid` partiel, le `customer.balance` est mis a jour
 
-## Technical Details
+## Details techniques
 
-### File: `src/components/settings/ResetDataDialog.tsx`
-- Add checkboxes for each data category using the existing Checkbox component
-- Add a "Select all / Deselect all" toggle
-- Pass selected categories to `onConfirm`
-- Update the confirmation list to only show selected items
-- Disable confirm button if nothing is selected
+### Fichier: `src/pages/POS.tsx`
 
-### File: `src/hooks/useSecuritySettings.ts`
-- Change `resetAllData` to accept a `categories: string[]` parameter
-- Conditionally delete only the selected tables:
-  - `"products"` -> deletes products + categories
-  - `"customers"` -> deletes customers
-  - `"suppliers"` -> deletes suppliers
-  - `"repairs"` -> deletes repairs + repair_parts
-  - `"sales"` -> deletes sales + sale_items
-  - `"invoices"` -> deletes invoices
-  - `"expenses"` -> deletes expenses
-- Maintain proper deletion order (child tables before parent tables)
-- Only reload if at least one category was successfully deleted
+**Nouveau state:**
+- `paymentDialogOpen` (boolean) - controle l'ouverture du dialogue de paiement
+- `pendingPaymentMethod` (string) - stocke la methode de paiement selectionnee (card/cash)
+- `amountPaid` (string) - montant saisi par l'utilisateur
 
-### File: `src/pages/Settings.tsx`
-- Minor update to pass the new signature through (the `ResetDataDialog` will now pass categories to `onConfirm`)
+**Modification du flux de paiement:**
+- Les boutons Carte/Especes ouvrent maintenant le dialogue au lieu d'appeler `handlePayment` directement
+- `handlePayment` est modifie pour utiliser `amountPaid` au lieu du total
+- Si `amountPaid < total` et qu'un client est selectionne, la balance du client est mise a jour via `useUpdateCustomer`
+- Si paiement partiel sans client selectionne, afficher une erreur demandant de selectionner un client
+
+**Nouveau composant dans le meme fichier - Dialog de paiement:**
+- Affiche le total, un champ pour le montant paye (pre-rempli avec le total)
+- Calcul en temps reel du reste a payer
+- Badge d'avertissement si paiement partiel
+- Bouton de confirmation
+
+**Modifications dans `handlePayment`:**
+- Accepte le montant paye comme parametre au lieu de toujours utiliser le total
+- Pour les ventes produits: `amount_paid` = montant saisi (au lieu de `total`)
+- Si reste > 0 : met a jour `customer.balance` += reste via `useUpdateCustomer`
+- Le recu PDF affiche le montant paye et le reste
+
+### Imports supplementaires dans POS.tsx
+- `useUpdateCustomer` depuis `@/hooks/useCustomers`
+- Composants `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle` depuis `@/components/ui/dialog`
+- `Label` depuis `@/components/ui/label`
+
+### Invalidation de cache
+- Ajouter invalidation de `customers` dans le flux de paiement quand la balance est mise a jour
 

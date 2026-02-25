@@ -47,105 +47,112 @@ export function useSecuritySettings() {
     toast.success("Paramètre de sécurité mis à jour");
   }, []);
 
-  // Reset all user data (DANGER ZONE)
-  const resetAllData = useCallback(async () => {
+  // Reset selected user data (DANGER ZONE)
+  const resetAllData = useCallback(async (categories: string[]) => {
     if (!user) {
       toast.error("Non authentifié");
+      return false;
+    }
+
+    if (!categories || categories.length === 0) {
+      toast.error("Aucune catégorie sélectionnée");
       return false;
     }
 
     setResetting(true);
     
     try {
-      // Get all repair IDs for this user first
-      const { data: repairIds } = await supabase
-        .from("repairs")
-        .select("id")
-        .eq("user_id", user.id);
-      
-      // Get all sale IDs for this user
-      const { data: saleIds } = await supabase
-        .from("sales")
-        .select("id")
-        .eq("user_id", user.id);
+      const errors: any[] = [];
 
-      // Delete repair parts first
-      if (repairIds && repairIds.length > 0) {
-        const { error: repairPartsError } = await supabase
-          .from("repair_parts")
+      // Delete child tables first for selected categories
+
+      if (categories.includes("repairs")) {
+        const { data: repairIds } = await supabase
+          .from("repairs")
+          .select("id")
+          .eq("user_id", user.id);
+        
+        if (repairIds && repairIds.length > 0) {
+          const { error } = await supabase
+            .from("repair_parts")
+            .delete()
+            .in("repair_id", repairIds.map(r => r.id));
+          if (error) errors.push(error);
+        }
+
+        const { error } = await supabase
+          .from("repairs")
           .delete()
-          .in("repair_id", repairIds.map(r => r.id));
-        if (repairPartsError) console.error("Error deleting repair parts:", repairPartsError);
-      }
-      
-      // Delete sale items
-      if (saleIds && saleIds.length > 0) {
-        const { error: saleItemsError } = await supabase
-          .from("sale_items")
-          .delete()
-          .in("sale_id", saleIds.map(s => s.id));
-        if (saleItemsError) console.error("Error deleting sale items:", saleItemsError);
+          .eq("user_id", user.id);
+        if (error) errors.push(error);
       }
 
-      // Delete repairs
-      const { error: repairsError } = await supabase
-        .from("repairs")
-        .delete()
-        .eq("user_id", user.id);
+      if (categories.includes("sales")) {
+        const { data: saleIds } = await supabase
+          .from("sales")
+          .select("id")
+          .eq("user_id", user.id);
+        
+        if (saleIds && saleIds.length > 0) {
+          const { error } = await supabase
+            .from("sale_items")
+            .delete()
+            .in("sale_id", saleIds.map(s => s.id));
+          if (error) errors.push(error);
+        }
 
-      // Delete sales
-      const { error: salesError } = await supabase
-        .from("sales")
-        .delete()
-        .eq("user_id", user.id);
+        const { error } = await supabase
+          .from("sales")
+          .delete()
+          .eq("user_id", user.id);
+        if (error) errors.push(error);
+      }
 
-      // Delete invoices
-      const { error: invoicesError } = await supabase
-        .from("invoices")
-        .delete()
-        .eq("user_id", user.id);
+      if (categories.includes("invoices")) {
+        const { error } = await supabase
+          .from("invoices")
+          .delete()
+          .eq("user_id", user.id);
+        if (error) errors.push(error);
+      }
 
-      // Delete expenses
-      const { error: expensesError } = await supabase
-        .from("expenses")
-        .delete()
-        .eq("user_id", user.id);
+      if (categories.includes("expenses")) {
+        const { error } = await supabase
+          .from("expenses")
+          .delete()
+          .eq("user_id", user.id);
+        if (error) errors.push(error);
+      }
 
-      // Delete products
-      const { error: productsError } = await supabase
-        .from("products")
-        .delete()
-        .eq("user_id", user.id);
+      if (categories.includes("products")) {
+        const { error: prodError } = await supabase
+          .from("products")
+          .delete()
+          .eq("user_id", user.id);
+        if (prodError) errors.push(prodError);
 
-      // Delete categories
-      const { error: categoriesError } = await supabase
-        .from("categories")
-        .delete()
-        .eq("user_id", user.id);
+        const { error: catError } = await supabase
+          .from("categories")
+          .delete()
+          .eq("user_id", user.id);
+        if (catError) errors.push(catError);
+      }
 
-      // Delete customers
-      const { error: customersError } = await supabase
-        .from("customers")
-        .delete()
-        .eq("user_id", user.id);
+      if (categories.includes("customers")) {
+        const { error } = await supabase
+          .from("customers")
+          .delete()
+          .eq("user_id", user.id);
+        if (error) errors.push(error);
+      }
 
-      // Delete suppliers
-      const { error: suppliersError } = await supabase
-        .from("suppliers")
-        .delete()
-        .eq("user_id", user.id);
-
-      // Check for errors
-      const errors = [
-        repairsError,
-        salesError,
-        invoicesError,
-        expensesError,
-        productsError,
-        categoriesError,
-        customersError,
-        suppliersError,
-      ].filter(Boolean);
+      if (categories.includes("suppliers")) {
+        const { error } = await supabase
+          .from("suppliers")
+          .delete()
+          .eq("user_id", user.id);
+        if (error) errors.push(error);
+      }
 
       if (errors.length > 0) {
         console.error("Errors during reset:", errors);
@@ -153,14 +160,9 @@ export function useSecuritySettings() {
         return false;
       }
 
-      // Clear localStorage notifications
       localStorage.removeItem("app_notifications");
-      
-      toast.success("Toutes les données ont été réinitialisées");
-      
-      // Refresh the page to reset all state
+      toast.success("Les données sélectionnées ont été supprimées");
       window.location.reload();
-      
       return true;
     } catch (error) {
       console.error("Error resetting data:", error);

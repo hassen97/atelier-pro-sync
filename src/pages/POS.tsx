@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, User, Loader2, UserPlus } from "lucide-react";
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,16 +11,10 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useProducts } from "@/hooks/useProducts";
 import { useCreateSale } from "@/hooks/useSales";
-import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
+import { useCreateCustomer } from "@/hooks/useCustomers";
+import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 
 interface CartItem {
   id: string;
@@ -39,7 +33,6 @@ export default function POS() {
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   
   const { data: products = [], isLoading: productsLoading } = useProducts();
-  const { data: customers = [], isLoading: customersLoading } = useCustomers();
   const createSale = useCreateSale();
   const createCustomer = useCreateCustomer();
   const { settings } = useShopSettingsContext();
@@ -253,33 +246,12 @@ export default function POS() {
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col min-h-0 p-4 pt-0">
-            <div className="flex gap-2 mb-3">
-              <Select
-                value={selectedCustomerId || "__none__"}
-                onValueChange={(value) => setSelectedCustomerId(value === "__none__" ? "" : value)}
-              >
-                <SelectTrigger className="flex-1">
-                  <User className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Sélectionner client (optionnel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Client anonyme</SelectItem>
-                  {customers.map((customer: any) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={() => setCustomerDialogOpen(true)}
-                title="Ajouter un client"
-              >
-                <UserPlus className="h-4 w-4" />
-              </Button>
+            <div className="mb-3">
+              <CustomerCombobox
+                value={selectedCustomerId}
+                onValueChange={setSelectedCustomerId}
+                onAddNew={() => setCustomerDialogOpen(true)}
+              />
             </div>
 
             <div className="flex-1 overflow-auto space-y-2 min-h-0">

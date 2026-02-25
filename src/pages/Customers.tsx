@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, Phone, Mail, User, CreditCard, MoreHorizontal } from "lucide-react";
+import { Search, Plus, Phone, Mail, User, CreditCard, MoreHorizontal, Eye } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,11 +13,13 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, type Customer } from "@/hooks/useCustomers";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
+import { CustomerDossierDialog } from "@/components/customers/CustomerDossierDialog";
 
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [dossierCustomer, setDossierCustomer] = useState<Customer | null>(null);
 
   const { data: customers = [], isLoading } = useCustomers();
   const createCustomer = useCreateCustomer();
@@ -83,6 +85,9 @@ export default function Customers() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setDossierCustomer(customer)}>
+                      <Eye className="h-3.5 w-3.5 mr-2" />Voir dossier
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleEdit(customer)}>Modifier</DropdownMenuItem>
                     <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(customer.id, customer.name)}>Supprimer</DropdownMenuItem>
                   </DropdownMenuContent>
@@ -103,6 +108,7 @@ export default function Customers() {
       {filteredCustomers.length === 0 && !isLoading && <div className="text-center py-12 text-muted-foreground">{customers.length === 0 ? "Aucun client enregistré. Cliquez sur 'Nouveau client' pour commencer." : "Aucun client trouvé"}</div>}
 
       <CustomerDialog open={dialogOpen} onOpenChange={setDialogOpen} customer={editingCustomer} onSubmit={handleSubmit} isLoading={createCustomer.isPending || updateCustomer.isPending} />
+      <CustomerDossierDialog customer={dossierCustomer} open={!!dossierCustomer} onOpenChange={(open) => !open && setDossierCustomer(null)} />
     </div>
   );
 }

@@ -681,49 +681,61 @@ export type Database = {
       }
       shop_settings: {
         Row: {
+          address: string | null
           brand_color: string | null
           country: string
           created_at: string
           currency: string
+          email: string | null
           id: string
           language: string | null
           logo_url: string | null
+          phone: string | null
           shop_name: string
           stock_alert_threshold: number
           tax_enabled: boolean
           tax_rate: number
           updated_at: string
           user_id: string
+          whatsapp_phone: string | null
         }
         Insert: {
+          address?: string | null
           brand_color?: string | null
           country?: string
           created_at?: string
           currency?: string
+          email?: string | null
           id?: string
           language?: string | null
           logo_url?: string | null
+          phone?: string | null
           shop_name?: string
           stock_alert_threshold?: number
           tax_enabled?: boolean
           tax_rate?: number
           updated_at?: string
           user_id: string
+          whatsapp_phone?: string | null
         }
         Update: {
+          address?: string | null
           brand_color?: string | null
           country?: string
           created_at?: string
           currency?: string
+          email?: string | null
           id?: string
           language?: string | null
           logo_url?: string | null
+          phone?: string | null
           shop_name?: string
           stock_alert_threshold?: number
           tax_enabled?: boolean
           tax_rate?: number
           updated_at?: string
           user_id?: string
+          whatsapp_phone?: string | null
         }
         Relationships: []
       }

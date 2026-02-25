@@ -131,6 +131,25 @@ export async function generateThermalReceipt(
     doc.setTextColor(0);
   }
 
+  // Shop contact details
+  doc.setTextColor(80);
+  doc.setFontSize(6);
+  if (settings.address) {
+    centerText(settings.address, 6);
+  }
+  if (settings.phone) {
+    centerText(`Tél: ${settings.phone}`, 6);
+  }
+  if (settings.whatsapp_phone) {
+    centerText(`WhatsApp: ${settings.whatsapp_phone}`, 6);
+  }
+  if (settings.email) {
+    centerText(settings.email, 6);
+  }
+  doc.setTextColor(0);
+
+  y += 2;
+
   // Subtitle
   doc.setTextColor(100);
   centerText(data.type === "repair" ? "FICHE DE RÉPARATION" : "REÇU DE VENTE", 8, true);

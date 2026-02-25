@@ -1,0 +1,6 @@
+
+ALTER TABLE public.shop_settings
+  ADD COLUMN IF NOT EXISTS address TEXT,
+  ADD COLUMN IF NOT EXISTS phone TEXT,
+  ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT,
+  ADD COLUMN IF NOT EXISTS email TEXT;

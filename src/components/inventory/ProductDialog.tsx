@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { Loader2 } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const productSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
@@ -63,6 +64,7 @@ export function ProductDialog({
   isLoading,
 }: ProductDialogProps) {
   const isEditing = !!product;
+  const { currencyCode } = useCurrency();
   const { data: productCategories = [] } = useCategories("product");
   const categoryOptions = useMemo(
     () => productCategories.map((c) => ({ value: c.id, label: c.name })),
@@ -207,7 +209,7 @@ export function ProductDialog({
                 name="cost_price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Prix d'achat (TND)</FormLabel>
+                    <FormLabel>Prix d'achat ({currencyCode})</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -227,7 +229,7 @@ export function ProductDialog({
                 name="sell_price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Prix de vente (TND)</FormLabel>
+                    <FormLabel>Prix de vente ({currencyCode})</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

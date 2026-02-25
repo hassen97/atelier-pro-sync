@@ -1,39 +1,39 @@
 
-# Ajout de l'heure sur le recu et texte de garantie personnalisable
 
-## Ce qui change pour l'utilisateur
+# Raccourcis clavier pour le POS
 
-1. **Heure sur le recu** : Le recu affichera desormais la date ET l'heure (ex: "25/02/2026 07:55") au lieu de seulement la date.
+## Ce qui change
+Trois raccourcis clavier seront actifs sur la page POS pour accelerer l'encaissement :
 
-2. **Texte de garantie personnalisable** : Un nouveau champ dans les parametres de la boutique permettra de modifier le texte de garantie/conditions qui apparait en bas du recu. Le texte par defaut restera celui actuel mais sera entierement modifiable.
+- **F1** : Paiement rapide (equivalent du bouton eclair)
+- **F2** : Paiement par carte (ouvre le dialogue)
+- **F3** : Paiement en especes (ouvre le dialogue)
+
+Les raccourcis seront affiches sous forme de petits badges sur les boutons correspondants pour que l'equipe les apprenne facilement.
 
 ## Fonctionnement
-
-- Dans **Parametres > Boutique**, un nouveau champ texte (textarea) "Texte de garantie / conditions du recu" apparaitra
-- Le texte saisi sera sauvegarde dans la base de donnees et utilise dans tous les recus generes
-- Si le champ est vide, le texte par defaut sera utilise
+- Les raccourcis fonctionnent uniquement quand le panier contient des articles et qu'aucun paiement n'est en cours
+- Ils sont desactives quand le dialogue de paiement est ouvert (pour eviter les conflits avec la saisie)
+- `e.preventDefault()` empeche le comportement par defaut du navigateur (ex: F1 ouvre normalement l'aide)
 
 ## Details techniques
 
-### 1. Migration base de donnees
-Ajouter une colonne `receipt_terms` (type `text`, nullable, defaut `null`) a la table `shop_settings`.
+### Fichier: `src/pages/POS.tsx`
 
-### 2. Fichier: `src/hooks/useShopSettings.ts`
-- Ajouter `receipt_terms: string | null` a l'interface `ShopSettings`
-- Ajouter `receipt_terms: null` aux `defaultSettings`
+**Ajout d'un `useEffect` avec un ecouteur `keydown`:**
+- Ecoute les touches `F1`, `F2`, `F3` sur le document
+- `F1` appelle `handleQuickPayment()`
+- `F2` appelle `openPaymentDialog("card")`
+- `F3` appelle `openPaymentDialog("cash")`
+- Conditions de garde : ignore si `cart.length === 0`, `createSale.isPending`, ou `paymentDialogOpen`
+- Cleanup avec `removeEventListener` au demontage
 
-### 3. Fichier: `src/pages/Settings.tsx`
-- Ajouter un champ `Textarea` dans la section boutique pour editer `receipt_terms`
-- Label: "Conditions / Garantie (recu)"
-- Placeholder avec le texte par defaut
+**Import supplementaire:**
+- `useEffect` depuis `react` (deja present dans la ligne d'imports, juste a ajouter)
 
-### 4. Fichier: `src/lib/receiptPdf.ts`
-- **Heure**: Ajouter une ligne "Heure" apres la ligne "Date" dans la section ID/date, en utilisant `data.time` (nouveau champ optionnel)
-- **Texte de garantie**: Remplacer le tableau `terms` en dur par `settings.receipt_terms`. Si present, decouper le texte par lignes (`split('\n')`). Sinon, utiliser le texte par defaut actuel.
-- Ajouter `time?: string` a l'interface `ReceiptData`
+**Modification UI des boutons:**
+- Ajouter un petit `<kbd>` ou texte secondaire sur chaque bouton indiquant le raccourci :
+  - Bouton Paiement rapide : affiche "F1"
+  - Bouton Carte : affiche "F2"
+  - Bouton Especes : affiche "F3"
 
-### 5. Fichier: `src/pages/POS.tsx`
-- Passer `time: new Date().toLocaleTimeString("fr-TN", { hour: "2-digit", minute: "2-digit" })` dans les appels a `generateThermalReceipt`
-
-### 6. Fichier: `src/components/repairs/RepairReceiptDialog.tsx`
-- Passer `time` de la meme maniere dans l'appel a `generateThermalReceipt`

@@ -14,6 +14,10 @@ export interface ShopSettings {
   brand_color: string;
   language: string;
   logo_url: string | null;
+  address: string | null;
+  phone: string | null;
+  whatsapp_phone: string | null;
+  email: string | null;
 }
 
 const defaultSettings: ShopSettings = {
@@ -26,6 +30,10 @@ const defaultSettings: ShopSettings = {
   brand_color: "blue",
   language: "fr",
   logo_url: null,
+  address: null,
+  phone: null,
+  whatsapp_phone: null,
+  email: null,
 };
 
 export function useShopSettings() {
@@ -65,6 +73,10 @@ export function useShopSettings() {
           brand_color: data.brand_color || "blue",
           language: data.language || "fr",
           logo_url: data.logo_url || null,
+          address: (data as any).address || null,
+          phone: (data as any).phone || null,
+          whatsapp_phone: (data as any).whatsapp_phone || null,
+          email: (data as any).email || null,
         });
       }
     } catch (error) {
@@ -99,8 +111,12 @@ export function useShopSettings() {
             brand_color: updatedSettings.brand_color,
             language: updatedSettings.language,
             logo_url: updatedSettings.logo_url,
+            address: updatedSettings.address,
+            phone: updatedSettings.phone,
+            whatsapp_phone: updatedSettings.whatsapp_phone,
+            email: updatedSettings.email,
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq("id", settings.id);
 
         if (error) throw error;
@@ -119,7 +135,11 @@ export function useShopSettings() {
             brand_color: updatedSettings.brand_color,
             language: updatedSettings.language,
             logo_url: updatedSettings.logo_url,
-          })
+            address: updatedSettings.address,
+            phone: updatedSettings.phone,
+            whatsapp_phone: updatedSettings.whatsapp_phone,
+            email: updatedSettings.email,
+          } as any)
           .select()
           .single();
 

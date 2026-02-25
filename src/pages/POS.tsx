@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, User, Loader2, ScanBarcode } from "lucide-react";
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, User, Loader2, ScanBarcode, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import { useCreateSale } from "@/hooks/useSales";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { generateSalePdf } from "@/lib/pdf-generator";
 import { toast } from "sonner";
 import { 
   Select, 
@@ -39,6 +42,7 @@ export default function POS() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [scanInput, setScanInput] = useState("");
   const [scanFlash, setScanFlash] = useState(false);
+  const [lastSale, setLastSale] = useState<{ items: CartItem[]; customerId: string; total: number; subtotal: number; tax: number } | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
   
   const { data: products = [], isLoading: productsLoading } = useProducts();
@@ -47,6 +51,14 @@ export default function POS() {
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<{ phone?: string; whatsapp_phone?: string } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("phone, whatsapp_phone").eq("user_id", user.id).single()
+      .then(({ data }) => { if (data) setProfile(data as any); });
+  }, [user]);
 
   // Beep sound for scan success
   const playBeep = useCallback(() => {
@@ -130,17 +142,44 @@ export default function POS() {
 
   const handlePayment = async (paymentMethod: string) => {
     if (cart.length === 0) return;
+    const saleCart = [...cart];
+    const saleCustomerId = selectedCustomerId;
+    const saleSubtotal = subtotal;
+    const saleTax = tax;
+    const saleTotal = total;
+    
     await createSale.mutateAsync({
-      customer_id: selectedCustomerId || null,
+      customer_id: saleCustomerId || null,
       payment_method: paymentMethod,
-      total_amount: total,
-      amount_paid: total,
-      items: cart.map((item) => ({
+      total_amount: saleTotal,
+      amount_paid: saleTotal,
+      items: saleCart.map((item) => ({
         product_id: item.id, quantity: item.quantity, unit_price: item.price,
       })),
     });
+    
+    setLastSale({ items: saleCart, customerId: saleCustomerId, total: saleTotal, subtotal: saleSubtotal, tax: saleTax });
     clearCart();
     setSelectedCustomerId("");
+  };
+
+  const handlePrintReceipt = () => {
+    if (!lastSale) return;
+    const customer = customers.find((c: any) => c.id === lastSale.customerId);
+    generateSalePdf(
+      {
+        items: lastSale.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
+        customerName: customer?.name || "Client passager",
+        customerPhone: customer?.phone || undefined,
+        subtotal: lastSale.subtotal,
+        tax: lastSale.tax,
+        total: lastSale.total,
+        paymentMethod: "cash",
+      },
+      settings,
+      profile || undefined
+    );
+    setLastSale(null);
   };
 
   if (productsLoading) {
@@ -308,6 +347,12 @@ export default function POS() {
                 <span>{t("pos.total")}</span>
                 <span className="font-mono-numbers text-primary">{format(total)}</span>
               </div>
+
+              {lastSale && (
+                <Button variant="outline" className="h-10 w-full border-primary/30 text-primary" onClick={handlePrintReceipt}>
+                  <FileDown className="h-4 w-4 mr-2" />Imprimer le reçu PDF
+                </Button>
+              )}
 
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Button variant="outline" className="h-12" disabled={cart.length === 0 || createSale.isPending} onClick={() => handlePayment("card")}>

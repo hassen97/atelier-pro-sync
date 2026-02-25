@@ -18,6 +18,7 @@ export interface ShopSettings {
   phone: string | null;
   whatsapp_phone: string | null;
   email: string | null;
+  receipt_terms: string | null;
 }
 
 const defaultSettings: ShopSettings = {
@@ -34,6 +35,7 @@ const defaultSettings: ShopSettings = {
   phone: null,
   whatsapp_phone: null,
   email: null,
+  receipt_terms: null,
 };
 
 export function useShopSettings() {
@@ -77,6 +79,7 @@ export function useShopSettings() {
           phone: (data as any).phone || null,
           whatsapp_phone: (data as any).whatsapp_phone || null,
           email: (data as any).email || null,
+          receipt_terms: (data as any).receipt_terms || null,
         });
       }
     } catch (error) {
@@ -115,6 +118,7 @@ export function useShopSettings() {
             phone: updatedSettings.phone,
             whatsapp_phone: updatedSettings.whatsapp_phone,
             email: updatedSettings.email,
+            receipt_terms: updatedSettings.receipt_terms,
             updated_at: new Date().toISOString(),
           } as any)
           .eq("id", settings.id);
@@ -139,6 +143,7 @@ export function useShopSettings() {
             phone: updatedSettings.phone,
             whatsapp_phone: updatedSettings.whatsapp_phone,
             email: updatedSettings.email,
+            receipt_terms: updatedSettings.receipt_terms,
           } as any)
           .select()
           .single();

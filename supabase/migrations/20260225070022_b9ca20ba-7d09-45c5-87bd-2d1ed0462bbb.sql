@@ -1,0 +1,1 @@
+ALTER TABLE public.shop_settings ADD COLUMN receipt_terms text DEFAULT NULL;

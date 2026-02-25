@@ -11,6 +11,9 @@ export interface ShopSettings {
   tax_rate: number;
   tax_enabled: boolean;
   stock_alert_threshold: number;
+  logo_url?: string;
+  brand_color?: string;
+  language?: string;
 }
 
 const defaultSettings: ShopSettings = {
@@ -20,6 +23,9 @@ const defaultSettings: ShopSettings = {
   tax_rate: 19,
   tax_enabled: true,
   stock_alert_threshold: 5,
+  logo_url: "",
+  brand_color: "blue",
+  language: "fr",
 };
 
 export function useShopSettings() {
@@ -56,6 +62,9 @@ export function useShopSettings() {
           tax_rate: Number(data.tax_rate),
           tax_enabled: data.tax_enabled ?? true,
           stock_alert_threshold: data.stock_alert_threshold,
+          logo_url: (data as any).logo_url || "",
+          brand_color: (data as any).brand_color || "blue",
+          language: (data as any).language || "fr",
         });
       }
     } catch (error) {
@@ -87,6 +96,9 @@ export function useShopSettings() {
             tax_rate: updatedSettings.tax_rate,
             tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
+            logo_url: updatedSettings.logo_url,
+            brand_color: updatedSettings.brand_color,
+            language: updatedSettings.language,
             updated_at: new Date().toISOString(),
           } as any)
           .eq("id", settings.id);
@@ -104,6 +116,9 @@ export function useShopSettings() {
             tax_rate: updatedSettings.tax_rate,
             tax_enabled: updatedSettings.tax_enabled,
             stock_alert_threshold: updatedSettings.stock_alert_threshold,
+            logo_url: updatedSettings.logo_url,
+            brand_color: updatedSettings.brand_color,
+            language: updatedSettings.language,
           } as any)
           .select()
           .single();

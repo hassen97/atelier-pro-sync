@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, Loader2, ScanBarcode, Wrench, CheckCircle2, AlertTriangle, Zap } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -221,6 +221,18 @@ export default function POS() {
     clearCart();
     setSelectedCustomerId("");
   };
+
+  // Keyboard shortcuts for fast checkout
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (cart.length === 0 || createSale.isPending || paymentDialogOpen) return;
+      if (e.key === "F1") { e.preventDefault(); handleQuickPayment(); }
+      else if (e.key === "F2") { e.preventDefault(); openPaymentDialog("card"); }
+      else if (e.key === "F3") { e.preventDefault(); openPaymentDialog("cash"); }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  });
 
   const parsedAmountPaid = parseFloat(amountPaidInput) || 0;
   const remainder = Math.max(0, total - parsedAmountPaid);
@@ -485,12 +497,15 @@ export default function POS() {
                 >
                   {createSale.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
                   Paiement rapide
+                  <kbd className="ml-auto text-[10px] font-mono bg-white/20 rounded px-1.5 py-0.5">F1</kbd>
                 </Button>
                 <Button variant="outline" className="h-12" disabled={cart.length === 0 || createSale.isPending} onClick={() => openPaymentDialog("card")}>
                   <CreditCard className="h-4 w-4 mr-2" />Carte
+                  <kbd className="ml-auto text-[10px] font-mono bg-muted rounded px-1.5 py-0.5">F2</kbd>
                 </Button>
                 <Button className="h-12 bg-gradient-success hover:opacity-90" disabled={cart.length === 0 || createSale.isPending} onClick={() => openPaymentDialog("cash")}>
                   <Banknote className="h-4 w-4 mr-2" />Espèces
+                  <kbd className="ml-auto text-[10px] font-mono bg-white/20 rounded px-1.5 py-0.5">F3</kbd>
                 </Button>
               </div>
             </div>

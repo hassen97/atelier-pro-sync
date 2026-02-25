@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, User, Loader2 } from "lucide-react";
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, User, Loader2, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useProducts } from "@/hooks/useProducts";
 import { useCreateSale } from "@/hooks/useSales";
-import { useCustomers } from "@/hooks/useCustomers";
+import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
+import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { 
   Select, 
@@ -35,10 +36,12 @@ export default function POS() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   
   const { data: products = [], isLoading: productsLoading } = useProducts();
   const { data: customers = [], isLoading: customersLoading } = useCustomers();
   const createSale = useCreateSale();
+  const createCustomer = useCreateCustomer();
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
 
@@ -250,23 +253,34 @@ export default function POS() {
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col min-h-0 p-4 pt-0">
-            <Select
-              value={selectedCustomerId || "__none__"}
-              onValueChange={(value) => setSelectedCustomerId(value === "__none__" ? "" : value)}
-            >
-              <SelectTrigger className="w-full mb-3">
-                <User className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Sélectionner client (optionnel)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Client anonyme</SelectItem>
-                {customers.map((customer: any) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 mb-3">
+              <Select
+                value={selectedCustomerId || "__none__"}
+                onValueChange={(value) => setSelectedCustomerId(value === "__none__" ? "" : value)}
+              >
+                <SelectTrigger className="flex-1">
+                  <User className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Sélectionner client (optionnel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Client anonyme</SelectItem>
+                  {customers.map((customer: any) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={() => setCustomerDialogOpen(true)}
+                title="Ajouter un client"
+              >
+                <UserPlus className="h-4 w-4" />
+              </Button>
+            </div>
 
             <div className="flex-1 overflow-auto space-y-2 min-h-0">
               {cart.length === 0 ? (
@@ -373,6 +387,17 @@ export default function POS() {
           </CardContent>
         </Card>
       </div>
+
+      <CustomerDialog
+        open={customerDialogOpen}
+        onOpenChange={setCustomerDialogOpen}
+        onSubmit={async (data) => {
+          const newCustomer = await createCustomer.mutateAsync({ name: data.name, phone: data.phone, email: data.email, address: data.address, notes: data.notes });
+          setSelectedCustomerId(newCustomer.id);
+          setCustomerDialogOpen(false);
+        }}
+        isLoading={createCustomer.isPending}
+      />
     </div>
   );
 }

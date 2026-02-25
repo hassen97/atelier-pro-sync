@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, Loader2, ScanBarcode, Wrench, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, Loader2, ScanBarcode, Wrench, CheckCircle2, AlertTriangle, Zap } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -173,6 +173,52 @@ export default function POS() {
     setPendingPaymentMethod(method);
     setAmountPaidInput(total.toFixed(3));
     setPaymentDialogOpen(true);
+  };
+
+  const handleQuickPayment = async () => {
+    if (cart.length === 0) return;
+
+    const productItems = cart.filter((i) => i.type === "product");
+    const repairItems = cart.filter((i) => i.type === "repair");
+
+    if (productItems.length > 0) {
+      const productSubtotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const productTax = productSubtotal * taxRate;
+      const productTotal = productSubtotal + productTax;
+      await createSale.mutateAsync({
+        customer_id: null,
+        payment_method: "cash",
+        total_amount: productTotal,
+        amount_paid: productTotal,
+        items: productItems.map((item) => ({ product_id: item.id, quantity: item.quantity, unit_price: item.price })),
+      });
+    }
+
+    for (const repairItem of repairItems) {
+      await updateRepairStatus.mutateAsync({ id: repairItem.id, status: "delivered" });
+    }
+
+    try {
+      const { generateThermalReceipt } = await import("@/lib/receiptPdf");
+      await generateThermalReceipt({
+        type: repairItems.length > 0 && productItems.length === 0 ? "repair" : "sale",
+        id: Date.now().toString(36),
+        date: new Date().toLocaleDateString("fr-TN"),
+        items: cart.map((i) => ({ name: i.name, qty: i.quantity, unitPrice: i.price, total: i.price * i.quantity })),
+        subtotal,
+        taxRate: settings.tax_enabled ? settings.tax_rate : undefined,
+        taxAmount: settings.tax_enabled ? tax : undefined,
+        total,
+        paid: total,
+        remaining: 0,
+        paymentMethod: "cash",
+      }, settings, format);
+    } catch (e) {
+      console.error("Receipt generation error:", e);
+    }
+
+    clearCart();
+    setSelectedCustomerId("");
   };
 
   const parsedAmountPaid = parseFloat(amountPaidInput) || 0;
@@ -430,6 +476,14 @@ export default function POS() {
               <Separator />
               <div className="flex justify-between text-lg font-bold"><span>Total</span><span className="font-mono-numbers text-primary">{format(total)}</span></div>
               <div className="grid grid-cols-2 gap-2 pt-2">
+                <Button
+                  className="h-12 col-span-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold"
+                  disabled={cart.length === 0 || createSale.isPending}
+                  onClick={handleQuickPayment}
+                >
+                  {createSale.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+                  Paiement rapide
+                </Button>
                 <Button variant="outline" className="h-12" disabled={cart.length === 0 || createSale.isPending} onClick={() => openPaymentDialog("card")}>
                   <CreditCard className="h-4 w-4 mr-2" />Carte
                 </Button>

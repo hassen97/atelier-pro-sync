@@ -1,26 +1,42 @@
 
+# Fix: Edge Function "create-employee" - Non-2xx Status Code
 
-# Fix: Creation de comptes employes
+## Root Cause Identified
 
-## Problemes identifies
+The error "Edge Function returned a non-2xx status code" occurs because of a JWT verification incompatibility. Lovable Cloud signs JWT tokens using **ES256** algorithm, but the anon client (`SUPABASE_ANON_KEY`) cannot properly validate these tokens when calling `anonClient.auth.getUser(token)`.
 
-### 1. Methode d'authentification inexistante dans l'Edge Function
-La fonction `create-employee` utilise `anonClient.auth.getClaims(token)` qui **n'existe pas** dans le client Supabase JS v2. Cela provoque une erreur a chaque appel, rendant la creation d'employes totalement impossible.
+When `getUser()` fails (returns an error), the function returns a **401 Unauthorized** response — which is the non-2xx status code the user sees.
 
-**Correction** : Remplacer par `anonClient.auth.getUser(token)` qui est la methode correcte pour valider un token et recuperer l'ID utilisateur.
+## The Fix
 
-### 2. Validation du mot de passe incoherente
-Le formulaire frontend accepte les mots de passe de **6 caracteres minimum**, mais le schema Zod dans l'Edge Function exige **8 caracteres minimum**. Un employe peut donc remplir le formulaire sans erreur visible, mais la creation echoue cote serveur.
+In `supabase/functions/create-employee/index.ts`, change the user validation to use the **admin/service role client** to call `getUser()`. The admin client uses the service role key which can properly validate any token regardless of signing algorithm.
 
-**Correction** : Aligner le frontend sur la regle du backend (8 caracteres minimum).
+This is a one-line change — replace:
+```typescript
+const { data: userData, error: authError } = await anonClient.auth.getUser(token);
+```
+with:
+```typescript
+const { data: userData, error: authError } = await adminClient.auth.getUser(token);
+```
 
-## Details techniques
+But to do this cleanly, we need to initialize the `adminClient` **before** the auth check, so it can be reused for both token validation and later operations.
 
-### Fichier: `supabase/functions/create-employee/index.ts`
-- Remplacer `getClaims(token)` par `getUser(token)` (lignes 39-48)
-- Adapter l'extraction de l'ID utilisateur : `claimsData.claims.sub` devient `userData.user.id`
+## Technical Details
 
-### Fichier: `src/components/settings/AddMemberDialog.tsx`
-- Changer la validation du mot de passe de `password.length >= 6` a `password.length >= 8`
-- Mettre a jour le placeholder "Min 6 caracteres" en "Min 8 caracteres"
+### File: `supabase/functions/create-employee/index.ts`
 
+1. Move `adminClient` creation to the top of the request handler (before auth check)
+2. Use `adminClient.auth.getUser(token)` instead of `anonClient.auth.getUser(token)` for token validation
+3. Keep `anonClient` only for the role check (it uses the user's own token so RLS applies correctly)
+
+The `adminClient` uses `SUPABASE_SERVICE_ROLE_KEY` which bypasses JWT algorithm restrictions and can always validate any valid session token.
+
+### Why this works
+- The service role client calls Supabase's internal auth service with admin privileges
+- It can validate ES256 tokens that the anon client cannot
+- The anon client is still used for the role check to respect RLS policies
+- No other changes needed in the frontend or config
+
+### Redeploy
+After fixing the code, the edge function will be automatically redeployed.

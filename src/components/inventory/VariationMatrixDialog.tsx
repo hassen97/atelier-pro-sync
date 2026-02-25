@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { X, Zap, Loader2, CheckCircle2 } from "lucide-react";
 import { useCreateProduct } from "@/hooks/useProducts";
+import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 
 interface MatrixRow {
@@ -39,6 +40,7 @@ export function VariationMatrixDialog({ open, onOpenChange, onSaved }: Variation
 
   const barcodeRefs = useRef<(HTMLInputElement | null)[]>([]);
   const createProduct = useCreateProduct();
+  const { currencyCode } = useCurrency();
 
   const addTag = (value: string, list: string[], setList: (v: string[]) => void) => {
     const trimmed = value.trim();
@@ -226,8 +228,8 @@ export function VariationMatrixDialog({ open, onOpenChange, onSaved }: Variation
                   <TableRow>
                     <TableHead>Nom</TableHead>
                     <TableHead>Code-barres</TableHead>
-                    <TableHead className="w-28">Coût (TND)</TableHead>
-                    <TableHead className="w-28">Vente (TND)</TableHead>
+                     <TableHead className="w-28">Coût ({currencyCode})</TableHead>
+                     <TableHead className="w-28">Vente ({currencyCode})</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

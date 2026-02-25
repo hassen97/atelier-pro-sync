@@ -24,6 +24,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, X, Wand2, Printer, Zap } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
+import { useCurrency } from "@/hooks/useCurrency";
 import { LabelPrintDialog } from "./LabelPrintDialog";
 
 const productSchema = z.object({
@@ -67,6 +68,7 @@ export interface ProductSheetRef {
 export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
   ({ open, onOpenChange, product, prefillBarcode, onSubmit, isLoading, onSaved }, ref) => {
     const isEditing = !!product;
+    const { currencyCode } = useCurrency();
     const { data: productCategories = [] } = useCategories("product");
     const categoryOptions = useMemo(
       () => productCategories.map((c) => ({ value: c.id, label: c.name })),
@@ -295,7 +297,7 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
                     name="cost_price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Prix d'achat (TND)</FormLabel>
+                        <FormLabel>Prix d'achat ({currencyCode})</FormLabel>
                         <FormControl>
                           <Input type="number" step="0.001" min="0" placeholder="0.000" {...field} />
                         </FormControl>
@@ -308,7 +310,7 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
                     name="sell_price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Prix de vente (TND)</FormLabel>
+                        <FormLabel>Prix de vente ({currencyCode})</FormLabel>
                         <FormControl>
                           <Input type="number" step="0.001" min="0" placeholder="0.000" {...field} />
                         </FormControl>

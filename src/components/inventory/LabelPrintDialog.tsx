@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Printer, Loader2 } from "lucide-react";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface LabelPrintDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ export function LabelPrintDialog({
   const [generating, setGenerating] = useState(false);
   const [barcodeImg, setBarcodeImg] = useState<string | null>(null);
   const { settings } = useShopSettingsContext();
+  const { format } = useCurrency();
 
   useEffect(() => {
     if (!open || !barcode) return;
@@ -64,7 +66,7 @@ export function LabelPrintDialog({
     if (!printWindow) return;
 
     const shopName = settings.shop_name || "RepairPro";
-    const priceFormatted = `${(Number(price) || 0).toFixed(3)} TND`;
+    const priceFormatted = format(Number(price) || 0);
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -161,7 +163,7 @@ export function LabelPrintDialog({
             ) : (
               <p className="font-mono text-[8px] text-center">{barcode}</p>
             )}
-            <p className="text-[10px] font-bold">{(Number(price) || 0).toFixed(3)} TND</p>
+            <p className="text-[10px] font-bold">{format(Number(price) || 0)}</p>
           </div>
         </div>
 

@@ -27,7 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserPlus, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 import { Combobox } from "@/components/ui/combobox";
 import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel, BRANDS_WITH_API } from "@/data/phoneModels";
@@ -251,42 +252,19 @@ export function RepairDialog({
             {/* Customer Selection */}
             {!showQuickCustomer ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <FormLabel>Client</FormLabel>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-primary hover:text-primary"
-                    onClick={() => setShowQuickCustomer(true)}
-                  >
-                    <UserPlus className="h-3.5 w-3.5 mr-1" />
-                    Ajouter
-                  </Button>
-                </div>
+                <FormLabel>Client</FormLabel>
                 <FormField
                   control={form.control}
                   name="customer_id"
                   render={({ field }) => (
                     <FormItem>
-                      <Select 
-                        onValueChange={(value) => field.onChange(value === "__none__" ? "" : value)} 
-                        value={field.value || "__none__"}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner un client (optionnel)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="__none__">Client anonyme</SelectItem>
-                          {customers.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              {customer.name} {customer.phone ? `- ${customer.phone}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <CustomerCombobox
+                          value={field.value || ""}
+                          onValueChange={field.onChange}
+                          onAddNew={() => setShowQuickCustomer(true)}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

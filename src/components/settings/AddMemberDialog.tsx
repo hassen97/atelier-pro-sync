@@ -86,7 +86,7 @@ export function AddMemberDialog() {
   };
 
   const usernameValid = /^[a-zA-Z0-9_]{3,20}$/.test(username);
-  const passwordValid = password.length >= 6;
+  const passwordValid = password.length >= 8;
   const passwordsMatch = password === confirmPassword;
   const createFormValid =
     fullName.trim().length > 0 && usernameValid && passwordValid && passwordsMatch;
@@ -190,7 +190,7 @@ export function AddMemberDialog() {
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Min 6 caractères"
+                  placeholder="Min 8 caractères"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />

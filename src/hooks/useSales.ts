@@ -106,6 +106,7 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["profit"] });
       toast.success("Vente enregistrée avec succès");
     },
     onError: (error) => {
@@ -133,6 +134,7 @@ export function useUpdateSale() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["profit"] });
     },
     onError: (error) => {
       console.error("Error updating sale:", error);

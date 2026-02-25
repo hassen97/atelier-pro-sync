@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, Upload } from "lucide-react";
+import { useState, useRef } from "react";
+import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, Upload, ScanBarcode } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,6 +65,19 @@ export default function Inventory() {
     if (newStock !== null) { const qty = parseInt(newStock); if (!isNaN(qty) && qty >= 0) updateStock.mutate({ id, quantity: qty }); else toast.error("Quantité invalide"); }
   };
 
+  const [scanStockInput, setScanStockInput] = useState("");
+  const handleScanStock = (value: string) => {
+    if (!value.trim()) return;
+    const product = products.find((p) => p.sku === value.trim());
+    if (product) {
+      updateStock.mutate({ id: product.id, quantity: product.stock + 1 });
+      toast.success(`+1 ${product.name} (Stock: ${product.stock + 1})`);
+    } else {
+      toast.error(`SKU non trouvé: ${value}`);
+    }
+    setScanStockInput("");
+  };
+
   const handleSubmit = async (data: { name: string; sku?: string; description?: string; category_id?: string; cost_price: number; sell_price: number; quantity: number; min_quantity: number }) => {
     const submitData = { ...data, category_id: data.category_id || null };
     if (editingProduct) await updateProduct.mutateAsync({ id: editingProduct.id, ...submitData });
@@ -100,6 +113,16 @@ export default function Inventory() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Rechercher par nom ou SKU..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+        </div>
+        <div className="relative w-full sm:w-56">
+          <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Scanner +1 stock..."
+            value={scanStockInput}
+            onChange={(e) => setScanStockInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScanStock(scanStockInput); } }}
+            className="pl-9 font-mono text-sm"
+          />
         </div>
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>

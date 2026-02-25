@@ -29,6 +29,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import type { ExpenseWithSupplier } from "@/hooks/useExpenses";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const EXPENSE_CATEGORIES = [
   "Loyer",
@@ -68,6 +69,7 @@ export function ExpenseDialog({
   isLoading,
 }: ExpenseDialogProps) {
   const isEditing = !!expense;
+  const { currencyCode } = useCurrency();
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -173,7 +175,7 @@ export function ExpenseDialog({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Montant (TND)</FormLabel>
+                  <FormLabel>Montant ({currencyCode})</FormLabel>
                   <FormControl>
                     <Input
                       type="number"

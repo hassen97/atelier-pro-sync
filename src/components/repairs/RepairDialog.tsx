@@ -34,6 +34,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel, BRANDS_WITH_API } from "@/data/phoneModels";
 import { useAppleDevices } from "@/hooks/useAppleDevices";
 import { useCategories } from "@/hooks/useCategories";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const repairSchema = z.object({
   customer_id: z.string().optional(),
@@ -96,6 +97,7 @@ export function RepairDialog({
   isLoading,
 }: RepairDialogProps) {
   const isEditing = !!repair;
+  const { format } = useCurrency();
   const { data: customers = [] } = useCustomers();
   const createCustomer = useCreateCustomer();
   const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
@@ -529,7 +531,7 @@ export function RepairDialog({
             <div className="bg-muted/50 p-3 rounded-lg flex justify-between items-center">
               <span className="text-sm font-medium">Total estimé:</span>
               <span className="text-lg font-bold text-primary">
-                {totalCost.toFixed(3)} TND
+                {format(totalCost)}
               </span>
             </div>
 

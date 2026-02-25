@@ -1,24 +1,38 @@
 
 
-# Fix: Products Not Visible on POS Page (Mobile Layout Issue)
+# Add Shop Contact Details to Settings Page
 
 ## Problem
-Products ARE being fetched and rendered, but the mobile layout is broken. The parent container has a fixed height `h-[calc(100vh-8rem)]` and the grid `h-[calc(100%-5rem)]`. On mobile (single column), both the products section and cart section stack vertically within this fixed height, causing the products area to collapse to nearly zero height while the cart takes most of the space.
-
-## Root Cause
-The layout was designed for desktop (`lg:grid-cols-3`) where products and cart sit side by side. On mobile, they stack, but the fixed height container can't accommodate both sections stacked vertically.
+The Settings page's "General" tab is missing input fields for the shop's address, phone, WhatsApp, and email. These fields were added to the database and receipt PDF, but never added to the settings UI -- so there's no way to fill them in.
 
 ## Solution
-Remove the fixed height constraints on mobile and let the page scroll naturally. Only apply the fixed viewport height on large screens where the side-by-side layout works.
+Add a new "Coordonnees du magasin" (Shop Contact Details) card to the General tab with fields for:
+- Address (text input)
+- Phone number
+- WhatsApp number
+- Email
+
+These will be saved as part of the shop settings (not the user profile) and will appear on receipts/PDFs.
 
 ## Technical Changes
 
-**File: `src/pages/POS.tsx`**
+**File: `src/pages/Settings.tsx`**
 
-1. Change the outer container from `h-[calc(100vh-8rem)]` to `min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)]` so mobile scrolls naturally
-2. Change the grid from `h-[calc(100%-5rem)]` to `lg:h-[calc(100%-5rem)]` so it doesn't constrain height on mobile  
-3. Give the products section a minimum height on mobile: add `min-h-[50vh] lg:min-h-0` to the products column
-4. Same approach for the loading skeleton container
+1. Add local state variables for the new fields:
+   - `shopAddress`, `shopPhone`, `shopWhatsapp`, `shopEmail`
 
-These are purely CSS class changes -- no logic or business code is modified.
+2. Sync them from `settings` in the existing `useEffect` (around line 128-138):
+   - `setShopAddress(settings.address || "")`
+   - `setShopPhone(settings.phone || "")`
+   - `setShopWhatsapp(settings.whatsapp_phone || "")`
+   - `setShopEmail(settings.email || "")`
+
+3. Include the new fields in `handleSaveGeneralSettings` (line 179-188):
+   - Add `address`, `phone`, `whatsapp_phone`, `email` to the save call
+
+4. Add a new Card after the existing "Informations du magasin" card (after line 378) with:
+   - MapPin icon + title "Coordonnees du magasin"
+   - Input for address (full width)
+   - Grid with phone, WhatsApp, and email inputs
+   - The existing "Enregistrer" button in the first card will save everything together
 

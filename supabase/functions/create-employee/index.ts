@@ -30,14 +30,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const anonClient = createClient(
+    // Initialize adminClient first - it can validate ES256 tokens from Lovable Cloud
+    const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: authError } = await anonClient.auth.getUser(token);
+    const { data: userData, error: authError } = await adminClient.auth.getUser(token);
     if (authError || !userData?.user) {
       return new Response(JSON.stringify({ error: "Non autorisé" }), {
         status: 401,
@@ -46,6 +46,13 @@ Deno.serve(async (req) => {
     }
 
     const ownerId = userData.user.id;
+
+    // anonClient with user token for RLS-protected role check
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
 
     // Verify super_admin role
     const { data: roleData } = await anonClient
@@ -86,12 +93,6 @@ Deno.serve(async (req) => {
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Create user with admin client
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     const email = `${username.toLowerCase()}@repairpro.local`;
 

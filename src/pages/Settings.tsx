@@ -22,8 +22,11 @@ import {
   Image,
   Trash2,
   Languages,
+  Lock,
+  Copy,
  } from "lucide-react";
 import { Receipt } from "lucide-react";
+import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -55,6 +58,7 @@ import { useI18n } from "@/contexts/I18nContext";
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettingsContext();
+  const { inventoryLocked, toggleInventoryLock, generateCode, generating, generatedCode } = useInventoryAccess();
   const { settings: notifSettings, saveSettings: saveNotifSettings, permissionStatus, requestBrowserPermission } = useNotificationSettings();
   const { 
     settings: backupSettings, 
@@ -392,6 +396,69 @@ export default function Settings() {
                 )}
                 {saving ? "Enregistrement..." : "Enregistrer"}
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Protection de l'inventaire
+              </CardTitle>
+              <CardDescription>
+                Empêcher les employés de modifier l'inventaire sans autorisation
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Protéger l'inventaire</p>
+                  <p className="text-sm text-muted-foreground">
+                    Les employés devront entrer un code temporaire pour modifier les produits
+                  </p>
+                </div>
+                <Switch
+                  checked={inventoryLocked}
+                  onCheckedChange={toggleInventoryLock}
+                />
+              </div>
+              {inventoryLocked && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <Button
+                      variant="outline"
+                      onClick={generateCode}
+                      disabled={generating}
+                      className="gap-2"
+                    >
+                      {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+                      Générer un code temporaire
+                    </Button>
+                    {generatedCode && (
+                      <div className="p-4 rounded-lg border bg-muted/50 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl font-mono font-bold tracking-[0.3em]">{generatedCode.code}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              navigator.clipboard.writeText(generatedCode.code);
+                              toast.success("Code copié !");
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Expire le {new Date(generatedCode.expires_at).toLocaleString("fr-FR")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -204,6 +237,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inventory_access_codes: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          used_at: string | null
+          used_by: string | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+          used_by?: string | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          used_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       invoices: {
         Row: {
@@ -688,6 +751,7 @@ export type Database = {
           currency: string
           email: string | null
           id: string
+          inventory_locked: boolean
           language: string | null
           logo_url: string | null
           phone: string | null
@@ -708,6 +772,7 @@ export type Database = {
           currency?: string
           email?: string | null
           id?: string
+          inventory_locked?: boolean
           language?: string | null
           logo_url?: string | null
           phone?: string | null
@@ -728,6 +793,7 @@ export type Database = {
           currency?: string
           email?: string | null
           id?: string
+          inventory_locked?: boolean
           language?: string | null
           logo_url?: string | null
           phone?: string | null

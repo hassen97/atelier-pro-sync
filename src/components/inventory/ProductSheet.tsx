@@ -186,23 +186,25 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
         const totalCost = data.cost_price * data.quantity;
         try {
           // Log transaction (purchase increases debt → negative balance change)
-          const txData = await createTransaction.mutateAsync({
+          const txInput = {
             supplier_id: selectedSupplierId,
-            type: "purchase",
+            type: "purchase" as const,
             description: `Achat: ${data.name} x${data.quantity}`,
             amount: totalCost,
             status: "pending",
-          });
+          };
+          const txData = await createTransaction.mutateAsync(txInput);
 
           // Log individual purchase items
-          await createPurchase.mutateAsync({
+          const purchaseInput = {
             supplier_id: selectedSupplierId,
-            transaction_id: txData?.id,
+            transaction_id: txData?.id as string | undefined,
             item_name: data.name,
             quantity: data.quantity,
             unit_price: data.cost_price,
             total_price: totalCost,
-          });
+          };
+          await createPurchase.mutateAsync(purchaseInput);
 
           // Update supplier balance (subtract from balance → increase debt)
           await updateBalance.mutateAsync({

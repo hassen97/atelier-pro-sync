@@ -35,6 +35,9 @@ export interface SupplierPurchase {
   created_at: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
+
 export function useSuppliers() {
   const { user } = useAuth();
 
@@ -61,11 +64,11 @@ export function useSupplierTransactions(supplierId: string | null) {
 
   return useQuery({
     queryKey: ["supplier-transactions", supplierId],
-    queryFn: async () => {
+    queryFn: async (): Promise<SupplierTransaction[]> => {
       if (!supplierId || !user) return [];
 
-      const { data, error } = await supabase
-        .from("supplier_transactions" as any)
+      const { data, error } = await db
+        .from("supplier_transactions")
         .select("*")
         .eq("supplier_id", supplierId)
         .order("created_at", { ascending: true });
@@ -82,17 +85,17 @@ export function useSupplierPurchases(supplierId: string | null) {
 
   return useQuery({
     queryKey: ["supplier-purchases", supplierId],
-    queryFn: async () => {
+    queryFn: async (): Promise<SupplierPurchase[]> => {
       if (!supplierId || !user) return [];
 
-      const { data, error } = await supabase
-        .from("supplier_purchases" as any)
+      const { data, error } = await db
+        .from("supplier_purchases")
         .select("*")
         .eq("supplier_id", supplierId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return (data || []) as unknown as SupplierPurchase[];
+      return (data || []) as SupplierPurchase[];
     },
     enabled: !!supplierId && !!user,
   });
@@ -113,8 +116,8 @@ export function useCreateSupplierTransaction() {
     }) => {
       if (!user) throw new Error("Non authentifié");
 
-      const { data, error } = await supabase
-        .from("supplier_transactions" as any)
+      const { data, error } = await db
+        .from("supplier_transactions")
         .insert({
           ...transaction,
           user_id: user.id,
@@ -127,7 +130,7 @@ export function useCreateSupplierTransaction() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (_: unknown, vars: { supplier_id: string }) => {
       queryClient.invalidateQueries({ queryKey: ["supplier-transactions", vars.supplier_id] });
     },
   });
@@ -149,8 +152,8 @@ export function useCreateSupplierPurchase() {
     }) => {
       if (!user) throw new Error("Non authentifié");
 
-      const { data, error } = await supabase
-        .from("supplier_purchases" as any)
+      const { data, error } = await db
+        .from("supplier_purchases")
         .insert({ ...purchase, user_id: user.id })
         .select()
         .single();
@@ -158,7 +161,7 @@ export function useCreateSupplierPurchase() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (_: unknown, vars: { supplier_id: string }) => {
       queryClient.invalidateQueries({ queryKey: ["supplier-purchases", vars.supplier_id] });
     },
   });
@@ -169,47 +172,42 @@ export function useRecalculateSupplierBalance() {
 
   return useMutation({
     mutationFn: async (supplierId: string) => {
-      // Get all transactions for this supplier
-      const { data: transactions, error: txError } = await supabase
-        .from("supplier_transactions" as any)
+      const { data: transactions, error: txError } = await db
+        .from("supplier_transactions")
         .select("*")
         .eq("supplier_id", supplierId)
         .order("created_at", { ascending: true });
 
       if (txError) throw txError;
 
-      // Recalculate running balance
       let runningBalance = 0;
       const updates: { id: string; running_balance: number }[] = [];
 
       for (const tx of (transactions || []) as SupplierTransaction[]) {
         if (tx.type === "purchase") {
-          runningBalance -= tx.amount; // purchases increase debt (negative balance)
+          runningBalance -= tx.amount;
         } else {
-          runningBalance += tx.amount; // payments reduce debt
+          runningBalance += tx.amount;
         }
         updates.push({ id: tx.id, running_balance: runningBalance });
       }
 
-      // Update running balances
       for (const update of updates) {
-        await supabase
-          .from("supplier_transactions" as any)
+        await db
+          .from("supplier_transactions")
           .update({ running_balance: update.running_balance })
           .eq("id", update.id);
       }
 
-      // Update supplier balance to match
-      const finalBalance = runningBalance;
       const { error: supplierError } = await supabase
         .from("suppliers")
-        .update({ balance: finalBalance, updated_at: new Date().toISOString() })
+        .update({ balance: runningBalance, updated_at: new Date().toISOString() })
         .eq("id", supplierId);
 
       if (supplierError) throw supplierError;
-      return finalBalance;
+      return runningBalance;
     },
-    onSuccess: (_, supplierId) => {
+    onSuccess: (_: unknown, supplierId: string) => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["supplier-transactions", supplierId] });
       toast.success("Solde recalculé avec succès");
@@ -279,11 +277,7 @@ export function useDeleteSupplier() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("suppliers")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await supabase.from("suppliers").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -315,7 +309,6 @@ export function useUpdateSupplierBalance() {
     }) => {
       if (!user) throw new Error("Non authentifié");
 
-      // Get current balance
       const { data: supplier, error: fetchError } = await supabase
         .from("suppliers")
         .select("balance")
@@ -335,8 +328,7 @@ export function useUpdateSupplierBalance() {
 
       if (error) throw error;
 
-      // Log transaction
-      await supabase.from("supplier_transactions" as any).insert({
+      await db.from("supplier_transactions").insert({
         user_id: user.id,
         supplier_id: id,
         type: "payment",
@@ -349,9 +341,11 @@ export function useUpdateSupplierBalance() {
 
       return data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-      queryClient.invalidateQueries({ queryKey: ["supplier-transactions", data?.id] });
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: ["supplier-transactions", data.id] });
+      }
       toast.success("Paiement enregistré");
     },
     onError: (error) => {

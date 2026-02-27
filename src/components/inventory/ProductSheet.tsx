@@ -22,10 +22,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, X, Wand2, Printer, Zap } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Loader2, X, Wand2, Printer, Zap, CreditCard } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
 import { LabelPrintDialog } from "./LabelPrintDialog";
+import { useSuppliers, useCreateSupplierTransaction, useCreateSupplierPurchase, useUpdateSupplierBalance } from "@/hooks/useSuppliers";
+import { useAuth } from "@/contexts/AuthContext";
 
 const productSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
@@ -75,9 +79,22 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
       [productCategories]
     );
 
+    const { user } = useAuth();
+    const { data: suppliers = [] } = useSuppliers();
+    const createTransaction = useCreateSupplierTransaction();
+    const createPurchase = useCreateSupplierPurchase();
+    const updateBalance = useUpdateSupplierBalance();
+
     const [barcodeInput, setBarcodeInput] = useState("");
     const [printDialogOpen, setPrintDialogOpen] = useState(false);
     const barcodeInputRef = useRef<HTMLInputElement>(null);
+    const [isCreditPurchase, setIsCreditPurchase] = useState(false);
+    const [selectedSupplierId, setSelectedSupplierId] = useState("");
+
+    const supplierOptions = useMemo(
+      () => suppliers.map((s) => ({ value: s.id, label: s.name })),
+      [suppliers]
+    );
 
     const form = useForm<ProductSheetFormValues>({
       resolver: zodResolver(productSchema),
@@ -163,6 +180,45 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
 
     const handleSubmit = async (data: ProductSheetFormValues) => {
       await onSubmit(data);
+
+      // Handle credit purchase
+      if (!isEditing && isCreditPurchase && selectedSupplierId && user) {
+        const totalCost = data.cost_price * data.quantity;
+        try {
+          // Log transaction (purchase increases debt → negative balance change)
+          const txInput = {
+            supplier_id: selectedSupplierId,
+            type: "purchase" as const,
+            description: `Achat: ${data.name} x${data.quantity}`,
+            amount: totalCost,
+            status: "pending",
+          };
+          const txData = await createTransaction.mutateAsync(txInput);
+
+          // Log individual purchase items
+          const purchaseInput = {
+            supplier_id: selectedSupplierId,
+            transaction_id: txData?.id as string | undefined,
+            item_name: data.name,
+            quantity: data.quantity,
+            unit_price: data.cost_price,
+            total_price: totalCost,
+          };
+          await createPurchase.mutateAsync(purchaseInput);
+
+          // Update supplier balance (subtract from balance → increase debt)
+          await updateBalance.mutateAsync({
+            id: selectedSupplierId,
+            amount: -totalCost,
+            description: `Achat à crédit: ${data.name}`,
+          });
+        } catch (e) {
+          console.error("Credit purchase logging error:", e);
+        }
+      }
+
+      setIsCreditPurchase(false);
+      setSelectedSupplierId("");
       form.reset();
       onSaved?.();
     };
@@ -359,6 +415,40 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
                     )}
                   />
                 </div>
+
+                {/* Achat à Crédit — only for new products */}
+                {!isEditing && (
+                  <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-sm font-medium">Achat à Crédit</Label>
+                      </div>
+                      <Switch
+                        checked={isCreditPurchase}
+                        onCheckedChange={setIsCreditPurchase}
+                      />
+                    </div>
+                    {isCreditPurchase && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Fournisseur</Label>
+                        <Combobox
+                          options={supplierOptions}
+                          value={selectedSupplierId}
+                          onValueChange={setSelectedSupplierId}
+                          placeholder="Sélectionner le fournisseur..."
+                          searchPlaceholder="Rechercher fournisseur..."
+                          emptyText="Aucun fournisseur"
+                        />
+                        {supplierOptions.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Aucun fournisseur. Ajoutez-en un dans Fournisseurs.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <SheetFooter className="flex-col gap-2 pt-2">
                   {barcodes.length > 0 && productName && (

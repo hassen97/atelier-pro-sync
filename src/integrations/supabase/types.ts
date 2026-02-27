@@ -811,6 +811,117 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_purchases: {
+        Row: {
+          created_at: string
+          id: string
+          item_name: string
+          product_id: string | null
+          quantity: number
+          supplier_id: string
+          total_price: number
+          transaction_id: string | null
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_name: string
+          product_id?: string | null
+          quantity?: number
+          supplier_id: string
+          total_price?: number
+          transaction_id?: string | null
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_name?: string
+          product_id?: string | null
+          quantity?: number
+          supplier_id?: string
+          total_price?: number
+          transaction_id?: string | null
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_purchases_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          proof_url: string | null
+          running_balance: number
+          status: string
+          supplier_id: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          proof_url?: string | null
+          running_balance?: number
+          status?: string
+          supplier_id: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          proof_url?: string | null
+          running_balance?: number
+          status?: string
+          supplier_id?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_transactions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null

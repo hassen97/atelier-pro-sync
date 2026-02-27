@@ -22,10 +22,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, X, Wand2, Printer, Zap } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Loader2, X, Wand2, Printer, Zap, CreditCard } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
 import { LabelPrintDialog } from "./LabelPrintDialog";
+import { useSuppliers, useCreateSupplierTransaction, useCreateSupplierPurchase, useUpdateSupplierBalance } from "@/hooks/useSuppliers";
+import { useAuth } from "@/contexts/AuthContext";
 
 const productSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),

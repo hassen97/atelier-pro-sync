@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, X } from "lucide-react";
+import { Loader2, UserPlus, X } from "lucide-react";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 import { Combobox } from "@/components/ui/combobox";
@@ -261,11 +261,23 @@ export function RepairDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <CustomerCombobox
-                          value={field.value || ""}
-                          onValueChange={field.onChange}
-                          onAddNew={() => setShowQuickCustomer(true)}
-                        />
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <CustomerCombobox
+                              value={field.value || ""}
+                              onValueChange={field.onChange}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            title="Ajouter un nouveau client"
+                            onClick={() => setShowQuickCustomer(true)}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

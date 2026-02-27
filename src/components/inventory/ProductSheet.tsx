@@ -416,6 +416,40 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
                   />
                 </div>
 
+                {/* Achat à Crédit — only for new products */}
+                {!isEditing && (
+                  <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-sm font-medium">Achat à Crédit</Label>
+                      </div>
+                      <Switch
+                        checked={isCreditPurchase}
+                        onCheckedChange={setIsCreditPurchase}
+                      />
+                    </div>
+                    {isCreditPurchase && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Fournisseur</Label>
+                        <Combobox
+                          options={supplierOptions}
+                          value={selectedSupplierId}
+                          onValueChange={setSelectedSupplierId}
+                          placeholder="Sélectionner le fournisseur..."
+                          searchPlaceholder="Rechercher fournisseur..."
+                          emptyText="Aucun fournisseur"
+                        />
+                        {supplierOptions.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Aucun fournisseur. Ajoutez-en un dans Fournisseurs.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <SheetFooter className="flex-col gap-2 pt-2">
                   {barcodes.length > 0 && productName && (
                     <Button

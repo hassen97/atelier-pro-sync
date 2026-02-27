@@ -92,7 +92,7 @@ export function useSupplierPurchases(supplierId: string | null) {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return (data || []) as SupplierPurchase[];
+      return (data || []) as unknown as SupplierPurchase[];
     },
     enabled: !!supplierId && !!user,
   });

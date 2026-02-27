@@ -79,9 +79,22 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
       [productCategories]
     );
 
+    const { user } = useAuth();
+    const { data: suppliers = [] } = useSuppliers();
+    const createTransaction = useCreateSupplierTransaction();
+    const createPurchase = useCreateSupplierPurchase();
+    const updateBalance = useUpdateSupplierBalance();
+
     const [barcodeInput, setBarcodeInput] = useState("");
     const [printDialogOpen, setPrintDialogOpen] = useState(false);
     const barcodeInputRef = useRef<HTMLInputElement>(null);
+    const [isCreditPurchase, setIsCreditPurchase] = useState(false);
+    const [selectedSupplierId, setSelectedSupplierId] = useState("");
+
+    const supplierOptions = useMemo(
+      () => suppliers.map((s) => ({ value: s.id, label: s.name })),
+      [suppliers]
+    );
 
     const form = useForm<ProductSheetFormValues>({
       resolver: zodResolver(productSchema),
@@ -167,6 +180,43 @@ export const ProductSheet = forwardRef<ProductSheetRef, ProductSheetProps>(
 
     const handleSubmit = async (data: ProductSheetFormValues) => {
       await onSubmit(data);
+
+      // Handle credit purchase
+      if (!isEditing && isCreditPurchase && selectedSupplierId && user) {
+        const totalCost = data.cost_price * data.quantity;
+        try {
+          // Log transaction (purchase increases debt → negative balance change)
+          const txData = await createTransaction.mutateAsync({
+            supplier_id: selectedSupplierId,
+            type: "purchase",
+            description: `Achat: ${data.name} x${data.quantity}`,
+            amount: totalCost,
+            status: "pending",
+          });
+
+          // Log individual purchase items
+          await createPurchase.mutateAsync({
+            supplier_id: selectedSupplierId,
+            transaction_id: txData?.id,
+            item_name: data.name,
+            quantity: data.quantity,
+            unit_price: data.cost_price,
+            total_price: totalCost,
+          });
+
+          // Update supplier balance (subtract from balance → increase debt)
+          await updateBalance.mutateAsync({
+            id: selectedSupplierId,
+            amount: -totalCost,
+            description: `Achat à crédit: ${data.name}`,
+          });
+        } catch (e) {
+          console.error("Credit purchase logging error:", e);
+        }
+      }
+
+      setIsCreditPurchase(false);
+      setSelectedSupplierId("");
       form.reset();
       onSaved?.();
     };

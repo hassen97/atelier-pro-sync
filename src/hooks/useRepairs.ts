@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
@@ -11,12 +12,12 @@ export type RepairUpdate = TablesUpdate<"repairs">;
 export type RepairStatus = "pending" | "in_progress" | "completed" | "delivered";
 
 export function useRepairs() {
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useQuery({
-    queryKey: ["repairs", user?.id],
+    queryKey: ["repairs", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       
       const { data, error } = await supabase
         .from("repairs")
@@ -24,13 +25,13 @@ export function useRepairs() {
           *,
           customer:customers(id, name, phone, email)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 }
 
@@ -50,7 +51,6 @@ export function useRepair(id: string | undefined) {
           repair_parts(id, product_id, quantity, unit_price)
         `)
         .eq("id", id)
-        .eq("user_id", user.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -62,15 +62,15 @@ export function useRepair(id: string | undefined) {
 
 export function useCreateRepair() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async (repair: Omit<RepairInsert, "user_id">) => {
-      if (!user) throw new Error("Non authentifié");
+      if (!effectiveUserId) throw new Error("Non authentifié");
 
       const { data, error } = await supabase
         .from("repairs")
-        .insert({ ...repair, user_id: user.id })
+        .insert({ ...repair, user_id: effectiveUserId })
         .select()
         .single();
 

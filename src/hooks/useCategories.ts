@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { toast } from "sonner";
 
 const DEFAULT_REPAIR_CATEGORIES = [
@@ -23,17 +24,17 @@ const DEFAULT_PRODUCT_CATEGORIES = [
 ];
 
 export function useCategories(type?: "product" | "repair") {
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useQuery({
-    queryKey: ["categories", type, user?.id],
+    queryKey: ["categories", type, effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
 
       let query = supabase
         .from("categories")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("name");
 
       if (type) {
@@ -44,21 +45,21 @@ export function useCategories(type?: "product" | "repair") {
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 }
 
 export function useCreateCategory() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async ({ name, type }: { name: string; type: "product" | "repair" }) => {
-      if (!user) throw new Error("Non authentifié");
+      if (!effectiveUserId) throw new Error("Non authentifié");
 
       const { data, error } = await supabase
         .from("categories")
-        .insert({ name, type, user_id: user.id })
+        .insert({ name, type, user_id: effectiveUserId })
         .select()
         .single();
 

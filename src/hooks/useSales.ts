@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { toast } from "sonner";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 
@@ -23,12 +23,12 @@ interface CreateSaleParams {
 }
 
 export function useSales() {
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useQuery({
-    queryKey: ["sales", user?.id],
+    queryKey: ["sales", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       
       const { data, error } = await supabase
         .from("sales")
@@ -37,30 +37,30 @@ export function useSales() {
           customer:customers(id, name),
           sale_items(id, product_id, quantity, unit_price)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 }
 
 export function useCreateSale() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async ({ items, ...saleData }: CreateSaleParams) => {
-      if (!user) throw new Error("Non authentifié");
+      if (!effectiveUserId) throw new Error("Non authentifié");
 
       // Create the sale
       const { data: sale, error: saleError } = await supabase
         .from("sales")
         .insert({
           ...saleData,
-          user_id: user.id,
+          user_id: effectiveUserId,
         })
         .select()
         .single();

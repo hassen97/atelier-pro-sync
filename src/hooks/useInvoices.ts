@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
@@ -15,12 +16,12 @@ export type InvoiceWithRelations = Invoice & {
 };
 
 export function useInvoices() {
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useQuery({
-    queryKey: ["invoices", user?.id],
+    queryKey: ["invoices", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       
       const { data, error } = await supabase
         .from("invoices")
@@ -30,27 +31,27 @@ export function useInvoices() {
           sale:sales(id, total_amount),
           repair:repairs(id, device_model, total_cost)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       return data as InvoiceWithRelations[];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 }
 
 export function useCreateInvoice() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async (invoice: Omit<InvoiceInsert, "user_id">) => {
-      if (!user) throw new Error("Non authentifié");
+      if (!effectiveUserId) throw new Error("Non authentifié");
 
       const { data, error } = await supabase
         .from("invoices")
-        .insert({ ...invoice, user_id: user.id })
+        .insert({ ...invoice, user_id: effectiveUserId })
         .select()
         .single();
 
@@ -119,9 +120,10 @@ export function useDeleteInvoice() {
 
 export function useGenerateInvoiceNumber() {
   const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return async (): Promise<string> => {
-    if (!user) throw new Error("Non authentifié");
+    if (!effectiveUserId) throw new Error("Non authentifié");
 
     const year = new Date().getFullYear();
     
@@ -129,7 +131,7 @@ export function useGenerateInvoiceNumber() {
     const { count, error } = await supabase
       .from("invoices")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
+      .eq("user_id", effectiveUserId)
       .gte("created_at", `${year}-01-01`)
       .lt("created_at", `${year + 1}-01-01`);
 

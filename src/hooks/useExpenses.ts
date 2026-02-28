@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
@@ -13,12 +13,12 @@ export type ExpenseWithSupplier = Expense & {
 };
 
 export function useExpenses() {
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useQuery({
-    queryKey: ["expenses", user?.id],
+    queryKey: ["expenses", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       
       const { data, error } = await supabase
         .from("expenses")
@@ -26,27 +26,27 @@ export function useExpenses() {
           *,
           supplier:suppliers(id, name)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("expense_date", { ascending: false });
 
       if (error) throw error;
       return data as ExpenseWithSupplier[];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 }
 
 export function useCreateExpense() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async (expense: Omit<ExpenseInsert, "user_id">) => {
-      if (!user) throw new Error("Non authentifié");
+      if (!effectiveUserId) throw new Error("Non authentifié");
 
       const { data, error } = await supabase
         .from("expenses")
-        .insert({ ...expense, user_id: user.id })
+        .insert({ ...expense, user_id: effectiveUserId })
         .select()
         .single();
 

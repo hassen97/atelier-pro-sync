@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
@@ -9,12 +10,12 @@ export type ProductInsert = TablesInsert<"products"> & { barcodes?: string[] };
 export type ProductUpdate = TablesUpdate<"products"> & { barcodes?: string[] };
 
 export function useProducts() {
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useQuery({
-    queryKey: ["products", user?.id],
+    queryKey: ["products", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       
       const { data, error } = await supabase
         .from("products")
@@ -22,13 +23,13 @@ export function useProducts() {
           *,
           category:categories(id, name)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("name");
 
       if (error) throw error;
       return data as (typeof data[0] & { barcodes: string[] })[];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 }
 
@@ -47,7 +48,6 @@ export function useProduct(id: string | undefined) {
           category:categories(id, name)
         `)
         .eq("id", id)
-        .eq("user_id", user.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -59,16 +59,16 @@ export function useProduct(id: string | undefined) {
 
 export function useCreateProduct() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async (product: Omit<ProductInsert, "user_id">) => {
-      if (!user) throw new Error("Non authentifié");
+      if (!effectiveUserId) throw new Error("Non authentifié");
 
       const { barcodes, ...rest } = product as any;
       const { data, error } = await supabase
         .from("products")
-        .insert({ ...rest, barcodes: barcodes || [], user_id: user.id })
+        .insert({ ...rest, barcodes: barcodes || [], user_id: effectiveUserId })
         .select()
         .single();
 
@@ -170,23 +170,23 @@ export function useDeleteProduct() {
 }
 
 export function useLowStockProducts() {
-  const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId();
 
   return useQuery({
-    queryKey: ["products-low-stock", user?.id],
+    queryKey: ["products-low-stock", effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .lte("quantity", 5);
 
       if (error) throw error;
       
       return (data as Product[]).filter(p => p.quantity <= p.min_quantity);
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 }

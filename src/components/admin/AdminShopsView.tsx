@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAdminData, useDeleteOwner, useLockOwner } from "@/hooks/useAdmin";
+import { useCreateAnnouncement } from "@/hooks/useAnnouncements";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { EditOwnerSettingsDialog } from "./EditOwnerSettingsDialog";
@@ -323,6 +324,14 @@ export function AdminShopsView() {
       </div>
 
       <CreateOwnerDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {announcementTarget && (
+        <ShopAnnouncementDialog
+          open={!!announcementTarget}
+          onOpenChange={() => setAnnouncementTarget(null)}
+          userId={announcementTarget.userId}
+          shopName={announcementTarget.shopName}
+        />
+      )}
       {resetTarget && (
         <ResetPasswordDialog
           open={!!resetTarget}

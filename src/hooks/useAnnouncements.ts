@@ -10,6 +10,7 @@ export interface Announcement {
   changes_fixes: string | null;
   published_at: string;
   created_by: string;
+  target_user_id: string | null;
 }
 
 export function useAnnouncements() {
@@ -67,26 +68,34 @@ export function useLatestAnnouncement() {
     queryKey: ["latest-announcement", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      // Get latest announcement
-      const { data: announcements } = await supabase
-        .from("platform_announcements")
-        .select("*")
-        .order("published_at", { ascending: false })
-        .limit(1);
 
-      if (!announcements || announcements.length === 0) return null;
-
-      const latest = announcements[0] as Announcement;
-
-      // Check if user already read it
+      // Get all reads for this user
       const { data: reads } = await supabase
         .from("announcement_reads")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("announcement_id", latest.id);
+        .select("announcement_id")
+        .eq("user_id", user.id);
+      const readIds = new Set((reads || []).map((r: any) => r.announcement_id));
 
-      if (reads && reads.length > 0) return null;
-      return latest;
+      // Get latest unread announcement targeting this user specifically
+      const { data: targeted } = await supabase
+        .from("platform_announcements")
+        .select("*")
+        .eq("target_user_id", user.id)
+        .order("published_at", { ascending: false });
+
+      const unreadTargeted = (targeted || []).find((a: any) => !readIds.has(a.id));
+      if (unreadTargeted) return unreadTargeted as Announcement;
+
+      // Fall back to latest unread broadcast (target_user_id is null)
+      const { data: broadcasts } = await supabase
+        .from("platform_announcements")
+        .select("*")
+        .is("target_user_id", null)
+        .order("published_at", { ascending: false })
+        .limit(10);
+
+      const unreadBroadcast = (broadcasts || []).find((a: any) => !readIds.has(a.id));
+      return unreadBroadcast ? (unreadBroadcast as Announcement) : null;
     },
     enabled: !!user,
   });

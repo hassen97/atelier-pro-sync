@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAdminData, useDeleteOwner, useLockOwner } from "@/hooks/useAdmin";
+import { useCreateAnnouncement } from "@/hooks/useAnnouncements";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { EditOwnerSettingsDialog } from "./EditOwnerSettingsDialog";
@@ -11,12 +12,107 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+
+function ShopAnnouncementDialog({
+  open,
+  onOpenChange,
+  userId,
+  shopName,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  userId: string;
+  shopName: string;
+}) {
+  const createAnnouncement = useCreateAnnouncement();
+  const [title, setTitle] = useState("");
+  const [newFeatures, setNewFeatures] = useState("");
+  const [changesFixes, setChangesFixes] = useState("");
+
+  const handleSubmit = () => {
+    if (!title.trim()) return;
+    createAnnouncement.mutate(
+      { title, new_features: newFeatures, changes_fixes: changesFixes, target_user_id: userId },
+      {
+        onSuccess: () => {
+          onOpenChange(false);
+          setTitle("");
+          setNewFeatures("");
+          setChangesFixes("");
+        },
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-slate-900 border-white/10 text-white">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Megaphone className="h-4 w-4 text-violet-400" />
+            Annonce pour <span className="text-violet-300">{shopName}</span>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-slate-300">Titre</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Message important pour votre boutique"
+              className="bg-white/5 border-white/10 text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Nouvelles fonctionnalités</Label>
+            <Textarea
+              value={newFeatures}
+              onChange={(e) => setNewFeatures(e.target.value)}
+              placeholder="- Nouveau module disponible&#10;- Accès à la fonctionnalité X"
+              className="bg-white/5 border-white/10 text-white min-h-[90px]"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Message / Notes</Label>
+            <Textarea
+              value={changesFixes}
+              onChange={(e) => setChangesFixes(e.target.value)}
+              placeholder="- Information spécifique&#10;- Action requise de votre part"
+              className="bg-white/5 border-white/10 text-white min-h-[90px]"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-400">
+            Annuler
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!title.trim() || createAnnouncement.isPending}
+            className="bg-violet-600 hover:bg-violet-700 text-white"
+          >
+            <Megaphone className="h-3.5 w-3.5 mr-2" /> Envoyer l'annonce
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d" | "pending";
 type SortKey = "name" | "status" | null;
@@ -41,6 +137,7 @@ export function AdminShopsView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
+  const [announcementTarget, setAnnouncementTarget] = useState<{ userId: string; shopName: string } | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);
@@ -270,6 +367,12 @@ export function AdminShopsView() {
                         })}>
                           <KeyRound className="h-4 w-4 mr-2" /> Réinitialiser mot de passe
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAnnouncementTarget({
+                          userId: owner.user_id,
+                          shopName: owner.shop_name,
+                        })}>
+                          <Megaphone className="h-4 w-4 mr-2" /> Envoyer une annonce
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {owner.is_locked && !owner.last_online_at ? (
                           <DropdownMenuItem 
@@ -316,6 +419,14 @@ export function AdminShopsView() {
       </div>
 
       <CreateOwnerDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {announcementTarget && (
+        <ShopAnnouncementDialog
+          open={!!announcementTarget}
+          onOpenChange={() => setAnnouncementTarget(null)}
+          userId={announcementTarget.userId}
+          shopName={announcementTarget.shopName}
+        />
+      )}
       {resetTarget && (
         <ResetPasswordDialog
           open={!!resetTarget}

@@ -31,12 +31,13 @@ export function useCreateAnnouncement() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (params: { title: string; new_features: string; changes_fixes: string }) => {
+    mutationFn: async (params: { title: string; new_features: string; changes_fixes: string; target_user_id?: string | null }) => {
       const { error } = await supabase.from("platform_announcements").insert({
         title: params.title,
         new_features: params.new_features,
         changes_fixes: params.changes_fixes,
         created_by: user!.id,
+        target_user_id: params.target_user_id || null,
       });
       if (error) throw error;
     },

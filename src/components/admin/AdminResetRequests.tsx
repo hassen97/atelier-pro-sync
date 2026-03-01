@@ -43,6 +43,7 @@ export function AdminResetRequests() {
   const queryClient = useQueryClient();
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "contacted" | "resolved">("all");
+  const [selectedRequest, setSelectedRequest] = useState<ResetRequest | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-reset-requests"],

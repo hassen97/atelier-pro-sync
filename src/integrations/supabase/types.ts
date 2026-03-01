@@ -360,6 +360,7 @@ export type Database = {
           id: string
           new_features: string | null
           published_at: string
+          target_user_id: string | null
           title: string
         }
         Insert: {
@@ -368,6 +369,7 @@ export type Database = {
           id?: string
           new_features?: string | null
           published_at?: string
+          target_user_id?: string | null
           title: string
         }
         Update: {
@@ -376,6 +378,7 @@ export type Database = {
           id?: string
           new_features?: string | null
           published_at?: string
+          target_user_id?: string | null
           title?: string
         }
         Relationships: []

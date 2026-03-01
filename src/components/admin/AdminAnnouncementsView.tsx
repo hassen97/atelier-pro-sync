@@ -1,41 +1,66 @@
 import { useState } from "react";
 import { useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement } from "@/hooks/useAnnouncements";
+import { useAdminData } from "@/hooks/useAdmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Megaphone, Sparkles, Bug } from "lucide-react";
+import { Plus, Trash2, Megaphone, Sparkles, Bug, Globe, Store } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export function AdminAnnouncementsView() {
   const { data: announcements } = useAnnouncements();
+  const { data: adminData } = useAdminData();
   const createAnnouncement = useCreateAnnouncement();
   const deleteAnnouncement = useDeleteAnnouncement();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [newFeatures, setNewFeatures] = useState("");
   const [changesFixes, setChangesFixes] = useState("");
+  const [targetUserId, setTargetUserId] = useState<string>("broadcast");
+
+  const owners = adminData?.owners || [];
 
   const handleSubmit = () => {
     if (!title.trim()) return;
     createAnnouncement.mutate(
-      { title, new_features: newFeatures, changes_fixes: changesFixes },
+      {
+        title,
+        new_features: newFeatures,
+        changes_fixes: changesFixes,
+        target_user_id: targetUserId === "broadcast" ? null : targetUserId,
+      },
       {
         onSuccess: () => {
           setOpen(false);
           setTitle("");
           setNewFeatures("");
           setChangesFixes("");
+          setTargetUserId("broadcast");
         },
       }
     );
+  };
+
+  const getTargetLabel = (targetUserId: string | null) => {
+    if (!targetUserId) return null;
+    const owner = owners.find((o) => o.user_id === targetUserId);
+    return owner?.shop_name || owner?.full_name || owner?.username || "Boutique inconnue";
   };
 
   return (
@@ -54,9 +79,20 @@ export function AdminAnnouncementsView() {
         {(announcements || []).map((a) => (
           <div key={a.id} className="admin-glass-card rounded-xl p-5">
             <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Megaphone className="h-4 w-4 text-[#00D4FF]" />
                 <h3 className="font-semibold text-white">{a.title}</h3>
+                {a.target_user_id ? (
+                  <Badge className="text-[10px] bg-violet-500/20 text-violet-300 border-violet-500/30 flex items-center gap-1">
+                    <Store className="h-2.5 w-2.5" />
+                    {getTargetLabel(a.target_user_id)}
+                  </Badge>
+                ) : (
+                  <Badge className="text-[10px] bg-[#00D4FF]/10 text-[#00D4FF] border-[#00D4FF]/20 flex items-center gap-1">
+                    <Globe className="h-2.5 w-2.5" />
+                    Toutes les boutiques
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500">
@@ -112,6 +148,33 @@ export function AdminAnnouncementsView() {
                 className="bg-white/5 border-white/10 text-white"
               />
             </div>
+
+            <div>
+              <Label className="text-slate-300">Destinataire</Label>
+              <Select value={targetUserId} onValueChange={setTargetUserId}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectValue placeholder="Choisir le destinataire" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-white/10">
+                  <SelectItem value="broadcast" className="text-white focus:bg-white/10">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-3.5 w-3.5 text-[#00D4FF]" />
+                      Toutes les boutiques
+                    </div>
+                  </SelectItem>
+                  {owners.map((owner) => (
+                    <SelectItem key={owner.user_id} value={owner.user_id} className="text-white focus:bg-white/10">
+                      <div className="flex items-center gap-2">
+                        <Store className="h-3.5 w-3.5 text-violet-400" />
+                        {owner.shop_name}
+                        <span className="text-slate-500 text-xs">@{owner.username}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label className="text-slate-300">Nouvelles fonctionnalités</Label>
               <Textarea

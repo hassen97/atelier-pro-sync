@@ -333,18 +333,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          phone: string | null
           status: string
           username: string
         }
         Insert: {
           created_at?: string
           id?: string
+          phone?: string | null
           status?: string
           username: string
         }
         Update: {
           created_at?: string
           id?: string
+          phone?: string | null
           status?: string
           username?: string
         }

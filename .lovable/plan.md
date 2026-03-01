@@ -1,108 +1,50 @@
 
-# Admin: Employee Management Page + Fix Reset Request Phone Display
+# Fix: Currency Label Hardcoded to "TND" in Inventory Components
 
-## Two Problems to Solve
+## Root Cause
 
-### Problem 1: Employee Management page missing from Admin
-The admin sidebar has no "Employees" section. All employees created by shop owners are not manageable from the platform admin panel.
+Four inventory components have **hardcoded "TND"** currency labels instead of reading the user's configured currency dynamically from the `ShopSettingsContext`. This is why changing the currency in Settings updates the Dashboard (which uses `useCurrency`) but not the inventory forms.
 
-### Problem 2: Password reset requests don't show phone number
-The `password_reset_requests` table only stores `username` and `status`. The edge function tries to join with `profiles` to get the phone, but shop owners created by the admin (like `belfortgsm`) were created without a phone number in their profile — so the join returns `null` and "Aucun contact" is displayed. The fix is to let users enter their phone number directly in the reset request form, stored in the `password_reset_requests` table itself.
+The affected files and exact locations:
 
----
+| File | Problem |
+|---|---|
+| `ProductSheet.tsx` | Labels "Prix d'achat (TND)" and "Prix de vente (TND)" are hardcoded |
+| `ProductDialog.tsx` | Same labels hardcoded in the edit dialog |
+| `VariationMatrixDialog.tsx` | Table headers "Coût (TND)" and "Vente (TND)" are hardcoded |
+| `LabelPrintDialog.tsx` | Price formatted with hardcoded `TND` symbol and 3 decimals (wrong for non-TND currencies) |
 
-## Changes Required
+## The Fix
 
-### 1. Database Migration: Add `phone` to `password_reset_requests`
-```sql
-ALTER TABLE public.password_reset_requests
-  ADD COLUMN IF NOT EXISTS phone text;
-```
+### 1. `ProductSheet.tsx`
+Add `useCurrency` hook, replace hardcoded labels:
+- `"Prix d'achat (TND)"` → `"Prix d'achat (${currencyCode})"`
+- `"Prix de vente (TND)"` → `"Prix de vente (${currencyCode})"`
 
-### 2. Update `Auth.tsx` — Reset Request Form
-Add an optional phone field to the reset request submission form so users can provide their number when asking for a password reset.
+### 2. `ProductDialog.tsx`
+Same fix — add `useCurrency` and replace the two hardcoded labels.
 
-### 3. Update Edge Function `admin-manage-users/index.ts`
-Add two new actions:
+### 3. `VariationMatrixDialog.tsx`
+Replace table headers:
+- `"Coût (TND)"` → `"Coût (${currencyCode})"`
+- `"Vente (TND)"` → `"Vente (${currencyCode})"`
 
-**`list-employees`** — returns all team members (employees) across all shops with their profile info, owner's shop name, and role:
+### 4. `LabelPrintDialog.tsx`
+Use the `format()` function from `useCurrency` instead of manually calling `(Number(price)).toFixed(3) + " TND"`. This correctly handles:
+- The right currency symbol (€, MAD, DZD, etc.)
+- The right number of decimal places (2 for EUR, 3 for TND, etc.)
+
+## Technical Details
+
+The `useCurrency` hook reads from `ShopSettingsContext` which is already provided at the app level (wrapping all protected routes in `App.tsx`), so no context changes are needed. The fix is purely replacing hardcoded strings with dynamic values from the hook.
+
 ```typescript
-// Fetch all team_members, join with profiles for employee and owner info
-const { data: employees } = await adminClient
-  .from("team_members")
-  .select("id, owner_id, member_user_id, role, created_at, allowed_pages, status");
-// Then enrich with profiles and shop_settings
+// Before (hardcoded)
+<FormLabel>Prix d'achat (TND)</FormLabel>
+
+// After (dynamic)
+const { currencyCode, format } = useCurrency();
+<FormLabel>Prix d'achat ({currencyCode})</FormLabel>
 ```
 
-**`delete-employee`** — receives `memberId` (team_members.id), removes the team_members row and deletes the auth user:
-```typescript
-// Delete team_members row and auth user
-await adminClient.from("team_members").delete().eq("id", body.memberId);
-await adminClient.auth.admin.deleteUser(body.employeeUserId);
-```
-
-Also update `list-reset-requests` to prioritize the new `phone` column from the table itself over the profile join.
-
-Update `ActionSchema` to add:
-```typescript
-action: z.enum([..., "list-employees", "delete-employee"]),
-memberId: z.string().uuid().optional(),
-employeeUserId: z.string().uuid().optional(),
-```
-
-### 4. Update `src/hooks/useAdmin.ts`
-Add:
-- `EmployeeRecord` interface
-- `useAdminEmployees()` hook — calls `list-employees`
-- `useDeleteEmployee()` mutation — calls `delete-employee`
-- `useResetEmployeePassword()` (can reuse existing `useResetOwnerPassword`)
-
-### 5. New file: `src/components/admin/AdminEmployeesView.tsx`
-A full management page styled like the existing admin views (dark glassmorphism). Contents:
-
-**Header:** "Gestion des Employés" title + total count badge
-
-**Table columns:**
-- Employé (name + @username)
-- Boutique (owner's shop name)
-- Propriétaire (@owner_username)  
-- Rôle (employee/manager/admin badge)
-- Pages autorisées (count badge)
-- Statut (actif/inactif)
-- Actions dropdown: Reset mot de passe, Supprimer
-
-**Actions:**
-- Reset password → opens `ResetPasswordDialog` (already exists, reuse it)
-- Delete → confirmation AlertDialog → calls `useDeleteEmployee`
-
-### 6. Update `AdminSidebar.tsx`
-Add new nav item:
-```typescript
-{ id: "employees" as const, label: "Employés", icon: Users },
-```
-Update the `AdminView` type to include `"employees"`.
-
-### 7. Update `AdminDashboard.tsx`
-- Add `"employees"` to `AdminView` type
-- Import `AdminEmployeesView`
-- Add `{activeView === "employees" && <AdminEmployeesView />}` to main render
-
----
-
-## Implementation Sequence
-
-1. Database migration (add `phone` to `password_reset_requests`)
-2. Update edge function (add `list-employees`, `delete-employee`, fix reset request phone)
-3. Update `useAdmin.ts` hooks
-4. Create `AdminEmployeesView.tsx`
-5. Update `AdminSidebar.tsx` + `AdminDashboard.tsx`
-6. Update `Auth.tsx` reset request form to capture phone
-
----
-
-## Technical Notes
-
-- Reuse `ResetPasswordDialog` for employee password reset — it already accepts `userId` + `userName`
-- Employees are identified by `team_members.member_user_id` for auth deletion
-- The `list-reset-requests` phone fix: return `req.phone || profile?.phone || null` — table phone takes priority
-- No new DB tables needed — only one column addition and edge function update
+For `LabelPrintDialog`, the `format()` function also needs to be passed into the `printWindow.document.write()` call for the printed label to show the correct currency.

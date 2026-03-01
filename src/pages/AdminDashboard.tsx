@@ -8,10 +8,11 @@ import { AdminAnnouncementsView } from "@/components/admin/AdminAnnouncementsVie
 import { AdminFeedbackInbox } from "@/components/admin/AdminFeedbackInbox";
 import { AdminResetRequests } from "@/components/admin/AdminResetRequests";
 import { AdminSettingsView } from "@/components/admin/AdminSettingsView";
+import { AdminEmployeesView } from "@/components/admin/AdminEmployeesView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees";
 
 const AdminDashboard = () => {
   const { isLoading } = useAdminData();
@@ -81,6 +82,7 @@ const AdminDashboard = () => {
           {activeView === "announcements" && <AdminAnnouncementsView />}
           {activeView === "feedback" && <AdminFeedbackInbox />}
           {activeView === "settings" && <AdminSettingsView />}
+          {activeView === "employees" && <AdminEmployeesView />}
         </main>
       </div>
     </div>

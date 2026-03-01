@@ -88,7 +88,7 @@ export default function ResetPassword() {
     try {
       const { error: insertError } = await supabase
         .from("password_reset_requests" as any)
-        .insert({ username: trimmedUsername || `phone:${trimmedPhone}` } as any);
+        .insert({ username: trimmedUsername || `phone:${trimmedPhone}`, phone: trimmedPhone || null } as any);
 
       if (insertError) throw insertError;
       setSuccess(true);

@@ -11,7 +11,11 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, KeyRound, Phone, MessageCircle, CheckCircle, Clock, Eye } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { MoreHorizontal, KeyRound, Phone, MessageCircle, CheckCircle, Clock, Eye, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";

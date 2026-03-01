@@ -13,6 +13,7 @@ const ActionSchema = z.object({
     "get-revenue", "get-activity", "update-settings",
     "list-reset-requests", "update-reset-request", "approve-signup",
     "get-platform-settings", "update-platform-setting",
+    "list-employees", "delete-employee",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
@@ -25,6 +26,8 @@ const ActionSchema = z.object({
   status: z.string().optional(),
   settingKey: z.string().optional(),
   settingValue: z.string().optional(),
+  memberId: z.string().uuid().optional(),
+  employeeUserId: z.string().uuid().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -371,7 +374,8 @@ Deno.serve(async (req) => {
           const profile = profileMap.get(r.username);
           return {
             ...r,
-            phone: profile?.phone || null,
+            // Table phone takes priority over profile join
+            phone: r.phone || profile?.phone || null,
             whatsapp_phone: profile?.whatsapp_phone || null,
             user_id: profile?.user_id || null,
             full_name: profile?.full_name || null,
@@ -420,6 +424,66 @@ Deno.serve(async (req) => {
           .from("platform_settings")
           .update({ value: body.settingValue, updated_at: new Date().toISOString() })
           .eq("key", body.settingKey);
+        if (error) throw error;
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "list-employees") {
+        const { data: members } = await adminClient
+          .from("team_members")
+          .select("id, owner_id, member_user_id, role, created_at, allowed_pages, status");
+
+        if (!members || members.length === 0) {
+          return new Response(JSON.stringify({ employees: [] }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const memberUserIds = members.map((m: any) => m.member_user_id);
+        const ownerIds = [...new Set(members.map((m: any) => m.owner_id))];
+
+        const [{ data: memberProfiles }, { data: ownerProfiles }, { data: shopSettings }] = await Promise.all([
+          adminClient.from("profiles").select("user_id, full_name, username, phone, last_online_at").in("user_id", memberUserIds),
+          adminClient.from("profiles").select("user_id, username, full_name").in("user_id", ownerIds as string[]),
+          adminClient.from("shop_settings").select("user_id, shop_name").in("user_id", ownerIds as string[]),
+        ]);
+
+        const memberProfileMap = new Map((memberProfiles || []).map((p: any) => [p.user_id, p]));
+        const ownerProfileMap = new Map((ownerProfiles || []).map((p: any) => [p.user_id, p]));
+        const shopMap = new Map((shopSettings || []).map((s: any) => [s.user_id, s.shop_name]));
+
+        const employees = members.map((m: any) => ({
+          id: m.id,
+          member_user_id: m.member_user_id,
+          owner_id: m.owner_id,
+          role: m.role,
+          status: m.status,
+          created_at: m.created_at,
+          allowed_pages: m.allowed_pages || [],
+          full_name: memberProfileMap.get(m.member_user_id)?.full_name || null,
+          username: memberProfileMap.get(m.member_user_id)?.username || null,
+          phone: memberProfileMap.get(m.member_user_id)?.phone || null,
+          last_online_at: memberProfileMap.get(m.member_user_id)?.last_online_at || null,
+          owner_username: ownerProfileMap.get(m.owner_id)?.username || null,
+          owner_full_name: ownerProfileMap.get(m.owner_id)?.full_name || null,
+          shop_name: shopMap.get(m.owner_id) || "Mon Atelier",
+        }));
+
+        return new Response(JSON.stringify({ employees }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "delete-employee") {
+        if (!body.memberId || !body.employeeUserId) {
+          return new Response(JSON.stringify({ error: "memberId and employeeUserId required" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        await adminClient.from("team_members").delete().eq("id", body.memberId);
+        const { error } = await adminClient.auth.admin.deleteUser(body.employeeUserId);
         if (error) throw error;
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

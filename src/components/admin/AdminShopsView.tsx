@@ -271,6 +271,12 @@ export function AdminShopsView() {
                         })}>
                           <KeyRound className="h-4 w-4 mr-2" /> Réinitialiser mot de passe
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAnnouncementTarget({
+                          userId: owner.user_id,
+                          shopName: owner.shop_name,
+                        })}>
+                          <Megaphone className="h-4 w-4 mr-2" /> Envoyer une annonce
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {owner.is_locked && !owner.last_online_at ? (
                           <DropdownMenuItem 

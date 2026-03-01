@@ -28,6 +28,23 @@ export interface AdminStats {
   active_now_count: number;
 }
 
+export interface EmployeeRecord {
+  id: string;
+  member_user_id: string;
+  owner_id: string;
+  role: string;
+  status: string;
+  created_at: string;
+  allowed_pages: string[];
+  full_name: string | null;
+  username: string | null;
+  phone: string | null;
+  last_online_at: string | null;
+  owner_username: string | null;
+  owner_full_name: string | null;
+  shop_name: string;
+}
+
 export interface AdminRevenue {
   total_revenue: number;
   sales_revenue: number;

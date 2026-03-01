@@ -41,6 +41,7 @@ export function AdminShopsView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
+  const [announcementTarget, setAnnouncementTarget] = useState<{ userId: string; shopName: string } | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);

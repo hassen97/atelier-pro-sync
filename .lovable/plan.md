@@ -1,59 +1,50 @@
 
-# Fix Reset Request: Mobile-Friendly Detail Popup
+# Fix: Currency Label Hardcoded to "TND" in Inventory Components
 
-## Problem
+## Root Cause
 
-The "Contact" column in the reset requests table uses `hidden sm:table-cell` (only shows on `sm` screens and above, i.e. ≥640px). On mobile in portrait mode, the phone number is completely invisible. The "Date" column is also hidden on small screens (`hidden md:table-cell`).
+Four inventory components have **hardcoded "TND"** currency labels instead of reading the user's configured currency dynamically from the `ShopSettingsContext`. This is why changing the currency in Settings updates the Dashboard (which uses `useCurrency`) but not the inventory forms.
 
-## Solution
+The affected files and exact locations:
 
-Two improvements:
+| File | Problem |
+|---|---|
+| `ProductSheet.tsx` | Labels "Prix d'achat (TND)" and "Prix de vente (TND)" are hardcoded |
+| `ProductDialog.tsx` | Same labels hardcoded in the edit dialog |
+| `VariationMatrixDialog.tsx` | Table headers "Coût (TND)" and "Vente (TND)" are hardcoded |
+| `LabelPrintDialog.tsx` | Price formatted with hardcoded `TND` symbol and 3 decimals (wrong for non-TND currencies) |
 
-### 1. Clickable Row → Detail Dialog
-When the admin taps/clicks anywhere on a request row, a **detail dialog** pops up showing all information about that request regardless of screen size:
-- Username + Full name
-- Phone (clickable `tel:` link)
-- WhatsApp link (if phone available)
-- Date & time submitted + relative time ("il y a 2 heures")
-- Current status badge
-- **Quick action buttons inline**: Mark contacted, Mark resolved, Reset Password
+## The Fix
 
-This replaces the need to find hidden columns or use the dropdown menu — everything is one tap away.
+### 1. `ProductSheet.tsx`
+Add `useCurrency` hook, replace hardcoded labels:
+- `"Prix d'achat (TND)"` → `"Prix d'achat (${currencyCode})"`
+- `"Prix de vente (TND)"` → `"Prix de vente (${currencyCode})"`
 
-### 2. Add Phone Icon Hint on Mobile Rows
-When a request has a phone number, show a small phone icon next to the username in the mobile view so the admin knows there's contact info available (hint to tap for details).
+### 2. `ProductDialog.tsx`
+Same fix — add `useCurrency` and replace the two hardcoded labels.
 
----
+### 3. `VariationMatrixDialog.tsx`
+Replace table headers:
+- `"Coût (TND)"` → `"Coût (${currencyCode})"`
+- `"Vente (TND)"` → `"Vente (${currencyCode})"`
 
-## Files to Change
+### 4. `LabelPrintDialog.tsx`
+Use the `format()` function from `useCurrency` instead of manually calling `(Number(price)).toFixed(3) + " TND"`. This correctly handles:
+- The right currency symbol (€, MAD, DZD, etc.)
+- The right number of decimal places (2 for EUR, 3 for TND, etc.)
 
-### `src/components/admin/AdminResetRequests.tsx`
-- Add `selectedRequest` state (`ResetRequest | null`)
-- Make `TableRow` clickable (`cursor-pointer`, `onClick={() => setSelectedRequest(req)}`)
-- Add a `Dialog` component that opens with full request details when a row is clicked
-- Show phone + WhatsApp links, date, status, and action buttons inside the dialog
-- Keep the existing `DropdownMenu` for desktop convenience (stop propagation so clicking dropdown doesn't also open dialog)
-- Show a `Phone` icon hint in the username column on mobile when phone exists
+## Technical Details
 
----
+The `useCurrency` hook reads from `ShopSettingsContext` which is already provided at the app level (wrapping all protected routes in `App.tsx`), so no context changes are needed. The fix is purely replacing hardcoded strings with dynamic values from the hook.
 
-## Dialog Content Layout
+```typescript
+// Before (hardcoded)
+<FormLabel>Prix d'achat (TND)</FormLabel>
 
-```
-┌─────────────────────────────────────────┐
-│ 🔑 Demande de réinitialisation          │
-│                                         │
-│ Utilisateur  │ @belfortgsm              │
-│ Nom complet  │ Belfort GSM              │
-│ Téléphone    │ 📞 +216 XX XXX XXX       │
-│ WhatsApp     │ 💬 Ouvrir WhatsApp       │
-│ Date         │ 01 mars 2026 14:30       │
-│              │ (il y a 2 heures)        │
-│ Statut       │ [En attente]             │
-│                                         │
-│ [Marquer contacté] [Marquer résolu]     │
-│ [Réinitialiser mot de passe]            │
-└─────────────────────────────────────────┘
+// After (dynamic)
+const { currencyCode, format } = useCurrency();
+<FormLabel>Prix d'achat ({currencyCode})</FormLabel>
 ```
 
-No backend changes needed — purely a UI improvement to `AdminResetRequests.tsx`.
+For `LabelPrintDialog`, the `format()` function also needs to be passed into the `printWindow.document.write()` call for the printed label to show the correct currency.

@@ -25,7 +25,9 @@ export function WhatsNewModal() {
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Megaphone className="h-5 w-5 text-primary" />
-            <DialogTitle>🎉 Quoi de neuf ?</DialogTitle>
+            <DialogTitle>
+              {announcement.target_user_id ? "📬 Message de l'équipe" : "🎉 Quoi de neuf ?"}
+            </DialogTitle>
           </div>
         </DialogHeader>
         <div className="space-y-4 py-2">

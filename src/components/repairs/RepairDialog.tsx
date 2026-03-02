@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserPlus, X } from "lucide-react";
+import { Loader2, UserPlus, X, Plus, Trash2, Package } from "lucide-react";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 import { Combobox } from "@/components/ui/combobox";
@@ -35,6 +35,14 @@ import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel, BRANDS_WITH_API } from "@/da
 import { useAppleDevices } from "@/hooks/useAppleDevices";
 import { useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useProducts } from "@/hooks/useProducts";
+
+export interface SelectedPart {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+}
 
 const repairSchema = z.object({
   customer_id: z.string().optional(),
@@ -70,7 +78,7 @@ interface RepairDialogProps {
     amount_paid: number;
     notes?: string | null;
   } | null;
-  onSubmit: (data: RepairFormValues) => Promise<void>;
+  onSubmit: (data: RepairFormValues, selectedParts: SelectedPart[]) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -102,6 +110,7 @@ export function RepairDialog({
   const createCustomer = useCreateCustomer();
   const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
   const { data: repairCategories = [] } = useCategories("repair");
+  const { data: products = [] } = useProducts();
 
   const categoryOptions = repairCategories.map((c) => ({ value: c.id, label: c.name }));
   
@@ -109,6 +118,7 @@ export function RepairDialog({
   const [quickCustomerName, setQuickCustomerName] = useState("");
   const [quickCustomerPhone, setQuickCustomerPhone] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
+  const [selectedParts, setSelectedParts] = useState<SelectedPart[]>([]);
   
   // State for brand/model selection
   const [selectedBrand, setSelectedBrand] = useState("");
@@ -195,6 +205,7 @@ export function RepairDialog({
       });
     } else {
       setSelectedBrand("");
+      setSelectedParts([]);
       form.reset({
         customer_id: "",
         customer_name: "",
@@ -221,7 +232,6 @@ export function RepairDialog({
   };
 
   const handleSubmit = async (data: RepairFormValues) => {
-    // Combine brand and model for storage
     const brandLabel = data.device_brand ? getBrandLabel(data.device_brand) : "";
     const fullDeviceModel = brandLabel 
       ? `${brandLabel} ${data.device_model}`.trim()
@@ -230,10 +240,64 @@ export function RepairDialog({
     await onSubmit({
       ...data,
       device_model: fullDeviceModel,
-    });
+    }, selectedParts);
     form.reset();
     setSelectedBrand("");
+    setSelectedParts([]);
   };
+
+  // Auto-update parts_cost when selectedParts change
+  const partsTotal = useMemo(() => 
+    selectedParts.reduce((sum, p) => sum + p.unit_price * p.quantity, 0), 
+    [selectedParts]
+  );
+
+  useEffect(() => {
+    if (selectedParts.length > 0) {
+      form.setValue("parts_cost", partsTotal);
+    }
+  }, [partsTotal, selectedParts.length, form]);
+
+  // Product options for combobox (only in-stock items)
+  const productOptions = useMemo(() => 
+    products
+      .filter((p) => p.quantity > 0)
+      .map((p) => ({ value: p.id, label: `${p.name} (stock: ${p.quantity})` })),
+    [products]
+  );
+
+  const handleAddPart = useCallback((productId: string) => {
+    if (!productId) return;
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    
+    // Check if already added
+    const existing = selectedParts.find((p) => p.product_id === productId);
+    if (existing) return;
+    
+    setSelectedParts((prev) => [
+      ...prev,
+      {
+        product_id: product.id,
+        product_name: product.name,
+        quantity: 1,
+        unit_price: Number(product.sell_price),
+      },
+    ]);
+  }, [products, selectedParts]);
+
+  const handleRemovePart = useCallback((productId: string) => {
+    setSelectedParts((prev) => prev.filter((p) => p.product_id !== productId));
+  }, []);
+
+  const handlePartQuantityChange = useCallback((productId: string, qty: number) => {
+    const product = products.find((p) => p.id === productId);
+    const maxQty = product ? product.quantity : qty;
+    const safeQty = Math.max(1, Math.min(qty, maxQty));
+    setSelectedParts((prev) =>
+      prev.map((p) => (p.product_id === productId ? { ...p, quantity: safeQty } : p))
+    );
+  }, [products]);
 
   const laborCostWatch = form.watch("labor_cost");
   const partsCostWatch = form.watch("parts_cost");
@@ -475,6 +539,64 @@ export function RepairDialog({
                 </FormItem>
               )}
             />
+
+            {/* Replacement Parts from Inventory (optional) */}
+            <div className="space-y-2">
+              <FormLabel className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Pièces de remplacement (stock)
+                <span className="text-xs text-muted-foreground font-normal">— optionnel</span>
+              </FormLabel>
+              
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Combobox
+                    options={productOptions}
+                    value=""
+                    onValueChange={handleAddPart}
+                    placeholder="Ajouter une pièce du stock..."
+                    searchPlaceholder="Rechercher un produit..."
+                    emptyText="Aucun produit en stock"
+                  />
+                </div>
+              </div>
+
+              {selectedParts.length > 0 && (
+                <div className="border rounded-lg divide-y">
+                  {selectedParts.map((part) => {
+                    const product = products.find((p) => p.id === part.product_id);
+                    const maxQty = product?.quantity || 1;
+                    return (
+                      <div key={part.product_id} className="flex items-center gap-2 p-2 text-sm">
+                        <span className="flex-1 truncate">{part.product_name}</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={maxQty}
+                          value={part.quantity}
+                          onChange={(e) => handlePartQuantityChange(part.product_id, Number(e.target.value))}
+                          className="w-16 h-8 text-center"
+                        />
+                        <span className="text-muted-foreground w-20 text-right font-mono-numbers">{format(part.unit_price * part.quantity)}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => handleRemovePart(part.product_id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  <div className="flex justify-between p-2 text-sm font-medium bg-muted/30">
+                    <span>Total pièces</span>
+                    <span className="font-mono-numbers">{format(partsTotal)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Costs */}
             <div className="grid grid-cols-3 gap-4">

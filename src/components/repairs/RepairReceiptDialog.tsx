@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Printer } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Repair } from "./RepairCard";
 import { statusConfig } from "./RepairStatusSelect";
@@ -16,10 +18,15 @@ interface RepairReceiptDialogProps {
 export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceiptDialogProps) {
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
+  const [showLabor, setShowLabor] = useState(false);
 
   const handlePrint = async () => {
     if (!repair) return;
     const remaining = repair.total - repair.paid;
+    const items = repair.parts.map((p) => ({ name: p.name, qty: 1, unitPrice: p.cost, total: p.cost }));
+    if (showLabor) {
+      items.push({ name: "Main d'œuvre", qty: 1, unitPrice: repair.labor, total: repair.labor });
+    }
     await generateThermalReceipt({
       type: "repair",
       id: repair.id,
@@ -28,10 +35,7 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
       customer: { name: repair.customer, phone: repair.phone },
       device: repair.device,
       imei: repair.imei,
-      items: [
-        ...repair.parts.map((p) => ({ name: p.name, qty: 1, unitPrice: p.cost, total: p.cost })),
-        { name: "Main d'œuvre", qty: 1, unitPrice: repair.labor, total: repair.labor },
-      ],
+      items,
       subtotal: repair.total,
       total: repair.total,
       paid: repair.paid,
@@ -48,10 +52,7 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Fiche de Réparation</span>
-            <Button onClick={handlePrint} size="sm"><Printer className="h-4 w-4 mr-2" />Imprimer PDF</Button>
-          </DialogTitle>
+          <DialogTitle>Fiche de Réparation</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3 text-sm">
@@ -72,15 +73,26 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
                 <span>{p.name}</span><span className="font-mono-numbers">{format(p.cost)}</span>
               </div>
             ))}
-            <div className="flex justify-between text-xs">
-              <span>Main d'œuvre</span><span className="font-mono-numbers">{format(repair.labor)}</span>
-            </div>
+            {showLabor && (
+              <div className="flex justify-between text-xs">
+                <span>Main d'œuvre</span><span className="font-mono-numbers">{format(repair.labor)}</span>
+              </div>
+            )}
           </div>
           <div className="border-t pt-2">
             <div className="flex justify-between font-bold"><span>Total</span><span className="font-mono-numbers">{format(repair.total)}</span></div>
             <div className="flex justify-between text-xs"><span className="text-muted-foreground">Payé</span><span className="text-success">{format(repair.paid)}</span></div>
             {remaining > 0 && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Reste</span><span className="text-destructive">{format(remaining)}</span></div>}
           </div>
+
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox id="showLabor" checked={showLabor} onCheckedChange={(v) => setShowLabor(!!v)} />
+            <label htmlFor="showLabor" className="text-xs cursor-pointer select-none">Afficher main d'œuvre sur le reçu</label>
+          </div>
+
+          <Button onClick={handlePrint} size="sm" className="w-full mt-2">
+            <Printer className="h-4 w-4 mr-2" />Imprimer PDF
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

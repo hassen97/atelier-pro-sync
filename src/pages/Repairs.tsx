@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Search, Plus, Filter } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
 import { CancelRepairDialog } from "@/components/repairs/CancelRepairDialog";
 import { RepairReceiptDialog } from "@/components/repairs/RepairReceiptDialog";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
+import type { SelectedPart } from "@/components/repairs/RepairDialog";
 import { PaymentConfirmDialog } from "@/components/repairs/PaymentConfirmDialog";
 import {
   useRepairs,
@@ -21,6 +23,7 @@ import {
 import { useCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Type for the repair with customer relation
 interface RepairWithCustomer {
@@ -88,6 +91,7 @@ export default function Repairs() {
   const [pendingStatus, setPendingStatus] = useState<RepairStatus | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  const queryClient = useQueryClient();
   const { data: rawRepairs = [], isLoading } = useRepairs();
   const { data: customers = [] } = useCustomers();
   const createRepair = useCreateRepair();
@@ -267,7 +271,7 @@ export default function Repairs() {
     parts_cost: number;
     amount_paid: number;
     notes?: string;
-  }) => {
+  }, selectedParts: SelectedPart[] = []) => {
     const repairData = {
       customer_id: data.customer_id || null,
       device_model: data.device_model,
@@ -281,11 +285,60 @@ export default function Repairs() {
       notes: data.notes || null,
     };
 
+    let repairId: string;
+
     if (editingRepair) {
       await updateRepair.mutateAsync({ id: editingRepair.id, ...repairData });
+      repairId = editingRepair.id;
     } else {
-      await createRepair.mutateAsync(repairData);
+      const created = await createRepair.mutateAsync(repairData);
+      repairId = created.id;
     }
+
+    // Insert repair_parts and deduct stock
+    if (selectedParts.length > 0) {
+      // Insert parts into repair_parts table
+      const partsToInsert = selectedParts.map((p) => ({
+        repair_id: repairId,
+        product_id: p.product_id,
+        quantity: p.quantity,
+        unit_price: p.unit_price,
+      }));
+
+      const { error: partsError } = await supabase.from("repair_parts").insert(partsToInsert);
+      if (partsError) {
+        console.error("Error inserting repair parts:", partsError);
+        toast.error("Erreur lors de l'ajout des pièces");
+      }
+
+      // Deduct stock from inventory
+      for (const part of selectedParts) {
+        const { error: stockError } = await supabase.rpc("update_product_stock_deduct" as any, {
+          p_product_id: part.product_id,
+          p_quantity: part.quantity,
+        });
+        
+        // Fallback: direct update if RPC doesn't exist
+        if (stockError) {
+          const { data: product } = await supabase
+            .from("products")
+            .select("quantity")
+            .eq("id", part.product_id)
+            .single();
+          
+          if (product) {
+            await supabase
+              .from("products")
+              .update({ quantity: Math.max(0, product.quantity - part.quantity), updated_at: new Date().toISOString() })
+              .eq("id", part.product_id);
+          }
+        }
+      }
+      // Invalidate products to refresh stock counts
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["low-stock-alerts"] });
+    }
+
     setRepairDialogOpen(false);
     setEditingRepair(null);
   };

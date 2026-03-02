@@ -1,26 +1,81 @@
 
 
-# Add Toggle to Show/Hide "Main d'oeuvre" on Repair Receipt
+# Modernize Login Page with Role Selection
 
-## What Changes
+## Overview
 
-A checkbox toggle will be added to the repair receipt preview dialog, letting you choose whether "Main d'oeuvre" (labor cost) appears on the printed receipt. By default it will be **hidden** (unchecked), so customers won't see the labor line — only the total.
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-## How It Works
+## Visual Design
 
-- A `showLabor` state (default `false`) controls visibility
-- The checkbox appears between the items list and the print button: **"Afficher main d'oeuvre sur le reçu"**
-- When unchecked: the labor line is hidden in both the preview and the PDF
-- When checked: it shows as before with the labor amount as a separate line
-- The total amount stays the same regardless — it always includes labor
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
 
-## Single File Change
+```text
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
+```
 
-### `src/components/repairs/RepairReceiptDialog.tsx`
+## How the Role Selector Works
 
-1. Add `useState<boolean>(false)` for `showLabor`
-2. Add a `Checkbox` + label below the items section in the preview
-3. Conditionally render the "Main d'oeuvre" line in the preview based on `showLabor`
-4. In `handlePrint`, conditionally include the labor item in the `items` array passed to `generateThermalReceipt`
-5. Move the print button below the checkbox so the flow is: preview content → toggle → print
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
+
+## Changes
+
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
+
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
+
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

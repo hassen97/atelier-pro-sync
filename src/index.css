@@ -323,28 +323,16 @@
   animation: neon-pulse 1.4s ease-out forwards;
 }
 
-/* Auth page futuristic styles */
+/* Auth page styles */
 .auth-grid-bg {
   background-image:
     linear-gradient(to right, hsla(215, 28%, 25%, 0.3) 1px, transparent 1px),
     linear-gradient(to bottom, hsla(215, 28%, 25%, 0.3) 1px, transparent 1px);
   background-size: 40px 40px;
-  animation: authGridDrift 20s linear infinite;
-}
-
-@keyframes authGridDrift {
-  0% { background-position: 0 0; }
-  100% { background-position: 40px 40px; }
 }
 
 .auth-glow {
   filter: drop-shadow(0 0 12px hsla(217, 91%, 60%, 0.5));
-  animation: authGlowPulse 2.5s ease-in-out infinite;
-}
-
-@keyframes authGlowPulse {
-  0%, 100% { filter: drop-shadow(0 0 12px hsla(217, 91%, 60%, 0.5)); }
-  50% { filter: drop-shadow(0 0 24px hsla(217, 91%, 60%, 0.8)); }
 }
 
 .auth-card {
@@ -366,7 +354,7 @@
 
 .auth-input:focus {
   border-color: hsla(217, 91%, 60%, 0.5) !important;
-  box-shadow: 0 0 0 2px hsla(217, 91%, 60%, 0.15), 0 0 20px hsla(217, 91%, 60%, 0.1) !important;
+  box-shadow: 0 0 0 2px hsla(217, 91%, 60%, 0.15) !important;
 }
 
 @media print {

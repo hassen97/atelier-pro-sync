@@ -83,7 +83,7 @@ export default function CustomerDebts() {
       if (selectedDebt.type === "Réparation") {
         const repair = repairs.find((r) => r.id === selectedDebt.id);
         if (repair) await updateRepair.mutateAsync({ id: repair.id, amount_paid: Number(repair.amount_paid) + amount });
-      } else if (selectedDebt.type === "Vente") {
+      } else if (selectedDebt.type === "Vente" && !selectedDebt.reference.startsWith("CLI-")) {
         const sale = sales.find((s) => s.id === selectedDebt.id);
         if (sale) await updateSale.mutateAsync({ id: sale.id, amount_paid: Number(sale.amount_paid) + amount });
       }

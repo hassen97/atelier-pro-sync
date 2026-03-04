@@ -103,6 +103,7 @@ export default function Inventory() {
   })();
 
   const totalItems = products.length;
+  const totalStockUnits = products.reduce((sum, item) => sum + item.stock, 0);
   const totalValue = products.reduce((sum, item) => sum + item.cost * item.stock, 0);
   const lowStockItems = products.filter((item) => item.stock <= item.threshold).length;
   const outOfStockItems = products.filter((item) => item.stock === 0).length;
@@ -223,8 +224,9 @@ export default function Inventory() {
         </TabsList>
 
         <TabsContent value="stock" className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard title="Total produits" value={totalItems} icon={Package} variant="default" />
+            <StatCard title="Unités en stock" value={totalStockUnits} icon={Package} variant="success" />
             <StatCard title="Valeur du stock" value={format(totalValue)} icon={Package} variant="accent" />
             <StatCard title="Stock faible" value={lowStockItems} subtitle="Sous le seuil d'alerte" icon={AlertTriangle} variant="warning" />
             <StatCard title="Rupture de stock" value={outOfStockItems} icon={AlertTriangle} variant="destructive" />

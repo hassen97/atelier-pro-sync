@@ -1,81 +1,30 @@
 
 
-# Modernize Login Page with Role Selection
+# Fix Debt Payments for Sales + Show Total Stock Count in Inventory
 
-## Overview
+## Issue 1: Sale Debt Payment Fails
 
-Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
+**Root cause**: The `useUpdateSale` hook in `src/hooks/useSales.ts` (line 126) adds `updated_at` to the update payload, but the `sales` table has **no `updated_at` column**. This causes the Supabase update to fail silently or throw an error, so sale debt payments never go through.
 
-## Visual Design
+**Fix**: Remove `updated_at` from the update call in `useUpdateSale`.
 
-The new design will feature:
-- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
-- **Glassmorphism card** with backdrop-blur and glowing border accents
-- **Animated wrench/gear icon** with a neon glow effect
-- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
-- **Sleek input fields** with glass styling and subtle focus glow
-- **Gradient accent button** with hover glow effect
+Additionally, in `CustomerDebts.tsx`, debts with reference prefix `CLI-` (balance-only debts from the customers table, not linked to a specific sale or repair) also fail because the `submitPayment` function tries to find a matching sale by `selectedDebt.id` — but that ID is the customer ID, not a sale ID. The code falls into the `"Vente"` branch, finds no matching sale, and does nothing beyond updating the customer balance. This path actually works correctly for the balance update, but should skip the sale update entirely.
 
-```text
-  ┌──────────────────────────────────────┐
-  │     (background: dark gradient       │
-  │      with subtle grid pattern)       │
-  │                                      │
-  │         [Wrench Icon + Glow]         │
-  │        RepairPro Tunisie             │
-  │     "Gestion d'atelier moderne"      │
-  │                                      │
-  │   ┌──────────┐  ┌──────────────┐     │
-  │   │  Owner   │  │   Employee   │     │
-  │   │ (Store)  │  │  (UserCog)   │     │
-  │   │ selected │  │              │     │
-  │   └──────────┘  └──────────────┘     │
-  │                                      │
-  │  ┌────────────────────────────────┐  │
-  │  │  [Connexion] [Inscription]    │  │
-  │  │                                │  │
-  │  │  @ Username ________________  │  │
-  │  │  * Password ________________  │  │
-  │  │                                │  │
-  │  │  [====  Se connecter  ====]   │  │
-  │  │  Mot de passe oublie?         │  │
-  │  └────────────────────────────────┘  │
-  │                                      │
-  │   WhatsApp contact button            │
-  │   (c) 2024 RepairPro Tunisie         │
-  └──────────────────────────────────────┘
-```
+**Fix**: Add a check for the `CLI-` reference prefix to only update customer balance without trying to find a sale record.
 
-## How the Role Selector Works
+### File: `src/hooks/useSales.ts`
+- Line 126: Remove `updated_at: new Date().toISOString()` from the update object
 
-- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
-- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
-- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
-- Default selection: Shop Owner
+### File: `src/pages/CustomerDebts.tsx`
+- In `submitPayment`, when `type === "Vente"` and no matching sale is found, skip the sale update gracefully (already works, but the sale lookup returns undefined and `mutateAsync` is never called — this is fine)
 
-## Changes
+## Issue 2: Show Total Stock Quantity in Inventory
 
-### File: `src/pages/Auth.tsx`
-- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
-- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
-- When "Employee" is selected, hide the "Inscription" tab and show login only
-- Restyle the entire page:
-  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
-  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
-  - Inputs: dark glass style with glow on focus
-  - Button: gradient with subtle glow shadow
-  - Wrench icon: animated pulse glow
+The inventory page shows "Total produits" (number of unique products) but not the total number of individual items in stock.
 
-### File: `src/index.css`
-- Add CSS classes for the login page effects:
-  - `.auth-grid-bg`: subtle animated grid background pattern
-  - `.auth-glow`: neon glow effect for the icon
-  - `.auth-card`: glassmorphism card specific to auth page
+**Fix**: Add a new stat card showing the sum of all product quantities.
 
-## What Stays the Same
-- All form logic, validation, signUp/signIn calls remain identical
-- The admin WhatsApp contact link stays
-- The forgot password link stays
-- Registration form fields unchanged
-- No backend changes needed
+### File: `src/pages/Inventory.tsx`
+- Add a `totalStockUnits` calculation: `products.reduce((sum, item) => sum + item.stock, 0)`
+- Add a fifth stat card "Total unités en stock" showing this value, or replace the existing layout to include it in the grid
 

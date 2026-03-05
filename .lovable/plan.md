@@ -1,147 +1,81 @@
 
 
-# Returns & RMA Module — Comprehensive Plan
+# Modernize Login Page with Role Selection
 
-This is a large feature spanning database changes, new UI components, hooks, and business logic. I'll break it into manageable phases.
+## Overview
 
-## Database Changes (Migration)
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-### New table: `product_returns`
-Tracks customer product returns (from sales).
+## Visual Design
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| user_id | uuid | owner |
-| sale_id | uuid | original sale |
-| sale_item_id | uuid | nullable, specific item |
-| customer_id | uuid | nullable |
-| product_id | uuid | nullable |
-| product_name | text | |
-| quantity | int | |
-| unit_price | numeric | |
-| refund_amount | numeric | |
-| refund_method | text | `cash`, `store_credit` |
-| stock_destination | text | `available`, `defective` |
-| reason | text | |
-| notes | text | nullable |
-| approved_by | uuid | nullable, for manager approval |
-| status | text | `pending`, `approved`, `completed` |
-| created_at | timestamptz | |
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
 
-RLS: Owner or team can manage/view (same pattern as other tables).
+```text
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
+```
 
-### Alter `defective_parts` table
-Add new statuses for supplier RMA flow:
+## How the Role Selector Works
 
-- Add column: `sent_date` (timestamptz, nullable) — when sent to supplier
-- Add column: `resolution` (text, nullable) — `replaced`, `refunded`, `rejected`
-- Add column: `refund_amount` (numeric, default 0) — supplier credit amount
-- Update status values to support: `pending`, `sent`, `replaced`, `refunded`, `rejected`
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
-### Alter `warranty_tickets` table
-- Add column: `original_repair_link_note` (text, nullable) — for traceability display
+## Changes
 
-No changes to `repairs` table needed — it already has `is_warranty` and `warranty_ticket_id`.
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-## Phase 1: Customer Product Returns
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
 
-### New hook: `src/hooks/useProductReturns.ts`
-- `useProductReturns()` — fetch all returns
-- `useSearchSaleForReturn()` — search sales by barcode, invoice number, or customer phone
-- `useCreateProductReturn()` — creates return entry, handles:
-  - If `stock_destination === "available"`: adds quantity back to `products.quantity`
-  - If `stock_destination === "defective"`: creates entry in `defective_parts`
-  - If `refund_method === "cash"`: creates negative expense entry for daily cash report
-  - If `refund_method === "store_credit"`: decreases `customers.balance` (negative = credit)
-
-### New component: `src/components/returns/ProductReturnDrawer.tsx`
-- Sheet/Drawer (right side) instead of Dialog
-- Search bar to find original sale (by barcode scan or invoice ref)
-- Shows sale items, user picks which to return with quantity
-- Toggle: "Stock disponible" vs "Défectueux/Perte"
-- Toggle: "Remboursement espèces" vs "Avoir client"
-- Auto-calculates refund amount
-- Manager approval required if refund > configurable threshold
-
-## Phase 2: Warranty Repairs Enhancement
-
-### Changes to existing `WarrantyDialog` → convert to `WarrantyDrawer`
-- Move from `Dialog` to `Sheet` (right-side drawer)
-- Default price to 0 DT when opened as warranty return
-- Parts picked from inventory are logged as expense (loss), not sale
-- Add link/badge on original repair card showing "Ticket garantie lié"
-
-### Changes to `RepairCard.tsx`
-- If repair has `warranty_ticket_id` or a warranty ticket references it, show a "Garantie" badge with link
-
-### Changes to `useCreateWarrantyTicket`
-- When parts are used, create an expense entry (category: "Perte garantie") instead of billing customer
-- The cost is tracked for the Loss Report
-
-## Phase 3: Supplier Returns (RMA) Enhancement
-
-### Enhanced `DefectivePartsList` → `SupplierRMAList`
-- Expanded status tracking: Pending → Sent → Replaced / Refunded / Rejected
-- Date tracking for when part was sent
-- When status changes to "Refunded": auto-decrease supplier debt via `useUpdateSupplierBalance` and log a transaction in `supplier_transactions`
-- When status changes to "Replaced": prompt to add replacement part to stock
-
-### New hook additions to `useWarranty.ts`
-- `useUpdateDefectivePartRMA()` — handles status transitions with financial side-effects
-- `useRMADashboardStats()` — counts by status for the dashboard cards
-
-## Phase 4: Unified Returns Page Redesign
-
-### Redesign `src/pages/Warranty.tsx` → becomes the unified Returns & RMA hub
-
-Layout with Tabs:
-1. **Retours Produits** — customer product returns list + "Nouveau retour" button → opens `ProductReturnDrawer`
-2. **Garantie SAV** — warranty tickets list + "Nouveau ticket" button → opens `WarrantyDrawer`
-3. **RMA Fournisseur** — defective parts RMA dashboard with status pipeline
-
-### Header stats:
-- Total returns this month
-- Total loss (warranty + defective parts cost)
-- Pending RMA count
-
-### Quick Scan bar at the top
-- Scanning a barcode searches across sales and repairs to find last transaction involving that item/serial
-
-## Phase 5: Loss Report
-
-### New component: `src/components/returns/LossReport.tsx`
-- Embedded as a sub-tab or section in the Returns page
-- Monthly breakdown:
-  - Warranty repair costs (parts used on warranty tickets)
-  - Customer refunds (from `product_returns`)
-  - Written-off defective parts
-- Uses existing data from `warranty_tickets`, `product_returns`, `defective_parts`, and `expenses` (category: "Perte garantie")
-- Simple bar chart (recharts) showing monthly loss trend
-
-## Phase 6: Safety & Validation
-
-- **Negative stock prevention**: All stock deduction operations use `Math.max(0, ...)` (already in place, will verify everywhere)
-- **Manager approval**: For refunds over a threshold (stored in `shop_settings` or hardcoded initially), the return stays in `pending` status until a super_admin approves it
-- **All UI in French** as specified
-
-## Files Created/Modified Summary
-
-**New files:**
-- `src/hooks/useProductReturns.ts`
-- `src/components/returns/ProductReturnDrawer.tsx`
-- `src/components/returns/WarrantyDrawer.tsx` (refactored from WarrantyDialog)
-- `src/components/returns/SupplierRMAList.tsx` (enhanced DefectivePartsList)
-- `src/components/returns/LossReport.tsx`
-- `src/components/returns/QuickScanReturn.tsx`
-
-**Modified files:**
-- `src/pages/Warranty.tsx` — complete redesign with tabs
-- `src/hooks/useWarranty.ts` — add RMA mutations with financial side-effects
-- `src/components/repairs/RepairCard.tsx` — warranty link badge
-- `src/components/repairs/DefectivePartsList.tsx` — deprecated, replaced by SupplierRMAList
-
-**Migration:** 1 migration for `product_returns` table + `defective_parts` alterations
-
-This is a large module. I recommend implementing it in the phases above, starting with the database migration and Phase 1 (Customer Returns), then iterating.
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

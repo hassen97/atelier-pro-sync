@@ -185,13 +185,14 @@ export function useCreateWarrantyTicket() {
 
       if (repairError) throw repairError;
 
-      // 3. Process replaced parts (deduct from stock, add to defective parts)
+      // 3. Process replaced parts (deduct from stock, add to defective parts, log as expense/loss)
       if (params.replaced_parts && params.replaced_parts.length > 0) {
+        let totalPartsCostForExpense = 0;
         for (const part of params.replaced_parts) {
           // Deduct from stock
           const { data: product } = await supabase
             .from("products")
-            .select("quantity")
+            .select("quantity, cost_price")
             .eq("id", part.product_id)
             .single();
 
@@ -200,6 +201,7 @@ export function useCreateWarrantyTicket() {
               .from("products")
               .update({ quantity: Math.max(0, product.quantity - part.quantity) })
               .eq("id", part.product_id);
+            totalPartsCostForExpense += Number(product.cost_price || 0) * part.quantity;
           }
 
           // Add to defective parts
@@ -212,6 +214,19 @@ export function useCreateWarrantyTicket() {
               product_name: part.product_name,
               quantity: part.quantity,
               supplier_id: part.supplier_id || null,
+            });
+        }
+
+        // Log total parts cost as a loss/expense
+        if (totalPartsCostForExpense > 0) {
+          await supabase
+            .from("expenses")
+            .insert({
+              user_id: user.id,
+              category: "Perte garantie",
+              description: `Pièces garantie - Ticket #${ticket.id.slice(0, 8)}`,
+              amount: totalPartsCostForExpense,
+              expense_date: new Date().toISOString().split("T")[0],
             });
         }
       }

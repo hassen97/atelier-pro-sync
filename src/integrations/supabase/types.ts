@@ -146,6 +146,9 @@ export type Database = {
           product_id: string | null
           product_name: string
           quantity: number
+          refund_amount: number
+          resolution: string | null
+          sent_date: string | null
           status: string
           supplier_id: string | null
           user_id: string
@@ -157,6 +160,9 @@ export type Database = {
           product_id?: string | null
           product_name: string
           quantity?: number
+          refund_amount?: number
+          resolution?: string | null
+          sent_date?: string | null
           status?: string
           supplier_id?: string | null
           user_id: string
@@ -168,6 +174,9 @@ export type Database = {
           product_id?: string | null
           product_name?: string
           quantity?: number
+          refund_amount?: number
+          resolution?: string | null
+          sent_date?: string | null
           status?: string
           supplier_id?: string | null
           user_id?: string
@@ -433,6 +442,95 @@ export type Database = {
           value?: string | null
         }
         Relationships: []
+      }
+      product_returns: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          notes: string | null
+          product_id: string | null
+          product_name: string
+          quantity: number
+          reason: string
+          refund_amount: number
+          refund_method: string
+          sale_id: string | null
+          sale_item_id: string | null
+          status: string
+          stock_destination: string
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          reason?: string
+          refund_amount?: number
+          refund_method?: string
+          sale_id?: string | null
+          sale_item_id?: string | null
+          status?: string
+          stock_destination?: string
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          reason?: string
+          refund_amount?: number
+          refund_method?: string
+          sale_id?: string | null
+          sale_item_id?: string | null
+          status?: string
+          stock_destination?: string
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_returns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_returns_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_returns_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_returns_sale_item_id_fkey"
+            columns: ["sale_item_id"]
+            isOneToOne: false
+            referencedRelation: "sale_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -1060,6 +1158,7 @@ export type Database = {
           labor_cost: number
           notes: string | null
           original_repair_id: string
+          original_repair_link_note: string | null
           parts_cost: number
           return_reason: string
           status: string
@@ -1075,6 +1174,7 @@ export type Database = {
           labor_cost?: number
           notes?: string | null
           original_repair_id: string
+          original_repair_link_note?: string | null
           parts_cost?: number
           return_reason?: string
           status?: string
@@ -1090,6 +1190,7 @@ export type Database = {
           labor_cost?: number
           notes?: string | null
           original_repair_id?: string
+          original_repair_link_note?: string | null
           parts_cost?: number
           return_reason?: string
           status?: string

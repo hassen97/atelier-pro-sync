@@ -12,7 +12,8 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye } from "lucide-react";
+import { ShopDetailSheet } from "./ShopDetailSheet";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
@@ -138,6 +139,7 @@ export function AdminShopsView() {
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
   const [announcementTarget, setAnnouncementTarget] = useState<{ userId: string; shopName: string } | null>(null);
+  const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);
@@ -277,7 +279,7 @@ export function AdminShopsView() {
             {filteredOwners.map((owner) => {
               const status = getOnlineStatus(owner.last_online_at);
               return (
-                <TableRow key={owner.user_id} className={cn("border-white/5", owner.is_locked && "opacity-60")}>
+                <TableRow key={owner.user_id} className={cn("border-white/5 cursor-pointer hover:bg-white/5 transition-colors", owner.is_locked && "opacity-60")} onClick={() => setSelectedShopId(owner.user_id)}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col">
@@ -445,6 +447,7 @@ export function AdminShopsView() {
           currentCurrency={editTarget.currency}
         />
       )}
+      <ShopDetailSheet userId={selectedShopId} onClose={() => setSelectedShopId(null)} />
     </div>
   );
 }

@@ -13,7 +13,7 @@ const ActionSchema = z.object({
     "get-revenue", "get-activity", "update-settings",
     "list-reset-requests", "update-reset-request", "approve-signup",
     "get-platform-settings", "update-platform-setting",
-    "list-employees", "delete-employee",
+    "list-employees", "delete-employee", "get-shop-details",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
@@ -472,6 +472,91 @@ Deno.serve(async (req) => {
         }));
 
         return new Response(JSON.stringify({ employees }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "get-shop-details") {
+        if (!body.userId) {
+          return new Response(JSON.stringify({ error: "userId required" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const targetUserId = body.userId;
+
+        const [
+          { data: profile },
+          { data: shopSettings },
+          { data: products },
+          { data: customers },
+          { data: sales },
+          { data: repairs },
+          { data: expenses },
+          { data: suppliers },
+          { data: teamMembers },
+          { data: recentSales },
+          { data: recentRepairs },
+        ] = await Promise.all([
+          adminClient.from("profiles").select("*").eq("user_id", targetUserId).single(),
+          adminClient.from("shop_settings").select("*").eq("user_id", targetUserId).single(),
+          adminClient.from("products").select("id").eq("user_id", targetUserId),
+          adminClient.from("customers").select("id").eq("user_id", targetUserId),
+          adminClient.from("sales").select("id, total_amount").eq("user_id", targetUserId),
+          adminClient.from("repairs").select("id, total_cost, status").eq("user_id", targetUserId),
+          adminClient.from("expenses").select("id, amount").eq("user_id", targetUserId),
+          adminClient.from("suppliers").select("id").eq("user_id", targetUserId),
+          adminClient.from("team_members").select("id, member_user_id, role, status, created_at").eq("owner_id", targetUserId),
+          adminClient.from("sales").select("id, total_amount, payment_method, created_at").eq("user_id", targetUserId).order("created_at", { ascending: false }).limit(5),
+          adminClient.from("repairs").select("id, device_model, total_cost, status, created_at").eq("user_id", targetUserId).order("created_at", { ascending: false }).limit(5),
+        ]);
+
+        // Get team member profiles
+        const memberUserIds = (teamMembers || []).map((m: any) => m.member_user_id);
+        let teamList: any[] = [];
+        if (memberUserIds.length > 0) {
+          const { data: memberProfiles } = await adminClient
+            .from("profiles")
+            .select("user_id, full_name, username, last_online_at")
+            .in("user_id", memberUserIds);
+          const mpMap = new Map((memberProfiles || []).map((p: any) => [p.user_id, p]));
+          teamList = (teamMembers || []).map((m: any) => ({
+            id: m.id,
+            role: m.role,
+            status: m.status,
+            created_at: m.created_at,
+            full_name: mpMap.get(m.member_user_id)?.full_name || null,
+            username: mpMap.get(m.member_user_id)?.username || null,
+            last_online_at: mpMap.get(m.member_user_id)?.last_online_at || null,
+          }));
+        }
+
+        const totalSalesRevenue = (sales || []).reduce((sum: number, s: any) => sum + Number(s.total_amount || 0), 0);
+        const totalRepairRevenue = (repairs || []).reduce((sum: number, r: any) => sum + Number(r.total_cost || 0), 0);
+        const totalExpenses = (expenses || []).reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
+        const pendingRepairs = (repairs || []).filter((r: any) => r.status === "pending" || r.status === "in_progress").length;
+
+        return new Response(JSON.stringify({
+          profile,
+          shop: shopSettings,
+          counts: {
+            products: (products || []).length,
+            customers: (customers || []).length,
+            sales: (sales || []).length,
+            repairs: (repairs || []).length,
+            expenses: (expenses || []).length,
+            suppliers: (suppliers || []).length,
+            team_members: (teamMembers || []).length,
+            pending_repairs: pendingRepairs,
+          },
+          revenue: {
+            sales: totalSalesRevenue,
+            repairs: totalRepairRevenue,
+            expenses: totalExpenses,
+          },
+          team: teamList,
+          recent_sales: recentSales || [],
+          recent_repairs: recentRepairs || [],
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

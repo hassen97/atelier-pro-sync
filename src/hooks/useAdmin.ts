@@ -176,6 +176,62 @@ export function useCreateOwner() {
   });
 }
 
+export interface ShopDetails {
+  profile: any;
+  shop: any;
+  counts: {
+    products: number;
+    customers: number;
+    sales: number;
+    repairs: number;
+    expenses: number;
+    suppliers: number;
+    team_members: number;
+    pending_repairs: number;
+  };
+  revenue: {
+    sales: number;
+    repairs: number;
+    expenses: number;
+  };
+  team: Array<{
+    id: string;
+    role: string;
+    status: string;
+    created_at: string;
+    full_name: string | null;
+    username: string | null;
+    last_online_at: string | null;
+  }>;
+  recent_sales: Array<{
+    id: string;
+    total_amount: number;
+    payment_method: string;
+    created_at: string;
+  }>;
+  recent_repairs: Array<{
+    id: string;
+    device_model: string;
+    total_cost: number;
+    status: string;
+    created_at: string;
+  }>;
+}
+
+export function useShopDetails(userId: string | null) {
+  return useQuery({
+    queryKey: ["admin-shop-details", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "get-shop-details", userId },
+      });
+      if (error) throw error;
+      return data as ShopDetails;
+    },
+    enabled: !!userId,
+  });
+}
+
 export function useLockOwner() {
   const queryClient = useQueryClient();
   return useMutation({

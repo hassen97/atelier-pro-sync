@@ -694,6 +694,7 @@ export type Database = {
           problem_description: string
           status: string
           total_cost: number
+          tracking_token: string
           updated_at: string
           user_id: string
           warranty_ticket_id: string | null
@@ -716,6 +717,7 @@ export type Database = {
           problem_description: string
           status?: string
           total_cost?: number
+          tracking_token?: string
           updated_at?: string
           user_id: string
           warranty_ticket_id?: string | null
@@ -738,6 +740,7 @@ export type Database = {
           problem_description?: string
           status?: string
           total_cost?: number
+          tracking_token?: string
           updated_at?: string
           user_id?: string
           warranty_ticket_id?: string | null
@@ -1213,6 +1216,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_repair_by_token: { Args: { p_token: string }; Returns: Json }
       get_team_owner_id: { Args: { _member_id: string }; Returns: string }
       has_role: {
         Args: {

@@ -43,6 +43,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Warranty = lazyWithRetry(() => import("./pages/Warranty"));
+const RepairTracking = lazyWithRetry(() => import("./pages/RepairTracking"));
 
 const queryClient = new QueryClient();
 
@@ -62,8 +63,9 @@ const App = () => (
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Public route */}
+              {/* Public routes */}
               <Route path="/auth" element={<Auth />} />
+              <Route path="/track/:token" element={<RepairTracking />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               
               {/* Admin route - separate layout */}

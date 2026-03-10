@@ -35,6 +35,7 @@ interface ReceiptData {
   remaining: number;
   paymentMethod?: string;
   time?: string;
+  trackingUrl?: string;
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -275,6 +276,39 @@ export async function generateThermalReceipt(
   y += 4;
   doc.setTextColor(0);
   centerText(settings.shop_name, 7, true);
+
+  // === QR CODE SECTION (repair tracking) ===
+  if (data.trackingUrl) {
+    dashedLine();
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(60);
+    centerText("Scannez pour suivre votre réparation", 7, true);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100);
+    centerText("Suivez l'avancement en temps réel", 6);
+    y += 2;
+
+    try {
+      const qrSize = 64;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.trackingUrl)}&format=png&margin=2`;
+      const qrImg = new Image();
+      qrImg.crossOrigin = "anonymous";
+      await new Promise<void>((resolve) => {
+        qrImg.onload = () => resolve();
+        qrImg.onerror = () => resolve(); // skip on error, don't block print
+        qrImg.src = qrUrl;
+      });
+      if (qrImg.complete && qrImg.naturalWidth > 0) {
+        doc.addImage(qrImg, "PNG", (RECEIPT_WIDTH - qrSize) / 2, y, qrSize, qrSize);
+        y += qrSize + 4;
+      }
+    } catch {
+      // QR fetch failed — continue without it
+    }
+
+    doc.setTextColor(0);
+  }
 
   // Open in new window for print
   const blob = doc.output("blob");

@@ -41,6 +41,7 @@ interface RepairWithCustomer {
   total_cost: number;
   amount_paid: number;
   notes: string | null;
+  tracking_token?: string | null;
   customer: {
     id: string;
     name: string;
@@ -71,6 +72,7 @@ function transformRepair(dbRepair: RepairWithCustomer) {
     paid: Number(dbRepair.amount_paid) || 0,
     notes: dbRepair.notes,
     is_warranty: (dbRepair as any).is_warranty || false,
+    tracking_token: dbRepair.tracking_token || dbRepair.id,
     // Original data for editing
     _original: dbRepair,
   };

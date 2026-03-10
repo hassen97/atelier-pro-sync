@@ -51,7 +51,7 @@ export default function RepairTracking() {
       .rpc("get_repair_by_token", { p_token: token })
       .then(({ data: result, error }) => {
         if (error || !result) { setNotFound(true); }
-        else { setData(result as RepairTrackingData); }
+        else { setData(result as unknown as RepairTrackingData); }
         setLoading(false);
       });
   }, [token]);

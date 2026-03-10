@@ -63,8 +63,9 @@ const App = () => (
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Public route */}
+              {/* Public routes */}
               <Route path="/auth" element={<Auth />} />
+              <Route path="/track/:token" element={<RepairTracking />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               
               {/* Admin route - separate layout */}

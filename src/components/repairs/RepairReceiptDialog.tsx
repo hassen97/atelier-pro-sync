@@ -27,6 +27,8 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
     if (showLabor) {
       items.push({ name: "Main d'œuvre", qty: 1, unitPrice: repair.labor, total: repair.labor });
     }
+    const token = repair.tracking_token || repair.id;
+    const trackingUrl = `https://atelier-pro-sync.lovable.app/track/${token}`;
     await generateThermalReceipt({
       type: "repair",
       id: repair.id,
@@ -40,6 +42,7 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
       total: repair.total,
       paid: repair.paid,
       remaining,
+      trackingUrl,
     }, settings, format);
   };
 

@@ -35,6 +35,7 @@ interface ReceiptData {
   remaining: number;
   paymentMethod?: string;
   time?: string;
+  trackingUrl?: string;
 }
 
 function hexToRgb(hex: string): [number, number, number] {

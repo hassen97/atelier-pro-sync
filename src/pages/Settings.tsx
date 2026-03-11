@@ -97,6 +97,7 @@ export default function Settings() {
   const [shopWhatsapp, setShopWhatsapp] = useState("");
   const [shopEmail, setShopEmail] = useState("");
   const [receiptTerms, setReceiptTerms] = useState("");
+  const [receiptMode, setReceiptMode] = useState("detailed");
   
   // Phone / WhatsApp state
   const [profilePhone, setProfilePhone] = useState("");

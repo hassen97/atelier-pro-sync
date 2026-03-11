@@ -20,6 +20,7 @@ export interface ShopSettings {
   email: string | null;
   receipt_terms: string | null;
   inventory_locked: boolean;
+  receipt_mode: string;
 }
 
 const defaultSettings: ShopSettings = {
@@ -38,6 +39,7 @@ const defaultSettings: ShopSettings = {
   email: null,
   receipt_terms: null,
   inventory_locked: false,
+  receipt_mode: "detailed",
 };
 
 export function useShopSettings() {
@@ -83,6 +85,7 @@ export function useShopSettings() {
           email: (data as any).email || null,
           receipt_terms: (data as any).receipt_terms || null,
           inventory_locked: (data as any).inventory_locked ?? false,
+          receipt_mode: (data as any).receipt_mode || "detailed",
         });
       }
     } catch (error) {
@@ -123,6 +126,7 @@ export function useShopSettings() {
             email: updatedSettings.email,
             receipt_terms: updatedSettings.receipt_terms,
             inventory_locked: updatedSettings.inventory_locked,
+            receipt_mode: updatedSettings.receipt_mode,
             updated_at: new Date().toISOString(),
           } as any)
           .eq("id", settings.id);
@@ -149,6 +153,7 @@ export function useShopSettings() {
             email: updatedSettings.email,
             receipt_terms: updatedSettings.receipt_terms,
             inventory_locked: updatedSettings.inventory_locked,
+            receipt_mode: updatedSettings.receipt_mode,
           } as any)
           .select()
           .single();

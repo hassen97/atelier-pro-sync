@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, Loader2, ScanBarcode, Wrench, CheckCircle2, AlertTriangle, Zap } from "lucide-react";
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, Receipt, Loader2, ScanBarcode, Wrench, CheckCircle2, AlertTriangle, Zap, Percent, DollarSign } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ interface CartItem {
   quantity: number;
   maxStock: number;
   type: "product" | "repair";
+  discount: number;
+  discountType: "fixed" | "percent";
 }
 
 export default function POS() {
@@ -113,7 +115,7 @@ export default function POS() {
           item.id === product.id && item.type === "product" ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prev, { id: product.id, name: product.name, price: product.sell_price, originalPrice: product.sell_price, quantity: 1, maxStock: product.quantity, type: "product" as const }];
+      return [...prev, { id: product.id, name: product.name, price: product.sell_price, originalPrice: product.sell_price, quantity: 1, maxStock: product.quantity, type: "product" as const, discount: 0, discountType: "fixed" as const }];
     });
   };
 
@@ -133,6 +135,8 @@ export default function POS() {
       quantity: 1,
       maxStock: 1,
       type: "repair" as const,
+      discount: 0,
+      discountType: "fixed" as const,
     }]);
     if (repair.customer_id && !selectedCustomerId) {
       setSelectedCustomerId(repair.customer_id);
@@ -158,7 +162,17 @@ export default function POS() {
   };
 
   const updateItemPrice = (id: string, newPrice: number) => {
-    setCart((prev) => prev.map((item) => item.id === id ? { ...item, price: newPrice } : item));
+    setCart((prev) => prev.map((item) => item.id === id ? { ...item, price: newPrice, discount: 0 } : item));
+  };
+
+  const updateItemDiscount = (id: string, discount: number, discountType: "fixed" | "percent") => {
+    setCart((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      const effectiveDiscount = discountType === "percent"
+        ? item.originalPrice * (Math.min(discount, 100) / 100)
+        : Math.min(discount, item.originalPrice);
+      return { ...item, discount, discountType, price: Math.max(0, item.originalPrice - effectiveDiscount) };
+    }));
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -471,13 +485,55 @@ export default function POS() {
                     </div>
                     <div className="flex items-center gap-2">
                       {item.type === "product" ? (
-                        <Input type="number" step="0.001" min="0" value={item.price} onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)} className="w-24 h-7 text-xs text-right font-mono-numbers" />
+                        <>
+                          {item.discount > 0 && (
+                            <span className="text-[10px] line-through text-muted-foreground font-mono-numbers">{format(item.originalPrice)}</span>
+                          )}
+                          <span className="text-xs font-mono-numbers font-medium">{format(item.price)}</span>
+                        </>
                       ) : (
                         <span className="text-xs font-mono-numbers">{format(item.price)}</span>
                       )}
                       <span className="text-xs text-muted-foreground">× {item.quantity}</span>
                       <span className="text-xs font-medium font-mono-numbers ml-auto">{format(item.price * item.quantity)}</span>
                     </div>
+                    {/* Discount row for products */}
+                    {item.type === "product" && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-muted-foreground shrink-0">Remise:</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max={item.discountType === "percent" ? 100 : item.originalPrice}
+                          value={item.discount || ""}
+                          onChange={(e) => updateItemDiscount(item.id, parseFloat(e.target.value) || 0, item.discountType)}
+                          placeholder="0"
+                          className="w-16 h-6 text-[10px] text-right font-mono-numbers px-1"
+                        />
+                        <Button
+                          variant={item.discountType === "fixed" ? "default" : "outline"}
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => updateItemDiscount(item.id, item.discount, "fixed")}
+                        >
+                          <DollarSign className="h-2.5 w-2.5" />
+                        </Button>
+                        <Button
+                          variant={item.discountType === "percent" ? "default" : "outline"}
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => updateItemDiscount(item.id, item.discount, "percent")}
+                        >
+                          <Percent className="h-2.5 w-2.5" />
+                        </Button>
+                        {item.discount > 0 && (
+                          <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-success/10 text-success">
+                            -{item.discountType === "percent" ? `${item.discount}%` : format(item.discount)}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

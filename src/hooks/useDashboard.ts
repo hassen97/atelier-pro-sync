@@ -41,6 +41,7 @@ export function useDashboardStats() {
         customersResult,
         suppliersResult,
         salesResult,
+        returnsResult,
       ] = await Promise.all([
         supabase
           .from("repairs")
@@ -62,6 +63,10 @@ export function useDashboardStats() {
           .from("sales")
           .select("id, total_amount")
           .eq("user_id", user.id),
+        supabase
+          .from("product_returns")
+          .select("id, refund_amount")
+          .eq("user_id", user.id),
       ]);
 
       const repairs = repairsResult.data || [];
@@ -69,6 +74,8 @@ export function useDashboardStats() {
       const customers = customersResult.data || [];
       const suppliers = suppliersResult.data || [];
       const sales = salesResult.data || [];
+      const returns = returnsResult.data || [];
+      const totalRefunds = returns.reduce((sum, r) => sum + (Number(r.refund_amount) || 0), 0);
 
       // Calculate stats
       const repairsInProgress = repairs.filter(r => r.status === "in_progress").length;
@@ -87,7 +94,7 @@ export function useDashboardStats() {
         return sum + (balance < 0 ? Math.abs(balance) : 0);
       }, 0);
 
-      const salesTotal = sales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+      const salesTotal = sales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0) - totalRefunds;
 
       return {
         salesTotal,

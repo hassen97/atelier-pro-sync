@@ -1,0 +1,1 @@
+ALTER TABLE shop_settings ADD COLUMN receipt_mode text NOT NULL DEFAULT 'detailed';

@@ -26,6 +26,7 @@ interface ReceiptData {
   customer?: { name: string; phone?: string };
   device?: string;
   imei?: string;
+  problem?: string; // For simple receipt mode
   items: ReceiptItem[];
   subtotal: number;
   taxRate?: number;
@@ -36,6 +37,7 @@ interface ReceiptData {
   paymentMethod?: string;
   time?: string;
   trackingUrl?: string;
+  discountItems?: { name: string; discount: string }[];
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -195,36 +197,50 @@ export async function generateThermalReceipt(
 
   dashedLine();
 
-  // Items header
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("Article", MARGIN, y);
-  doc.text("Qté", MARGIN + 110, y);
-  const pxLabel = "P.U.";
-  doc.text(pxLabel, MARGIN + 135, y);
-  const ttlLabel = "Total";
-  const ttlW = doc.getTextWidth(ttlLabel);
-  doc.text(ttlLabel, RECEIPT_WIDTH - MARGIN - ttlW, y);
-  y += 10;
-
-  doc.setFont("helvetica", "normal");
-  data.items.forEach((item) => {
-    // Wrap long names
-    const lines = doc.splitTextToSize(item.name, 105);
-    lines.forEach((line: string, i: number) => {
+  // Simple mode: just show problem description
+  if (data.problem && data.items.length === 0) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text("Description:", MARGIN, y);
+    y += 9;
+    const descLines = doc.splitTextToSize(data.problem, CONTENT_WIDTH);
+    descLines.forEach((line: string) => {
       doc.text(line, MARGIN, y);
-      if (i === 0) {
-        doc.text(String(item.qty), MARGIN + 113, y);
-        doc.text(formatCurrency(item.unitPrice), MARGIN + 135, y);
-        const totalStr = formatCurrency(item.total);
-        const tw = doc.getTextWidth(totalStr);
-        doc.text(totalStr, RECEIPT_WIDTH - MARGIN - tw, y);
-      }
       y += 9;
     });
-  });
+    dashedLine();
+  } else if (data.items.length > 0) {
+    // Items header
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("Article", MARGIN, y);
+    doc.text("Qté", MARGIN + 110, y);
+    const pxLabel = "P.U.";
+    doc.text(pxLabel, MARGIN + 135, y);
+    const ttlLabel = "Total";
+    const ttlW = doc.getTextWidth(ttlLabel);
+    doc.text(ttlLabel, RECEIPT_WIDTH - MARGIN - ttlW, y);
+    y += 10;
 
-  dashedLine();
+    doc.setFont("helvetica", "normal");
+    data.items.forEach((item) => {
+      // Wrap long names
+      const lines = doc.splitTextToSize(item.name, 105);
+      lines.forEach((line: string, i: number) => {
+        doc.text(line, MARGIN, y);
+        if (i === 0) {
+          doc.text(String(item.qty), MARGIN + 113, y);
+          doc.text(formatCurrency(item.unitPrice), MARGIN + 135, y);
+          const totalStr = formatCurrency(item.total);
+          const tw = doc.getTextWidth(totalStr);
+          doc.text(totalStr, RECEIPT_WIDTH - MARGIN - tw, y);
+        }
+        y += 9;
+      });
+    });
+
+    dashedLine();
+  }
 
   // Totals
   leftRight("Sous-total", formatCurrency(data.subtotal), 7);

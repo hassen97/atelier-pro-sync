@@ -865,6 +865,7 @@ export type Database = {
           language: string | null
           logo_url: string | null
           phone: string | null
+          receipt_mode: string
           receipt_terms: string | null
           shop_name: string
           stock_alert_threshold: number
@@ -886,6 +887,7 @@ export type Database = {
           language?: string | null
           logo_url?: string | null
           phone?: string | null
+          receipt_mode?: string
           receipt_terms?: string | null
           shop_name?: string
           stock_alert_threshold?: number
@@ -907,6 +909,7 @@ export type Database = {
           language?: string | null
           logo_url?: string | null
           phone?: string | null
+          receipt_mode?: string
           receipt_terms?: string | null
           shop_name?: string
           stock_alert_threshold?: number

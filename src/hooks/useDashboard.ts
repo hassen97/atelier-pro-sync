@@ -74,6 +74,8 @@ export function useDashboardStats() {
       const customers = customersResult.data || [];
       const suppliers = suppliersResult.data || [];
       const sales = salesResult.data || [];
+      const returns = returnsResult.data || [];
+      const totalRefunds = returns.reduce((sum, r) => sum + (Number(r.refund_amount) || 0), 0);
 
       // Calculate stats
       const repairsInProgress = repairs.filter(r => r.status === "in_progress").length;

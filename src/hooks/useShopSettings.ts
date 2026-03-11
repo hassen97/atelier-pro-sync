@@ -126,6 +126,7 @@ export function useShopSettings() {
             email: updatedSettings.email,
             receipt_terms: updatedSettings.receipt_terms,
             inventory_locked: updatedSettings.inventory_locked,
+            receipt_mode: updatedSettings.receipt_mode,
             updated_at: new Date().toISOString(),
           } as any)
           .eq("id", settings.id);

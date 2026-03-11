@@ -115,7 +115,7 @@ export default function POS() {
           item.id === product.id && item.type === "product" ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prev, { id: product.id, name: product.name, price: product.sell_price, originalPrice: product.sell_price, quantity: 1, maxStock: product.quantity, type: "product" as const }];
+      return [...prev, { id: product.id, name: product.name, price: product.sell_price, originalPrice: product.sell_price, quantity: 1, maxStock: product.quantity, type: "product" as const, discount: 0, discountType: "fixed" as const }];
     });
   };
 

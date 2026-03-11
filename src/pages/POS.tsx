@@ -135,6 +135,8 @@ export default function POS() {
       quantity: 1,
       maxStock: 1,
       type: "repair" as const,
+      discount: 0,
+      discountType: "fixed" as const,
     }]);
     if (repair.customer_id && !selectedCustomerId) {
       setSelectedCustomerId(repair.customer_id);

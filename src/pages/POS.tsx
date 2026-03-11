@@ -31,6 +31,8 @@ interface CartItem {
   quantity: number;
   maxStock: number;
   type: "product" | "repair";
+  discount: number;
+  discountType: "fixed" | "percent";
 }
 
 export default function POS() {

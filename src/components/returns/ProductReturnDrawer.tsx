@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,9 +30,21 @@ export function ProductReturnDrawer({ open, onOpenChange }: ProductReturnDrawerP
   const createReturn = useCreateProductReturn();
   const { format } = useCurrency();
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) searchSale.mutate(searchQuery);
-  };
+  // Debounced search
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      searchSale.mutate(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, open]);
+
+  // Load recent sales on open
+  useEffect(() => {
+    if (open && !searchSale.data) {
+      searchSale.mutate("");
+    }
+  }, [open]);
 
   const refundAmount = selectedItem ? returnQty * Number(selectedItem.unit_price) : 0;
 
@@ -85,21 +97,16 @@ export function ProductReturnDrawer({ open, onOpenChange }: ProductReturnDrawerP
           {/* Search */}
           <div className="space-y-2">
             <Label>Rechercher la vente</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Code-barres, tél client ou nom..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-9"
-                />
-              </div>
-              <Button onClick={handleSearch} disabled={searchSale.isPending} size="sm">
-                Rechercher
-              </Button>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Nom produit, code-barres, tél client, SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
             </div>
+            {!searchQuery && <p className="text-xs text-muted-foreground">Ventes récentes affichées par défaut</p>}
           </div>
 
           {/* Search Results */}

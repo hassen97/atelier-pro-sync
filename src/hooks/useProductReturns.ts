@@ -33,31 +33,36 @@ export function useSearchSaleForReturn() {
     mutationFn: async (query: string) => {
       if (!effectiveUserId) throw new Error("Non authentifié");
       const trimmed = query.trim();
-      if (!trimmed) return [];
 
-      // Search sales with items, by customer phone or sale id
+      // Fetch sales with items
       const { data, error } = await supabase
         .from("sales")
         .select(`
           *,
           customer:customers(id, name, phone),
-          sale_items(id, product_id, quantity, unit_price, product:products(id, name, barcodes))
+          sale_items(id, product_id, quantity, unit_price, product:products(id, name, barcodes, sku))
         `)
         .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(50);
 
       if (error) throw error;
 
-      // Filter client-side by barcode, customer phone, or sale ID
+      // If no search query, return recent sales
+      if (!trimmed) return (data || []).slice(0, 10);
+
+      const lower = trimmed.toLowerCase();
+
+      // Filter client-side by barcode, customer phone, sale ID, product name, SKU
       const filtered = (data || []).filter((sale: any) => {
-        if (sale.id.startsWith(trimmed)) return true;
+        if (sale.id.toLowerCase().includes(lower)) return true;
         if (sale.customer?.phone?.includes(trimmed)) return true;
-        if (sale.customer?.name?.toLowerCase().includes(trimmed.toLowerCase())) return true;
-        // Check if any sale item has a matching barcode
-        return sale.sale_items?.some((item: any) =>
-          item.product?.barcodes?.some((bc: string) => bc.includes(trimmed))
-        );
+        if (sale.customer?.name?.toLowerCase().includes(lower)) return true;
+        return sale.sale_items?.some((item: any) => {
+          if (item.product?.name?.toLowerCase().includes(lower)) return true;
+          if (item.product?.sku?.toLowerCase().includes(lower)) return true;
+          return item.product?.barcodes?.some((bc: string) => bc.toLowerCase().includes(lower));
+        });
       });
 
       return filtered;

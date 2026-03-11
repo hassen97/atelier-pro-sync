@@ -485,13 +485,55 @@ export default function POS() {
                     </div>
                     <div className="flex items-center gap-2">
                       {item.type === "product" ? (
-                        <Input type="number" step="0.001" min="0" value={item.price} onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)} className="w-24 h-7 text-xs text-right font-mono-numbers" />
+                        <>
+                          {item.discount > 0 && (
+                            <span className="text-[10px] line-through text-muted-foreground font-mono-numbers">{format(item.originalPrice)}</span>
+                          )}
+                          <span className="text-xs font-mono-numbers font-medium">{format(item.price)}</span>
+                        </>
                       ) : (
                         <span className="text-xs font-mono-numbers">{format(item.price)}</span>
                       )}
                       <span className="text-xs text-muted-foreground">× {item.quantity}</span>
                       <span className="text-xs font-medium font-mono-numbers ml-auto">{format(item.price * item.quantity)}</span>
                     </div>
+                    {/* Discount row for products */}
+                    {item.type === "product" && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-muted-foreground shrink-0">Remise:</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max={item.discountType === "percent" ? 100 : item.originalPrice}
+                          value={item.discount || ""}
+                          onChange={(e) => updateItemDiscount(item.id, parseFloat(e.target.value) || 0, item.discountType)}
+                          placeholder="0"
+                          className="w-16 h-6 text-[10px] text-right font-mono-numbers px-1"
+                        />
+                        <Button
+                          variant={item.discountType === "fixed" ? "default" : "outline"}
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => updateItemDiscount(item.id, item.discount, "fixed")}
+                        >
+                          <DollarSign className="h-2.5 w-2.5" />
+                        </Button>
+                        <Button
+                          variant={item.discountType === "percent" ? "default" : "outline"}
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => updateItemDiscount(item.id, item.discount, "percent")}
+                        >
+                          <Percent className="h-2.5 w-2.5" />
+                        </Button>
+                        {item.discount > 0 && (
+                          <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-success/10 text-success">
+                            -{item.discountType === "percent" ? `${item.discount}%` : format(item.discount)}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

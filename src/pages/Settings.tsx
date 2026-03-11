@@ -207,6 +207,7 @@ export default function Settings() {
       whatsapp_phone: shopWhatsapp.trim() || null,
       email: shopEmail.trim() || null,
       receipt_terms: receiptTerms.trim() || null,
+      receipt_mode: receiptMode,
     });
   };
 

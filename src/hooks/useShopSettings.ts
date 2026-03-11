@@ -85,6 +85,7 @@ export function useShopSettings() {
           email: (data as any).email || null,
           receipt_terms: (data as any).receipt_terms || null,
           inventory_locked: (data as any).inventory_locked ?? false,
+          receipt_mode: (data as any).receipt_mode || "detailed",
         });
       }
     } catch (error) {

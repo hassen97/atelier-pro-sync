@@ -31,19 +31,29 @@ export function useStatistics(period: string = "month") {
       }
 
       // Get sales data
-      const { data: sales, error: salesError } = await supabase
-        .from("sales")
-        .select(`
-          id,
-          total_amount,
-          created_at,
-          sale_items(quantity, unit_price, product_id)
-        `)
-        .eq("user_id", user.id)
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString());
+      const [salesRes, returnsRes] = await Promise.all([
+        supabase
+          .from("sales")
+          .select(`
+            id,
+            total_amount,
+            created_at,
+            sale_items(quantity, unit_price, product_id)
+          `)
+          .eq("user_id", user.id)
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString()),
+        supabase
+          .from("product_returns")
+          .select("id, refund_amount, created_at")
+          .eq("user_id", user.id)
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString()),
+      ]);
 
-      if (salesError) throw salesError;
+      if (salesRes.error) throw salesRes.error;
+      const sales = salesRes.data;
+      const totalRefunds = (returnsRes.data || []).reduce((sum, r) => sum + (Number(r.refund_amount) || 0), 0);
 
       // Get repairs data
       const { data: repairs, error: repairsError } = await supabase

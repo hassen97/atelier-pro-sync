@@ -40,19 +40,29 @@ export function useProfit(period: string = "month") {
           prevEndDate = endOfMonth(subMonths(now, 1));
       }
 
-      // Get current period sales
-      const { data: sales, error: salesError } = await supabase
-        .from("sales")
-        .select(`
-          id,
-          total_amount,
-          sale_items(quantity, unit_price, product_id)
-        `)
-        .eq("user_id", user.id)
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString());
+      // Get current period sales + returns
+      const [salesRes, returnsRes] = await Promise.all([
+        supabase
+          .from("sales")
+          .select(`
+            id,
+            total_amount,
+            sale_items(quantity, unit_price, product_id)
+          `)
+          .eq("user_id", user.id)
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString()),
+        supabase
+          .from("product_returns")
+          .select("id, refund_amount")
+          .eq("user_id", user.id)
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString()),
+      ]);
 
-      if (salesError) throw salesError;
+      if (salesRes.error) throw salesRes.error;
+      const sales = salesRes.data;
+      const totalRefunds = (returnsRes.data || []).reduce((sum, r) => sum + (Number(r.refund_amount) || 0), 0);
 
       // Get previous period sales for comparison
       const { data: prevSales, error: prevSalesError } = await supabase

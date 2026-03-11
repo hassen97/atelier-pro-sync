@@ -151,6 +151,7 @@ export default function Settings() {
       setShopWhatsapp(settings.whatsapp_phone || "");
       setShopEmail(settings.email || "");
       setReceiptTerms(settings.receipt_terms || "");
+      setReceiptMode(settings.receipt_mode || "detailed");
     }
   }, [loading, settings]);
 

@@ -162,7 +162,17 @@ export default function POS() {
   };
 
   const updateItemPrice = (id: string, newPrice: number) => {
-    setCart((prev) => prev.map((item) => item.id === id ? { ...item, price: newPrice } : item));
+    setCart((prev) => prev.map((item) => item.id === id ? { ...item, price: newPrice, discount: 0 } : item));
+  };
+
+  const updateItemDiscount = (id: string, discount: number, discountType: "fixed" | "percent") => {
+    setCart((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      const effectiveDiscount = discountType === "percent"
+        ? item.originalPrice * (Math.min(discount, 100) / 100)
+        : Math.min(discount, item.originalPrice);
+      return { ...item, discount, discountType, price: Math.max(0, item.originalPrice - effectiveDiscount) };
+    }));
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);

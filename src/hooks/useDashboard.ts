@@ -41,6 +41,7 @@ export function useDashboardStats() {
         customersResult,
         suppliersResult,
         salesResult,
+        returnsResult,
       ] = await Promise.all([
         supabase
           .from("repairs")
@@ -61,6 +62,10 @@ export function useDashboardStats() {
         supabase
           .from("sales")
           .select("id, total_amount")
+          .eq("user_id", user.id),
+        supabase
+          .from("product_returns")
+          .select("id, refund_amount")
           .eq("user_id", user.id),
       ]);
 

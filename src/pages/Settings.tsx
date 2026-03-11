@@ -531,6 +531,24 @@ export default function Settings() {
                   Ce texte apparaîtra en bas de vos reçus. Laissez vide pour utiliser le texte par défaut.
                 </p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="receiptMode" className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4" />
+                  Mode reçu par défaut
+                </Label>
+                <Select value={receiptMode} onValueChange={setReceiptMode}>
+                  <SelectTrigger id="receiptMode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="detailed">Reçu détaillé (pièces + main d'œuvre)</SelectItem>
+                    <SelectItem value="simple">Reçu simple (total seulement)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Le mode simple n'affiche que la description et le total, sans détailler les prix des pièces et main d'œuvre.
+                </p>
+              </div>
               <Button 
                 className="bg-gradient-primary hover:opacity-90"
                 onClick={handleSaveGeneralSettings}

@@ -174,7 +174,7 @@ export function useStatistics(period: string = "month") {
         repairStats,
         totals: {
           salesCount: sales?.length || 0,
-          salesRevenue: sales?.reduce((sum, s) => sum + Number(s.total_amount), 0) || 0,
+          salesRevenue: (sales?.reduce((sum, s) => sum + Number(s.total_amount), 0) || 0) - totalRefunds,
           repairsCount: repairs?.length || 0,
           repairsRevenue: repairs?.reduce((sum, r) => sum + Number(r.total_cost), 0) || 0,
         },

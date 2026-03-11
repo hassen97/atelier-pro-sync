@@ -113,7 +113,7 @@ export function useProfit(period: string = "month") {
       if (productsError) throw productsError;
 
       // Calculate revenue
-      const salesRevenue = sales?.reduce((sum, s) => sum + Number(s.total_amount), 0) || 0;
+      const salesRevenue = (sales?.reduce((sum, s) => sum + Number(s.total_amount), 0) || 0) - totalRefunds;
       const repairsRevenue = repairs?.reduce((sum, r) => sum + Number(r.total_cost), 0) || 0;
       const totalRevenue = salesRevenue + repairsRevenue;
 

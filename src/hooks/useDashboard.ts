@@ -94,7 +94,7 @@ export function useDashboardStats() {
         return sum + (balance < 0 ? Math.abs(balance) : 0);
       }, 0);
 
-      const salesTotal = sales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+      const salesTotal = sales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0) - totalRefunds;
 
       return {
         salesTotal,

@@ -20,6 +20,7 @@ export interface ShopSettings {
   email: string | null;
   receipt_terms: string | null;
   inventory_locked: boolean;
+  receipt_mode: string;
 }
 
 const defaultSettings: ShopSettings = {

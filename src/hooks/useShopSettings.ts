@@ -39,6 +39,7 @@ const defaultSettings: ShopSettings = {
   email: null,
   receipt_terms: null,
   inventory_locked: false,
+  receipt_mode: "detailed",
 };
 
 export function useShopSettings() {

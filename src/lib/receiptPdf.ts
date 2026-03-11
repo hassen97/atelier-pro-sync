@@ -26,6 +26,7 @@ interface ReceiptData {
   customer?: { name: string; phone?: string };
   device?: string;
   imei?: string;
+  problem?: string; // For simple receipt mode
   items: ReceiptItem[];
   subtotal: number;
   taxRate?: number;
@@ -36,6 +37,7 @@ interface ReceiptData {
   paymentMethod?: string;
   time?: string;
   trackingUrl?: string;
+  discountItems?: { name: string; discount: string }[];
 }
 
 function hexToRgb(hex: string): [number, number, number] {

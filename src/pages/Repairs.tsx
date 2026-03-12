@@ -75,6 +75,8 @@ function transformRepair(dbRepair: RepairWithCustomer) {
     notes: dbRepair.notes,
     is_warranty: (dbRepair as any).is_warranty || false,
     tracking_token: dbRepair.tracking_token || dbRepair.id,
+    estimated_ready_date: dbRepair.estimated_ready_date || null,
+    technician_note: dbRepair.technician_note || null,
     // Original data for editing
     _original: dbRepair,
   };

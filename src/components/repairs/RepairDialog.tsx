@@ -63,6 +63,8 @@ const repairSchema = z.object({
   parts_cost: z.coerce.number().min(0, "Le coût doit être positif"),
   amount_paid: z.coerce.number().min(0, "Le montant doit être positif"),
   notes: z.string().optional(),
+  estimated_ready_date: z.string().optional(),
+  technician_note: z.string().optional(),
 });
 
 type RepairFormValues = z.infer<typeof repairSchema>;

@@ -213,6 +213,8 @@ export function RepairDialog({
         parts_cost: Number(repair.parts_cost) || 0,
         amount_paid: Number(repair.amount_paid) || 0,
         notes: repair.notes || "",
+        estimated_ready_date: repair.estimated_ready_date || "",
+        technician_note: repair.technician_note || "",
       });
     } else {
       setSelectedBrand("");
@@ -230,6 +232,9 @@ export function RepairDialog({
         labor_cost: 0,
         parts_cost: 0,
         amount_paid: 0,
+        notes: "",
+        estimated_ready_date: "",
+        technician_note: "",
         notes: "",
       });
     }

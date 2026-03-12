@@ -98,6 +98,10 @@ export default function Settings() {
   const [shopEmail, setShopEmail] = useState("");
   const [receiptTerms, setReceiptTerms] = useState("");
   const [receiptMode, setReceiptMode] = useState("detailed");
+  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
+  const [warrantyDays, setWarrantyDays] = useState("30");
+  const [showPaymentOnTracking, setShowPaymentOnTracking] = useState(false);
+  const [storeHours, setStoreHours] = useState("");
   
   // Phone / WhatsApp state
   const [profilePhone, setProfilePhone] = useState("");

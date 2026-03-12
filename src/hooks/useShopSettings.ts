@@ -45,6 +45,10 @@ const defaultSettings: ShopSettings = {
   receipt_terms: null,
   inventory_locked: false,
   receipt_mode: "detailed",
+  google_maps_url: null,
+  warranty_days: 30,
+  show_payment_on_tracking: false,
+  store_hours: null,
 };
 
 export function useShopSettings() {

@@ -95,6 +95,10 @@ export function useShopSettings() {
           receipt_terms: (data as any).receipt_terms || null,
           inventory_locked: (data as any).inventory_locked ?? false,
           receipt_mode: (data as any).receipt_mode || "detailed",
+          google_maps_url: (data as any).google_maps_url || null,
+          warranty_days: (data as any).warranty_days ?? 30,
+          show_payment_on_tracking: (data as any).show_payment_on_tracking ?? false,
+          store_hours: (data as any).store_hours || null,
         });
       }
     } catch (error) {

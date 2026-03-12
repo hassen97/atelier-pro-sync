@@ -702,6 +702,65 @@ export function RepairDialog({
               )}
             />
 
+            {/* Estimated ready date */}
+            <FormField
+              control={form.control}
+              name="estimated_ready_date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date de disponibilité estimée</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value
+                            ? formatDate(new Date(field.value), "d MMMM yyyy", { locale: fr })
+                            : "Sélectionner une date (optionnel)"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => field.onChange(date ? date.toISOString().split("T")[0] : "")}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-xs text-muted-foreground">Visible par le client sur la page de suivi</p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Technician note */}
+            <FormField
+              control={form.control}
+              name="technician_note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note du technicien (visible par le client)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Ex: Écran remplacé. Test en cours. Pièce commandée, arrivée prévue demain..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">Cette note sera visible par le client sur la page de suivi public</p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <DialogFooter>
               <Button
                 type="button"

@@ -10,6 +10,7 @@ import type { Repair } from "./RepairCard";
 import { statusConfig } from "./RepairStatusSelect";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { generateThermalReceipt } from "@/lib/receiptPdf";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RepairReceiptDialogProps {
   repair: Repair | null;

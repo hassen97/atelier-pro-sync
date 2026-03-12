@@ -1,47 +1,81 @@
 
 
-# Repair Tracking Improvements & QR Domain Fix
+# Modernize Login Page with Role Selection
 
-## Summary
-Fix QR code domain to use a configurable production URL, add `/r/:token` short route, improve the tracking page UX, and add a "Public Site Domain" setting in the admin panel.
+## Overview
+
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
+
+## Visual Design
+
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
+
+```text
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
+```
+
+## How the Role Selector Works
+
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
 ## Changes
 
-### 1. Database: Add `public_site_domain` to `platform_settings`
-Insert a new row in `platform_settings` with key `public_site_domain` and default value `https://www.getheavencoin.com`.
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-```sql
-INSERT INTO platform_settings (key, value)
-VALUES ('public_site_domain', 'https://www.getheavencoin.com')
-ON CONFLICT (key) DO NOTHING;
-```
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
 
-### 2. Admin Panel: Add "Public Site Domain" setting
-In `AdminSettingsView.tsx`, add a new card for configuring the public domain. Loads/saves like the existing WhatsApp setting.
-
-### 3. Fix QR Code Domain in Receipt
-In `RepairReceiptDialog.tsx`, fetch `public_site_domain` from `platform_settings` and use it instead of the hardcoded `https://atelier-pro-sync.lovable.app`. Falls back to `window.location.origin` if not set.
-
-### 4. Add `/r/:token` Short Route
-In `App.tsx`, add a route `/r/:token` that renders the same `RepairTracking` component. This gives shorter QR URLs.
-
-### 5. Improve Tracking Page (`RepairTracking.tsx`)
-The page already handles not-found well and has a progress bar. Enhancements:
-- Add repair reference number display more prominently in header area
-- Improve the "not found" message to match the requested copy exactly
-- Ensure lightweight, mobile-first (already is, minor polish)
-- The existing progress bar, contact buttons (WhatsApp + Phone), and status messages are already solid
-
-### 6. Old Domain Redirect
-Since the app is deployed with `vercel.json` rewrites (SPA), old domains pointing to the same deployment already serve the same app. The `/track/:token` route works regardless of domain. No code change needed — this is a DNS/hosting concern. The key fix is ensuring **new** QR codes use the correct domain.
-
-## Files Summary
-
-| File | Change |
-|------|--------|
-| `supabase/migrations/new.sql` | Insert `public_site_domain` into `platform_settings` |
-| `src/components/admin/AdminSettingsView.tsx` | Add domain config card |
-| `src/components/repairs/RepairReceiptDialog.tsx` | Fetch domain from platform_settings, use for trackingUrl |
-| `src/App.tsx` | Add `/r/:token` route |
-| `src/pages/RepairTracking.tsx` | Minor UX polish (reference number in header, copy tweaks) |
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

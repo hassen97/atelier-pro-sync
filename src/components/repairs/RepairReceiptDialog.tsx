@@ -10,6 +10,7 @@ import type { Repair } from "./RepairCard";
 import { statusConfig } from "./RepairStatusSelect";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { generateThermalReceipt } from "@/lib/receiptPdf";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RepairReceiptDialogProps {
   repair: Repair | null;
@@ -21,10 +22,22 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
   const [receiptMode, setReceiptMode] = useState<string>(settings.receipt_mode || "detailed");
+  const [publicDomain, setPublicDomain] = useState<string>("");
 
   useEffect(() => {
     setReceiptMode(settings.receipt_mode || "detailed");
   }, [settings.receipt_mode]);
+
+  useEffect(() => {
+    supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "public_site_domain")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) setPublicDomain(data.value);
+      });
+  }, []);
 
   const handlePrint = async () => {
     if (!repair) return;
@@ -37,7 +50,8 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
     }
 
     const token = repair.tracking_token || repair.id;
-    const trackingUrl = `https://atelier-pro-sync.lovable.app/track/${token}`;
+    const domain = publicDomain || window.location.origin;
+    const trackingUrl = `${domain}/r/${token}`;
     await generateThermalReceipt({
       type: "repair",
       id: repair.id,

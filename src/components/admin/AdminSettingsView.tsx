@@ -4,16 +4,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, MessageCircle, UserCheck } from "lucide-react";
+import { Loader2, Save, MessageCircle, UserCheck, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
   const [autoConfirm, setAutoConfirm] = useState(false);
+  const [publicDomain, setPublicDomain] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);
+  const [savingDomain, setSavingDomain] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -29,6 +31,7 @@ export function AdminSettingsView() {
       (data as any[]).forEach((row: any) => {
         if (row.key === "admin_whatsapp") setAdminWhatsapp(row.value || "");
         if (row.key === "auto_confirm_signups") setAutoConfirm(row.value === "true");
+        if (row.key === "public_site_domain") setPublicDomain(row.value || "");
       });
     }
     setLoading(false);
@@ -88,6 +91,38 @@ export function AdminSettingsView() {
             className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30"
           >
             {savingWhatsapp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Enregistrer
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="admin-glass-card border-white/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <Globe className="h-5 w-5 text-violet-400" />
+            Domaine public du site
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Ce domaine sera utilisé pour générer les QR codes de suivi des réparations
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-slate-300">URL du domaine</Label>
+            <Input
+              type="url"
+              placeholder="https://www.getheavencoin.com"
+              value={publicDomain}
+              onChange={(e) => setPublicDomain(e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+            />
+          </div>
+          <Button
+            onClick={() => saveSetting("public_site_domain", publicDomain.trim().replace(/\/+$/, ""), setSavingDomain)}
+            disabled={savingDomain}
+            className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30"
+          >
+            {savingDomain ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Enregistrer
           </Button>
         </CardContent>

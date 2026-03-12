@@ -72,10 +72,10 @@ export default function RepairTracking() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Wrench className="w-8 h-8 text-red-400" />
+            <Package className="w-8 h-8 text-red-400" />
           </div>
           <h1 className="text-xl font-bold text-gray-800 mb-2">Réparation introuvable</h1>
-          <p className="text-gray-500 text-sm">Ce lien de suivi est invalide ou a expiré. Vérifiez votre reçu ou contactez l'atelier.</p>
+          <p className="text-gray-500 text-sm">Veuillez vérifier votre QR code ou contacter l'atelier.</p>
         </div>
       </div>
     );
@@ -98,6 +98,7 @@ export default function RepairTracking() {
           <p className="text-white/70 text-xs uppercase tracking-widest mb-1">Suivi de réparation</p>
           <h1 className="text-2xl font-bold">{data.shop_name}</h1>
           <p className="text-white/80 text-sm mt-1">Bonjour {data.customer_name} 👋</p>
+          <p className="text-white/50 text-xs mt-2 font-mono">Réf: {data.id.slice(0, 8).toUpperCase()}</p>
         </div>
       </div>
 

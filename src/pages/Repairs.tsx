@@ -277,6 +277,8 @@ export default function Repairs() {
     parts_cost: number;
     amount_paid: number;
     notes?: string;
+    estimated_ready_date?: string;
+    technician_note?: string;
   }, selectedParts: SelectedPart[] = []) => {
     const repairData = {
       customer_id: data.customer_id || null,
@@ -289,6 +291,8 @@ export default function Repairs() {
       total_cost: data.labor_cost + data.parts_cost,
       amount_paid: data.amount_paid,
       notes: data.notes || null,
+      estimated_ready_date: data.estimated_ready_date || null,
+      technician_note: data.technician_note || null,
     };
 
     let repairId: string;

@@ -21,6 +21,11 @@ export interface ShopSettings {
   receipt_terms: string | null;
   inventory_locked: boolean;
   receipt_mode: string;
+  // New tracking page fields
+  google_maps_url: string | null;
+  warranty_days: number;
+  show_payment_on_tracking: boolean;
+  store_hours: string | null;
 }
 
 const defaultSettings: ShopSettings = {

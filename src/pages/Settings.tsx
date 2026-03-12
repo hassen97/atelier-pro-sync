@@ -156,6 +156,10 @@ export default function Settings() {
       setShopEmail(settings.email || "");
       setReceiptTerms(settings.receipt_terms || "");
       setReceiptMode(settings.receipt_mode || "detailed");
+      setGoogleMapsUrl((settings as any).google_maps_url || "");
+      setWarrantyDays(String((settings as any).warranty_days ?? 30));
+      setShowPaymentOnTracking((settings as any).show_payment_on_tracking ?? false);
+      setStoreHours((settings as any).store_hours || "");
     }
   }, [loading, settings]);
 

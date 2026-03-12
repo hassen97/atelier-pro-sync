@@ -42,6 +42,8 @@ interface RepairWithCustomer {
   amount_paid: number;
   notes: string | null;
   tracking_token?: string | null;
+  estimated_ready_date?: string | null;
+  technician_note?: string | null;
   customer: {
     id: string;
     name: string;

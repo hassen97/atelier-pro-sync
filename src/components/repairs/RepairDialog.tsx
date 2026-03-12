@@ -82,6 +82,8 @@ interface RepairDialogProps {
     parts_cost: number;
     amount_paid: number;
     notes?: string | null;
+    estimated_ready_date?: string | null;
+    technician_note?: string | null;
   } | null;
   onSubmit: (data: RepairFormValues, selectedParts: SelectedPart[]) => Promise<void>;
   isLoading?: boolean;

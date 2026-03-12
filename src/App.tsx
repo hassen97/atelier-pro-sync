@@ -66,6 +66,7 @@ const App = () => (
               {/* Public routes */}
               <Route path="/auth" element={<Auth />} />
               <Route path="/track/:token" element={<RepairTracking />} />
+              <Route path="/r/:token" element={<RepairTracking />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               
               {/* Admin route - separate layout */}

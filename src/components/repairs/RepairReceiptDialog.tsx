@@ -50,7 +50,8 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
     }
 
     const token = repair.tracking_token || repair.id;
-    const trackingUrl = `https://atelier-pro-sync.lovable.app/track/${token}`;
+    const domain = publicDomain || window.location.origin;
+    const trackingUrl = `${domain}/r/${token}`;
     await generateThermalReceipt({
       type: "repair",
       id: repair.id,

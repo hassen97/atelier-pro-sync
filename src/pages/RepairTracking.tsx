@@ -98,6 +98,7 @@ export default function RepairTracking() {
           <p className="text-white/70 text-xs uppercase tracking-widest mb-1">Suivi de réparation</p>
           <h1 className="text-2xl font-bold">{data.shop_name}</h1>
           <p className="text-white/80 text-sm mt-1">Bonjour {data.customer_name} 👋</p>
+          <p className="text-white/50 text-xs mt-2 font-mono">Réf: {data.id.slice(0, 8).toUpperCase()}</p>
         </div>
       </div>
 

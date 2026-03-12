@@ -31,6 +31,7 @@ export function AdminSettingsView() {
       (data as any[]).forEach((row: any) => {
         if (row.key === "admin_whatsapp") setAdminWhatsapp(row.value || "");
         if (row.key === "auto_confirm_signups") setAutoConfirm(row.value === "true");
+        if (row.key === "public_site_domain") setPublicDomain(row.value || "");
       });
     }
     setLoading(false);

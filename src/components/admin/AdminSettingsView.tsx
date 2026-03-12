@@ -11,9 +11,11 @@ import { toast } from "sonner";
 export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
   const [autoConfirm, setAutoConfirm] = useState(false);
+  const [publicDomain, setPublicDomain] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);
+  const [savingDomain, setSavingDomain] = useState(false);
 
   useEffect(() => {
     loadSettings();

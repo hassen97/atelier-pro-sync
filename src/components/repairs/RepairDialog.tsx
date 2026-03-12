@@ -170,6 +170,8 @@ export function RepairDialog({
       parts_cost: 0,
       amount_paid: 0,
       notes: "",
+      estimated_ready_date: "",
+      technician_note: "",
     },
   });
 

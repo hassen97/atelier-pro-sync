@@ -72,10 +72,10 @@ export default function RepairTracking() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Wrench className="w-8 h-8 text-red-400" />
+            <Package className="w-8 h-8 text-red-400" />
           </div>
           <h1 className="text-xl font-bold text-gray-800 mb-2">Réparation introuvable</h1>
-          <p className="text-gray-500 text-sm">Ce lien de suivi est invalide ou a expiré. Vérifiez votre reçu ou contactez l'atelier.</p>
+          <p className="text-gray-500 text-sm">Veuillez vérifier votre QR code ou contacter l'atelier.</p>
         </div>
       </div>
     );

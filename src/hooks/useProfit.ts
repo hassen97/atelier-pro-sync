@@ -18,6 +18,12 @@ export function useProfit(period: string = "month") {
       let prevEndDate: Date;
 
       switch (period) {
+          case "today":
+         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  prevStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  prevEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  break;
         case "week":
           startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           prevStartDate = new Date(startDate.getTime() - 7 * 24 * 60 * 60 * 1000);

@@ -171,6 +171,10 @@ export function useShopSettings() {
             receipt_terms: updatedSettings.receipt_terms,
             inventory_locked: updatedSettings.inventory_locked,
             receipt_mode: updatedSettings.receipt_mode,
+            google_maps_url: updatedSettings.google_maps_url,
+            warranty_days: updatedSettings.warranty_days,
+            show_payment_on_tracking: updatedSettings.show_payment_on_tracking,
+            store_hours: updatedSettings.store_hours,
           } as any)
           .select()
           .single();

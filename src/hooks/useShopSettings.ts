@@ -21,6 +21,11 @@ export interface ShopSettings {
   receipt_terms: string | null;
   inventory_locked: boolean;
   receipt_mode: string;
+  // New tracking page fields
+  google_maps_url: string | null;
+  warranty_days: number;
+  show_payment_on_tracking: boolean;
+  store_hours: string | null;
 }
 
 const defaultSettings: ShopSettings = {
@@ -40,6 +45,10 @@ const defaultSettings: ShopSettings = {
   receipt_terms: null,
   inventory_locked: false,
   receipt_mode: "detailed",
+  google_maps_url: null,
+  warranty_days: 30,
+  show_payment_on_tracking: false,
+  store_hours: null,
 };
 
 export function useShopSettings() {
@@ -86,6 +95,10 @@ export function useShopSettings() {
           receipt_terms: (data as any).receipt_terms || null,
           inventory_locked: (data as any).inventory_locked ?? false,
           receipt_mode: (data as any).receipt_mode || "detailed",
+          google_maps_url: (data as any).google_maps_url || null,
+          warranty_days: (data as any).warranty_days ?? 30,
+          show_payment_on_tracking: (data as any).show_payment_on_tracking ?? false,
+          store_hours: (data as any).store_hours || null,
         });
       }
     } catch (error) {
@@ -127,6 +140,10 @@ export function useShopSettings() {
             receipt_terms: updatedSettings.receipt_terms,
             inventory_locked: updatedSettings.inventory_locked,
             receipt_mode: updatedSettings.receipt_mode,
+            google_maps_url: updatedSettings.google_maps_url,
+            warranty_days: updatedSettings.warranty_days,
+            show_payment_on_tracking: updatedSettings.show_payment_on_tracking,
+            store_hours: updatedSettings.store_hours,
             updated_at: new Date().toISOString(),
           } as any)
           .eq("id", settings.id);
@@ -154,6 +171,10 @@ export function useShopSettings() {
             receipt_terms: updatedSettings.receipt_terms,
             inventory_locked: updatedSettings.inventory_locked,
             receipt_mode: updatedSettings.receipt_mode,
+            google_maps_url: updatedSettings.google_maps_url,
+            warranty_days: updatedSettings.warranty_days,
+            show_payment_on_tracking: updatedSettings.show_payment_on_tracking,
+            store_hours: updatedSettings.store_hours,
           } as any)
           .select()
           .single();

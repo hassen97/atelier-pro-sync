@@ -98,6 +98,10 @@ export default function Settings() {
   const [shopEmail, setShopEmail] = useState("");
   const [receiptTerms, setReceiptTerms] = useState("");
   const [receiptMode, setReceiptMode] = useState("detailed");
+  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
+  const [warrantyDays, setWarrantyDays] = useState("30");
+  const [showPaymentOnTracking, setShowPaymentOnTracking] = useState(false);
+  const [storeHours, setStoreHours] = useState("");
   
   // Phone / WhatsApp state
   const [profilePhone, setProfilePhone] = useState("");
@@ -152,6 +156,10 @@ export default function Settings() {
       setShopEmail(settings.email || "");
       setReceiptTerms(settings.receipt_terms || "");
       setReceiptMode(settings.receipt_mode || "detailed");
+      setGoogleMapsUrl((settings as any).google_maps_url || "");
+      setWarrantyDays(String((settings as any).warranty_days ?? 30));
+      setShowPaymentOnTracking((settings as any).show_payment_on_tracking ?? false);
+      setStoreHours((settings as any).store_hours || "");
     }
   }, [loading, settings]);
 
@@ -208,6 +216,10 @@ export default function Settings() {
       email: shopEmail.trim() || null,
       receipt_terms: receiptTerms.trim() || null,
       receipt_mode: receiptMode,
+      google_maps_url: googleMapsUrl.trim() || null,
+      warranty_days: parseInt(warrantyDays) || 30,
+      show_payment_on_tracking: showPaymentOnTracking,
+      store_hours: storeHours.trim() || null,
     });
   };
 
@@ -550,6 +562,83 @@ export default function Settings() {
                 </p>
               </div>
               <Button 
+                className="bg-gradient-primary hover:opacity-90"
+                onClick={handleSaveGeneralSettings}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {saving ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Tracking Page Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Page de suivi public
+              </CardTitle>
+              <CardDescription>
+                Configuration de la page de suivi accessible par QR Code
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="googleMapsUrl">Lien Google Maps</Label>
+                <Input
+                  id="googleMapsUrl"
+                  value={googleMapsUrl}
+                  onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                  placeholder="https://maps.google.com/..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Un bouton "Voir le magasin sur Google Maps" apparaîtra sur la page de suivi
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="warrantyDays">Garantie réparation (jours)</Label>
+                <Input
+                  id="warrantyDays"
+                  type="number"
+                  min="0"
+                  value={warrantyDays}
+                  onChange={(e) => setWarrantyDays(e.target.value)}
+                  className="max-w-[120px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Affiché sur la page de suivi une fois la réparation terminée. Mettre 0 pour désactiver.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="storeHours">Horaires d'ouverture</Label>
+                <Input
+                  id="storeHours"
+                  value={storeHours}
+                  onChange={(e) => setStoreHours(e.target.value)}
+                  placeholder="Lun–Sam 9h–18h"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Affiché dans la bannière "Prêt à récupérer"
+                </p>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+                <div>
+                  <p className="font-medium text-sm">Afficher le paiement sur la page de suivi</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Le client pourra voir le total, l'avance payée et le reste dû
+                  </p>
+                </div>
+                <Switch
+                  checked={showPaymentOnTracking}
+                  onCheckedChange={setShowPaymentOnTracking}
+                />
+              </div>
+              <Button
                 className="bg-gradient-primary hover:opacity-90"
                 onClick={handleSaveGeneralSettings}
                 disabled={saving}

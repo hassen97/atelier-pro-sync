@@ -42,6 +42,8 @@ interface RepairWithCustomer {
   amount_paid: number;
   notes: string | null;
   tracking_token?: string | null;
+  estimated_ready_date?: string | null;
+  technician_note?: string | null;
   customer: {
     id: string;
     name: string;
@@ -73,6 +75,8 @@ function transformRepair(dbRepair: RepairWithCustomer) {
     notes: dbRepair.notes,
     is_warranty: (dbRepair as any).is_warranty || false,
     tracking_token: dbRepair.tracking_token || dbRepair.id,
+    estimated_ready_date: dbRepair.estimated_ready_date || null,
+    technician_note: dbRepair.technician_note || null,
     // Original data for editing
     _original: dbRepair,
   };
@@ -273,6 +277,8 @@ export default function Repairs() {
     parts_cost: number;
     amount_paid: number;
     notes?: string;
+    estimated_ready_date?: string;
+    technician_note?: string;
   }, selectedParts: SelectedPart[] = []) => {
     const repairData = {
       customer_id: data.customer_id || null,
@@ -285,6 +291,8 @@ export default function Repairs() {
       total_cost: data.labor_cost + data.parts_cost,
       amount_paid: data.amount_paid,
       notes: data.notes || null,
+      estimated_ready_date: data.estimated_ready_date || null,
+      technician_note: data.technician_note || null,
     };
 
     let repairId: string;

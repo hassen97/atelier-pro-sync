@@ -675,6 +675,38 @@ export type Database = {
           },
         ]
       }
+      repair_status_history: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          repair_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          repair_id: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          repair_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_status_history_repair_id_fkey"
+            columns: ["repair_id"]
+            isOneToOne: false
+            referencedRelation: "repairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       repairs: {
         Row: {
           amount_paid: number
@@ -685,14 +717,17 @@ export type Database = {
           deposit_date: string
           device_model: string
           diagnosis: string | null
+          estimated_ready_date: string | null
           id: string
           imei: string | null
+          intake_photo_url: string | null
           is_warranty: boolean
           labor_cost: number
           notes: string | null
           parts_cost: number
           problem_description: string
           status: string
+          technician_note: string | null
           total_cost: number
           tracking_token: string
           updated_at: string
@@ -708,14 +743,17 @@ export type Database = {
           deposit_date?: string
           device_model: string
           diagnosis?: string | null
+          estimated_ready_date?: string | null
           id?: string
           imei?: string | null
+          intake_photo_url?: string | null
           is_warranty?: boolean
           labor_cost?: number
           notes?: string | null
           parts_cost?: number
           problem_description: string
           status?: string
+          technician_note?: string | null
           total_cost?: number
           tracking_token?: string
           updated_at?: string
@@ -731,14 +769,17 @@ export type Database = {
           deposit_date?: string
           device_model?: string
           diagnosis?: string | null
+          estimated_ready_date?: string | null
           id?: string
           imei?: string | null
+          intake_photo_url?: string | null
           is_warranty?: boolean
           labor_cost?: number
           notes?: string | null
           parts_cost?: number
           problem_description?: string
           status?: string
+          technician_note?: string | null
           total_cost?: number
           tracking_token?: string
           updated_at?: string
@@ -860,6 +901,7 @@ export type Database = {
           created_at: string
           currency: string
           email: string | null
+          google_maps_url: string | null
           id: string
           inventory_locked: boolean
           language: string | null
@@ -868,11 +910,14 @@ export type Database = {
           receipt_mode: string
           receipt_terms: string | null
           shop_name: string
+          show_payment_on_tracking: boolean
           stock_alert_threshold: number
+          store_hours: string | null
           tax_enabled: boolean
           tax_rate: number
           updated_at: string
           user_id: string
+          warranty_days: number
           whatsapp_phone: string | null
         }
         Insert: {
@@ -882,6 +927,7 @@ export type Database = {
           created_at?: string
           currency?: string
           email?: string | null
+          google_maps_url?: string | null
           id?: string
           inventory_locked?: boolean
           language?: string | null
@@ -890,11 +936,14 @@ export type Database = {
           receipt_mode?: string
           receipt_terms?: string | null
           shop_name?: string
+          show_payment_on_tracking?: boolean
           stock_alert_threshold?: number
+          store_hours?: string | null
           tax_enabled?: boolean
           tax_rate?: number
           updated_at?: string
           user_id: string
+          warranty_days?: number
           whatsapp_phone?: string | null
         }
         Update: {
@@ -904,6 +953,7 @@ export type Database = {
           created_at?: string
           currency?: string
           email?: string | null
+          google_maps_url?: string | null
           id?: string
           inventory_locked?: boolean
           language?: string | null
@@ -912,11 +962,14 @@ export type Database = {
           receipt_mode?: string
           receipt_terms?: string | null
           shop_name?: string
+          show_payment_on_tracking?: boolean
           stock_alert_threshold?: number
+          store_hours?: string | null
           tax_enabled?: boolean
           tax_rate?: number
           updated_at?: string
           user_id?: string
+          warranty_days?: number
           whatsapp_phone?: string | null
         }
         Relationships: []

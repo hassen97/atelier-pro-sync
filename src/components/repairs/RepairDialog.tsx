@@ -27,7 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserPlus, X, Plus, Trash2, Package } from "lucide-react";
+import { Loader2, UserPlus, X, Plus, Trash2, Package, CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format as formatDate } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 import { Combobox } from "@/components/ui/combobox";
@@ -58,6 +63,8 @@ const repairSchema = z.object({
   parts_cost: z.coerce.number().min(0, "Le coût doit être positif"),
   amount_paid: z.coerce.number().min(0, "Le montant doit être positif"),
   notes: z.string().optional(),
+  estimated_ready_date: z.string().optional(),
+  technician_note: z.string().optional(),
 });
 
 type RepairFormValues = z.infer<typeof repairSchema>;
@@ -77,6 +84,8 @@ interface RepairDialogProps {
     parts_cost: number;
     amount_paid: number;
     notes?: string | null;
+    estimated_ready_date?: string | null;
+    technician_note?: string | null;
   } | null;
   onSubmit: (data: RepairFormValues, selectedParts: SelectedPart[]) => Promise<void>;
   isLoading?: boolean;
@@ -161,6 +170,8 @@ export function RepairDialog({
       parts_cost: 0,
       amount_paid: 0,
       notes: "",
+      estimated_ready_date: "",
+      technician_note: "",
     },
   });
 
@@ -202,6 +213,8 @@ export function RepairDialog({
         parts_cost: Number(repair.parts_cost) || 0,
         amount_paid: Number(repair.amount_paid) || 0,
         notes: repair.notes || "",
+        estimated_ready_date: repair.estimated_ready_date || "",
+        technician_note: repair.technician_note || "",
       });
     } else {
       setSelectedBrand("");
@@ -220,6 +233,8 @@ export function RepairDialog({
         parts_cost: 0,
         amount_paid: 0,
         notes: "",
+        estimated_ready_date: "",
+        technician_note: "",
       });
     }
   }, [repair, form]);
@@ -682,6 +697,65 @@ export function RepairDialog({
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Estimated ready date */}
+            <FormField
+              control={form.control}
+              name="estimated_ready_date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date de disponibilité estimée</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value
+                            ? formatDate(new Date(field.value), "d MMMM yyyy", { locale: fr })
+                            : "Sélectionner une date (optionnel)"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => field.onChange(date ? date.toISOString().split("T")[0] : "")}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-xs text-muted-foreground">Visible par le client sur la page de suivi</p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Technician note */}
+            <FormField
+              control={form.control}
+              name="technician_note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note du technicien (visible par le client)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Ex: Écran remplacé. Test en cours. Pièce commandée, arrivée prévue demain..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">Cette note sera visible par le client sur la page de suivi public</p>
                   <FormMessage />
                 </FormItem>
               )}

@@ -16,6 +16,8 @@ export interface Repair {
   parts: { name: string; cost: number }[]; labor: number; total: number; paid: number;
   is_warranty?: boolean;
   tracking_token?: string;
+  estimated_ready_date?: string | null;
+  technician_note?: string | null;
 }
 
 interface RepairCardProps {
@@ -74,6 +76,13 @@ export function RepairCard({ repair, onViewDetails, onEdit, onPrint, onCancel, o
           <div className="flex items-center gap-2 text-sm"><Phone className="h-4 w-4 text-muted-foreground" /><span>{repair.device}</span></div>
           <div className="flex items-center gap-2 text-sm"><WrenchIcon className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{repair.issue}</span></div>
           <div className="flex items-center gap-2 text-sm"><Calendar className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Dépôt: {new Date(repair.depositDate).toLocaleDateString("fr-TN")}</span></div>
+          {repair.estimated_ready_date && (
+            <div className="flex items-center gap-2 text-sm text-primary">
+              <Calendar className="h-4 w-4" />
+              <span className="font-medium">Prêt estimé: {new Date(repair.estimated_ready_date).toLocaleDateString("fr-TN")}</span>
+            </div>
+          )}
+          {repair.technician_note && <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200 italic">💬 {repair.technician_note}</div>}
           {repair.notes && <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded italic">📝 {repair.notes}</div>}
         </div>
 

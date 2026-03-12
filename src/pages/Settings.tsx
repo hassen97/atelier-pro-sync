@@ -216,6 +216,10 @@ export default function Settings() {
       email: shopEmail.trim() || null,
       receipt_terms: receiptTerms.trim() || null,
       receipt_mode: receiptMode,
+      google_maps_url: googleMapsUrl.trim() || null,
+      warranty_days: parseInt(warrantyDays) || 30,
+      show_payment_on_tracking: showPaymentOnTracking,
+      store_hours: storeHours.trim() || null,
     });
   };
 

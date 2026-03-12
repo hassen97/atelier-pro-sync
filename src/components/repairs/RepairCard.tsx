@@ -16,6 +16,8 @@ export interface Repair {
   parts: { name: string; cost: number }[]; labor: number; total: number; paid: number;
   is_warranty?: boolean;
   tracking_token?: string;
+  estimated_ready_date?: string | null;
+  technician_note?: string | null;
 }
 
 interface RepairCardProps {

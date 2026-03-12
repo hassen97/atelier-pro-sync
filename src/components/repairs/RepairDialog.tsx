@@ -235,7 +235,6 @@ export function RepairDialog({
         notes: "",
         estimated_ready_date: "",
         technician_note: "",
-        notes: "",
       });
     }
   }, [repair, form]);

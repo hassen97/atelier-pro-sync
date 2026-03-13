@@ -20,6 +20,7 @@ import { ProductSheet, ProductSheetRef } from "@/components/inventory/ProductShe
 import { SmartScanBar, SmartScanBarRef } from "@/components/inventory/SmartScanBar";
 import { VariationMatrixDialog } from "@/components/inventory/VariationMatrixDialog";
 import { InventoryUnlockDialog } from "@/components/inventory/InventoryUnlockDialog";
+import { ExcelImportDialog } from "@/components/inventory/ExcelImportDialog";
 import { ActivityLogTab } from "@/components/inventory/ActivityLogTab";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { Lock, Unlock } from "lucide-react";

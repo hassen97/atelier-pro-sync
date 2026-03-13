@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap } from "lucide-react";
+import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap, FileSpreadsheet } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";

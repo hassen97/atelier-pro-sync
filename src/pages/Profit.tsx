@@ -116,6 +116,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="today">Aujourd'hui</SelectItem>
             <SelectItem value="week">Cette semaine</SelectItem>
             <SelectItem value="month">Ce mois</SelectItem>
             <SelectItem value="quarter">Ce trimestre</SelectItem>

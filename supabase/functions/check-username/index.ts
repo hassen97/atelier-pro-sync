@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
         .select("user_id")
         .eq("username", trimmed)
         .limit(1);
-      exists = (data && data.length > 0);
+      exists = !!(data && data.length > 0);
     } else if (phone) {
       const trimmed = phone.trim();
       if (trimmed.length < 5) {
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
         .select("username")
         .eq("phone", trimmed)
         .limit(1);
-      exists = (data && data.length > 0);
+      exists = !!(data && data.length > 0);
     }
 
     return new Response(

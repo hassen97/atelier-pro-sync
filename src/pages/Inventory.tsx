@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap } from "lucide-react";
+import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap, FileSpreadsheet } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { ProductSheet, ProductSheetRef } from "@/components/inventory/ProductShe
 import { SmartScanBar, SmartScanBarRef } from "@/components/inventory/SmartScanBar";
 import { VariationMatrixDialog } from "@/components/inventory/VariationMatrixDialog";
 import { InventoryUnlockDialog } from "@/components/inventory/InventoryUnlockDialog";
+import { ExcelImportDialog } from "@/components/inventory/ExcelImportDialog";
 import { ActivityLogTab } from "@/components/inventory/ActivityLogTab";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { Lock, Unlock } from "lucide-react";
@@ -46,6 +47,9 @@ export default function Inventory() {
   
   // Matrix dialog
   const [matrixOpen, setMatrixOpen] = useState(false);
+  
+  // Excel import dialog
+  const [importOpen, setImportOpen] = useState(false);
   
   // Unlock dialog
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
@@ -197,6 +201,15 @@ export default function Inventory() {
           </Badge>
         )}
         <Button variant="outline"><Download className="h-4 w-4 mr-2" />Exporter</Button>
+        <Button
+          variant="outline"
+          onClick={() => setImportOpen(true)}
+          disabled={isLocked}
+          className="gap-2 border-success/30 text-success hover:bg-success/10"
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+          Import Excel
+        </Button>
         <Button
           variant="outline"
           onClick={() => setMatrixOpen(true)}
@@ -400,6 +413,16 @@ export default function Inventory() {
         onOpenChange={setUnlockDialogOpen}
         onVerify={verifyCode}
         verifying={verifying}
+      />
+
+      {/* Excel Import Dialog */}
+      <ExcelImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => {
+          setImportOpen(false);
+          returnFocusToScanBar();
+        }}
       />
     </div>
   );

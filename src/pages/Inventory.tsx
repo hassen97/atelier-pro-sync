@@ -414,6 +414,16 @@ export default function Inventory() {
         onVerify={verifyCode}
         verifying={verifying}
       />
+
+      {/* Excel Import Dialog */}
+      <ExcelImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => {
+          setImportOpen(false);
+          returnFocusToScanBar();
+        }}
+      />
     </div>
   );
 }

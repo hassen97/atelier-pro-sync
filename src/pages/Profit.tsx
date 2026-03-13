@@ -42,7 +42,7 @@ export default function Profit() {
 
     const content = `
 RAPPORT PROFIT & COMPTABILITÉ - ${settings.shop_name}
-Période: ${period === "week" ? "Cette semaine" : period === "month" ? "Ce mois" : period === "quarter" ? "Ce trimestre" : "Cette année"}
+Période: ${period === "today" ? "Aujourd'hui" : period === "week" ? "Cette semaine" : period === "month" ? "Ce mois" : period === "quarter" ? "Ce trimestre" : "Cette année"}
 Date: ${new Date().toLocaleDateString("fr-TN")}
 ================================
 

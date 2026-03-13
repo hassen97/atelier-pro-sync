@@ -203,6 +203,15 @@ export default function Inventory() {
         <Button variant="outline"><Download className="h-4 w-4 mr-2" />Exporter</Button>
         <Button
           variant="outline"
+          onClick={() => setImportOpen(true)}
+          disabled={isLocked}
+          className="gap-2 border-success/30 text-success hover:bg-success/10"
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+          Import Excel
+        </Button>
+        <Button
+          variant="outline"
           onClick={() => setMatrixOpen(true)}
           disabled={isLocked}
           className="gap-2 border-warning/30 text-warning hover:bg-warning/10"

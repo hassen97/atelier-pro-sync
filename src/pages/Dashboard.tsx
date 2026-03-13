@@ -49,6 +49,7 @@ export default function Dashboard() {
   const { data: stockAlerts = [], isLoading: alertsLoading } = useLowStockAlerts(5);
   const createRepair = useCreateRepair();
   const { format } = useCurrency();
+  const queryClient = useQueryClient();
   
   // Enable realtime updates for dashboard data
   useDashboardRealtime();

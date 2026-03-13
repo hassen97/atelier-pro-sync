@@ -48,6 +48,9 @@ export default function Inventory() {
   // Matrix dialog
   const [matrixOpen, setMatrixOpen] = useState(false);
   
+  // Excel import dialog
+  const [importOpen, setImportOpen] = useState(false);
+  
   // Unlock dialog
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
   

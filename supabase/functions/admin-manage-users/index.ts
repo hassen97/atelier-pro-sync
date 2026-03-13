@@ -30,7 +30,7 @@ const ActionSchema = z.object({
   employeeUserId: z.string().uuid().optional(),
 });
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

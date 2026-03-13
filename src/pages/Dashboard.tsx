@@ -299,13 +299,11 @@ export default function Dashboard() {
       </div>
 
       {/* Repair Dialog */}
-
-      {/* Repair Dialog */}
       <RepairDialog
         open={repairDialogOpen}
         onOpenChange={setRepairDialogOpen}
-        onSubmit={async (data) => {
-          await createRepair.mutateAsync({
+        onSubmit={async (data, selectedParts: SelectedPart[] = []) => {
+          const created = await createRepair.mutateAsync({
             device_model: data.device_model || "",
             problem_description: data.problem_description || "",
             customer_id: data.customer_id || null,
@@ -313,9 +311,39 @@ export default function Dashboard() {
             diagnosis: data.diagnosis,
             labor_cost: data.labor_cost,
             parts_cost: data.parts_cost,
+            total_cost: (data.labor_cost || 0) + (data.parts_cost || 0),
             amount_paid: data.amount_paid,
             notes: data.notes,
+            estimated_ready_date: data.estimated_ready_date || null,
+            technician_note: data.technician_note || null,
           });
+
+          if (selectedParts.length > 0 && created?.id) {
+            const partsToInsert = selectedParts.map((p) => ({
+              repair_id: created.id,
+              product_id: p.product_id,
+              quantity: p.quantity,
+              unit_price: p.unit_price,
+            }));
+            await supabase.from("repair_parts").insert(partsToInsert);
+
+            for (const part of selectedParts) {
+              const { data: product } = await supabase
+                .from("products")
+                .select("quantity")
+                .eq("id", part.product_id)
+                .single();
+              if (product) {
+                await supabase
+                  .from("products")
+                  .update({ quantity: Math.max(0, product.quantity - part.quantity), updated_at: new Date().toISOString() })
+                  .eq("id", part.product_id);
+              }
+            }
+            queryClient.invalidateQueries({ queryKey: ["products"] });
+            queryClient.invalidateQueries({ queryKey: ["low-stock-alerts"] });
+          }
+
           setRepairDialogOpen(false);
         }}
         isLoading={createRepair.isPending}

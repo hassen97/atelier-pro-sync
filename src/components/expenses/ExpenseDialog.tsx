@@ -30,19 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import type { ExpenseWithSupplier } from "@/hooks/useExpenses";
 import { useCurrency } from "@/hooks/useCurrency";
-
-const EXPENSE_CATEGORIES = [
-  "Loyer",
-  "Électricité",
-  "Stock",
-  "Marketing",
-  "Télécom",
-  "Fournitures",
-  "Maintenance",
-  "Salaires",
-  "Transport",
-  "Autre",
-];
+import { useExpenseCategories } from "@/hooks/useExpenseCategories";
 
 const expenseSchema = z.object({
   expense_date: z.string().min(1, "La date est requise"),
@@ -70,6 +58,7 @@ export function ExpenseDialog({
 }: ExpenseDialogProps) {
   const isEditing = !!expense;
   const { currencyCode } = useCurrency();
+  const { data: expenseCategories = [] } = useExpenseCategories();
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -141,7 +130,7 @@ export function ExpenseDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {EXPENSE_CATEGORIES.map((cat) => (
+                      {expenseCategories.map((cat) => (
                         <SelectItem key={cat} value={cat}>
                           {cat}
                         </SelectItem>

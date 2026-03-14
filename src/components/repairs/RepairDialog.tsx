@@ -224,6 +224,9 @@ export function RepairDialog({
         notes: repair.notes || "",
         estimated_ready_date: repair.estimated_ready_date || "",
         technician_note: repair.technician_note || "",
+        received_by: (repair as any).received_by || "",
+        repaired_by: (repair as any).repaired_by || "",
+        device_condition: (repair as any).device_condition || "",
       });
     } else {
       setSelectedBrand("");
@@ -244,6 +247,9 @@ export function RepairDialog({
         notes: "",
         estimated_ready_date: "",
         technician_note: "",
+        received_by: "",
+        repaired_by: "",
+        device_condition: "",
       });
     }
   }, [repair, form]);

@@ -96,6 +96,10 @@ export default function Repairs() {
   const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
   const [paymentConfirmRepair, setPaymentConfirmRepair] = useState<ReturnType<typeof transformRepair> | null>(null);
   const [pendingStatus, setPendingStatus] = useState<RepairStatus | null>(null);
+
+  // Status assign dialog state
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignRepair, setAssignRepair] = useState<ReturnType<typeof transformRepair> | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const queryClient = useQueryClient();

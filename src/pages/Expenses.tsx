@@ -38,10 +38,13 @@ export default function Expenses() {
   const [editingExpense, setEditingExpense] = useState<ExpenseWithSupplier | null>(null);
 
   const { data: expenses = [], isLoading } = useExpenses();
+  const { data: expenseCategories = [] } = useExpenseCategories();
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
   const { format } = useCurrency();
+
+  const allCategories = ["Toutes", ...expenseCategories];
 
   const filteredExpenses = expenses.filter((expense) => {
     const matchesSearch = expense.description?.toLowerCase().includes(searchQuery.toLowerCase()) || expense.category.toLowerCase().includes(searchQuery.toLowerCase());

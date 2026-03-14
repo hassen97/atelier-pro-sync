@@ -1,92 +1,81 @@
 
 
-## Fix: Sharp Thermal Receipt Printing
+# Modernize Login Page with Role Selection
 
-### Problem
-The current receipt uses **jsPDF** to generate a PDF, which renders text as vector paths — thermal printers often rasterize these poorly, producing blurry output. The user wants native HTML text printing via `window.print()`.
+## Overview
 
-### Solution
-Replace the jsPDF-based `generateThermalReceipt` with an **HTML-based print approach** that opens a new window with pure HTML/CSS and calls `window.print()`. This produces crisp monospace text that thermal printers handle natively.
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-### Changes
+## Visual Design
 
-**File: `src/lib/receiptPdf.ts`** — Full rewrite of `generateThermalReceipt`
-- Instead of building a jsPDF document, construct an HTML string
-- Open via `window.open()` → write HTML → `window.print()`
-- Font: `"Courier New", "Liberation Mono", monospace` with fixed `px` sizes
-- Pure black text (`#000`), no anti-aliasing (`-webkit-font-smoothing: none; text-rendering: optimizeSpeed`)
-- `@page` size set to `72mm` (80mm) or `48mm` (58mm) with zero margins
-- No `transform`, `scale`, `zoom`, `rem`, `em`, or `vw`
-- Items rendered as an HTML `<table>` for reliable column alignment
-- QR code as an `<img>` tag (same QR API)
-- Barcode rendered via a canvas data URL embedded as `<img>`
-- Line spacing: `line-height: 1.4; letter-spacing: 0.5px`
-- `@media print` block forcing all styles
-- Conditionally hide TVA when disabled
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
 
-**File: `src/components/repairs/RepairReceiptDialog.tsx`** — No changes needed (already calls `generateThermalReceipt` correctly)
-
-### Layout Structure (HTML)
 ```text
-┌──────────────────────────┐
-│    [LOGO or SHOP NAME]   │  centered, 16px bold
-│      Address / Phone     │  centered, 10px
-│──────────────────────────│
-│    BON DE RÉPARATION     │  centered, 14px bold
-│        N° 00042          │
-│- - - - - - - - - - - - - │
-│ Référence : 18F1005A     │
-│ Date dépôt: 13/03/2026   │
-│- - - - - - - - - - - - - │
-│ Client : Ahmed           │
-│ Appareil : iPhone 16     │
-│ IMEI : 3569464646        │
-│- - - - - - - - - - - - - │
-│ Problème déclaré         │
-│ Ecran cassé              │
-│- - - - - - - - - - - - - │
-│ Article  Qté  P.U   Tot  │  <table>
-│ Ecran     1   70    70   │
-│ M.O.      1   10    10   │
-│──────────────────────────│
-│ Sous-total:     80.00    │
-│ Payé:            0.00    │
-│ Reste:          80.00    │
-│══════════════════════════│
-│ TOTAL:          80.00    │
-│══════════════════════════│
-│ Garantie text...         │
-│- - - - - - - - - - - - - │
-│  Suivre votre réparation │
-│       [QR CODE]          │
-│   domain.com/r/token     │
-│- - - - - - - - - - - - - │
-│      [BARCODE]           │
-│    REP-00042             │
-│                          │
-│ Présentez ce ticket pour │
-│ récupérer votre appareil │
-└──────────────────────────┘
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
 ```
 
-### Key CSS
-```css
-@page { size: 72mm auto; margin: 0; }
-body {
-  font-family: "Courier New", "Liberation Mono", monospace;
-  font-size: 12px;
-  color: #000;
-  -webkit-font-smoothing: none;
-  text-rendering: optimizeSpeed;
-  line-height: 1.4;
-  letter-spacing: 0.5px;
-  width: 72mm; /* or 48mm for 58mm printers */
-  padding: 2mm;
-}
-table { width: 100%; border-collapse: collapse; }
-td { padding: 1px 0; }
-td.right { text-align: right; }
-```
+## How the Role Selector Works
 
-Only **1 file** changes: `src/lib/receiptPdf.ts`.
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
+
+## Changes
+
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
+
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
+
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

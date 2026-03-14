@@ -65,6 +65,9 @@ const repairSchema = z.object({
   notes: z.string().optional(),
   estimated_ready_date: z.string().optional(),
   technician_note: z.string().optional(),
+  received_by: z.string().optional(),
+  repaired_by: z.string().optional(),
+  device_condition: z.string().optional(),
 });
 
 type RepairFormValues = z.infer<typeof repairSchema>;

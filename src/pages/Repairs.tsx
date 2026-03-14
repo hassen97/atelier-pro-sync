@@ -502,6 +502,13 @@ export default function Repairs() {
         onConfirm={handlePaymentConfirm}
         isLoading={isProcessingPayment}
       />
+
+      <StatusAssignDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        onConfirm={handleAssignConfirm}
+        isLoading={updateRepair.isPending}
+      />
     </div>
   );
 }

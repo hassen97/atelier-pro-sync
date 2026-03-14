@@ -178,6 +178,9 @@ export function RepairDialog({
       notes: "",
       estimated_ready_date: "",
       technician_note: "",
+      received_by: "",
+      repaired_by: "",
+      device_condition: "",
     },
   });
 

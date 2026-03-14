@@ -29,8 +29,7 @@ import {
   useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, type ExpenseWithSupplier,
 } from "@/hooks/useExpenses";
 import { ExpenseDialog } from "@/components/expenses/ExpenseDialog";
-
-const CATEGORIES = ["Toutes", "Loyer", "Électricité", "Stock", "Marketing", "Télécom", "Fournitures", "Maintenance", "Salaires", "Transport", "Autre"];
+import { useExpenseCategories } from "@/hooks/useExpenseCategories";
 
 export default function Expenses() {
   const [searchQuery, setSearchQuery] = useState("");

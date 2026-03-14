@@ -10,6 +10,7 @@ import { RepairCard } from "@/components/repairs/RepairCard";
 import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
 import { CancelRepairDialog } from "@/components/repairs/CancelRepairDialog";
 import { RepairReceiptDialog } from "@/components/repairs/RepairReceiptDialog";
+import { StatusAssignDialog } from "@/components/repairs/StatusAssignDialog";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
 import type { SelectedPart } from "@/components/repairs/RepairDialog";
 import { PaymentConfirmDialog } from "@/components/repairs/PaymentConfirmDialog";

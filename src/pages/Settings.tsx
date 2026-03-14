@@ -48,6 +48,7 @@ import { useBackup } from "@/hooks/useBackup";
 import { useSecuritySettings } from "@/hooks/useSecuritySettings";
 import { ResetDataDialog } from "@/components/settings/ResetDataDialog";
 import { CategoriesSettings } from "@/components/settings/CategoriesSettings";
+import { ExpenseCategoriesSettings } from "@/components/settings/ExpenseCategoriesSettings";
 import { TeamManagement } from "@/components/settings/TeamManagement";
 import { TaskManagement } from "@/components/settings/TaskManagement";
 import { Skeleton } from "@/components/ui/skeleton";

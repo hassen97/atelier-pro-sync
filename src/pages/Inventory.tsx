@@ -280,17 +280,17 @@ export default function Inventory() {
                     <TableHead>Produit</TableHead>
                     <TableHead>Codes-barres</TableHead>
                     <TableHead>Catégorie</TableHead>
-                    <TableHead className="text-right">Coût</TableHead>
+                    {!isEmployee && <TableHead className="text-right">Coût</TableHead>}
                     <TableHead className="text-right">Prix vente</TableHead>
-                    <TableHead className="text-right">Marge</TableHead>
-                    <TableHead className="text-center">Stock</TableHead>
+                    {!isEmployee && <TableHead className="text-right">Marge</TableHead>}
+                    {!isEmployee && <TableHead className="text-center">Stock</TableHead>}
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredInventory.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={isEmployee ? 5 : 8} className="text-center py-12 text-muted-foreground">
                         {products.length === 0
                           ? "Aucun produit enregistré. Cliquez sur 'Nouveau produit' pour commencer."
                           : "Aucun produit trouvé"}
@@ -324,21 +324,25 @@ export default function Inventory() {
                             </div>
                           </TableCell>
                           <TableCell><Badge variant="secondary">{item.category}</Badge></TableCell>
-                          <TableCell className="text-right font-mono-numbers">{format(item.cost)}</TableCell>
+                          {!isEmployee && <TableCell className="text-right font-mono-numbers">{format(item.cost)}</TableCell>}
                           <TableCell className="text-right font-mono-numbers">{format(item.price)}</TableCell>
-                          <TableCell className="text-right">
-                            <span className="text-success font-medium">+{margin.toFixed(0)}%</span>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={cn(
-                              "font-mono",
-                              isOutOfStock && "bg-destructive/10 text-destructive border-destructive/20",
-                              isLowStock && !isOutOfStock && "bg-warning/10 text-warning border-warning/20",
-                              !isLowStock && "bg-success/10 text-success border-success/20"
-                            )}>
-                              {item.stock}
-                            </Badge>
-                          </TableCell>
+                          {!isEmployee && (
+                            <TableCell className="text-right">
+                              <span className="text-success font-medium">+{margin.toFixed(0)}%</span>
+                            </TableCell>
+                          )}
+                          {!isEmployee && (
+                            <TableCell className="text-center">
+                              <Badge className={cn(
+                                "font-mono",
+                                isOutOfStock && "bg-destructive/10 text-destructive border-destructive/20",
+                                isLowStock && !isOutOfStock && "bg-warning/10 text-warning border-warning/20",
+                                !isLowStock && "bg-success/10 text-success border-success/20"
+                              )}>
+                                {item.stock}
+                              </Badge>
+                            </TableCell>
+                          )}
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -348,8 +352,8 @@ export default function Inventory() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => handleEdit(item._original)}>Modifier</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleAdjustStock(item.id, item.name, item.stock)}>Ajuster stock</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id, item.name)}>Supprimer</DropdownMenuItem>
+                                {!isEmployee && <DropdownMenuItem onClick={() => handleAdjustStock(item.id, item.name, item.stock)}>Ajuster stock</DropdownMenuItem>}
+                                {!isEmployee && <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id, item.name)}>Supprimer</DropdownMenuItem>}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

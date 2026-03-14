@@ -10,6 +10,7 @@ import { RepairCard } from "@/components/repairs/RepairCard";
 import { type RepairStatus } from "@/components/repairs/RepairStatusSelect";
 import { CancelRepairDialog } from "@/components/repairs/CancelRepairDialog";
 import { RepairReceiptDialog } from "@/components/repairs/RepairReceiptDialog";
+import { StatusAssignDialog } from "@/components/repairs/StatusAssignDialog";
 import { RepairDialog } from "@/components/repairs/RepairDialog";
 import type { SelectedPart } from "@/components/repairs/RepairDialog";
 import { PaymentConfirmDialog } from "@/components/repairs/PaymentConfirmDialog";
@@ -95,6 +96,10 @@ export default function Repairs() {
   const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
   const [paymentConfirmRepair, setPaymentConfirmRepair] = useState<ReturnType<typeof transformRepair> | null>(null);
   const [pendingStatus, setPendingStatus] = useState<RepairStatus | null>(null);
+
+  // Status assign dialog state
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignRepair, setAssignRepair] = useState<ReturnType<typeof transformRepair> | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const queryClient = useQueryClient();
@@ -180,16 +185,21 @@ export default function Repairs() {
     repair: ReturnType<typeof transformRepair>,
     newStatus: RepairStatus
   ) => {
+    // If moving to in_progress, prompt for received_by / repaired_by
+    if (newStatus === "in_progress") {
+      setAssignRepair(repair);
+      setAssignDialogOpen(true);
+      return;
+    }
+
     // Check if moving to completed or delivered AND not fully paid
     const remaining = repair.total - repair.paid;
     
     if ((newStatus === "completed" || newStatus === "delivered") && remaining > 0) {
-      // Open payment confirmation dialog
       setPaymentConfirmRepair(repair);
       setPendingStatus(newStatus);
       setPaymentConfirmOpen(true);
     } else {
-      // Direct status change for other cases
       updateStatus.mutate(
         { id: repair.id, status: newStatus },
         {
@@ -206,6 +216,23 @@ export default function Repairs() {
           },
         }
       );
+    }
+  };
+
+  const handleAssignConfirm = async (data: { received_by: string; repaired_by: string }) => {
+    if (!assignRepair) return;
+    try {
+      await updateRepair.mutateAsync({
+        id: assignRepair.id,
+        received_by: data.received_by || null,
+        repaired_by: data.repaired_by || null,
+        status: "in_progress",
+      });
+      toast.success("Statut mis à jour", { description: "→ En cours" });
+      setAssignDialogOpen(false);
+      setAssignRepair(null);
+    } catch {
+      toast.error("Erreur lors de la mise à jour");
     }
   };
 
@@ -474,6 +501,13 @@ export default function Repairs() {
         pendingStatus={pendingStatus}
         onConfirm={handlePaymentConfirm}
         isLoading={isProcessingPayment}
+      />
+
+      <StatusAssignDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        onConfirm={handleAssignConfirm}
+        isLoading={updateRepair.isPending}
       />
     </div>
   );

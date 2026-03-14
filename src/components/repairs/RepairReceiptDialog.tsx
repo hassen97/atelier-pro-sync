@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Printer } from "lucide-react";
+import { Printer, Tag } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Repair } from "./RepairCard";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
-import { generateThermalReceipt } from "@/lib/receiptPdf";
+import { generateThermalReceipt, generatePhoneLabel } from "@/lib/receiptPdf";
 import { supabase } from "@/integrations/supabase/client";
 
 interface RepairReceiptDialogProps {
@@ -84,6 +84,29 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
     }
   };
 
+  const handlePrintLabel = async () => {
+    if (!repair) return;
+    setPrinting(true);
+    try {
+      await generatePhoneLabel(
+        {
+          ticketNumber: (repair as any).ticket_number || null,
+          customer: repair.customer,
+          phone: repair.phone,
+          device: repair.device,
+          problem: repair.issue,
+          depositDate: new Date(repair.depositDate).toLocaleDateString("fr-TN"),
+          receivedBy: (repair as any).received_by || undefined,
+          repairedBy: (repair as any).repaired_by || undefined,
+        },
+        settings.shop_name,
+        printerWidth
+      );
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   if (!repair) return null;
 
   const remaining = repair.total - repair.paid;
@@ -139,10 +162,16 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
             </div>
           </div>
 
-          <Button onClick={handlePrint} size="sm" className="w-full" disabled={printing}>
-            <Printer className="h-4 w-4 mr-2" />
-            {printing ? "Génération..." : "Imprimer PDF"}
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={handlePrint} size="sm" className="w-full" disabled={printing}>
+              <Printer className="h-4 w-4 mr-2" />
+              {printing ? "..." : "Reçu client"}
+            </Button>
+            <Button onClick={handlePrintLabel} size="sm" variant="outline" className="w-full" disabled={printing}>
+              <Tag className="h-4 w-4 mr-2" />
+              {printing ? "..." : "Étiquette tél."}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

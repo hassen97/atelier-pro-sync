@@ -776,6 +776,72 @@ export function RepairDialog({
               )}
             />
 
+            {/* Staff / Intake fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="received_by"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reçu par</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nom de l'employé..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="repaired_by"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Réparé par</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nom du technicien..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Device condition at intake */}
+            <FormField
+              control={form.control}
+              name="device_condition"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>État de l'appareil à la réception</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ex: Écran cassé, rayures, ne s'allume pas..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {["Écran cassé", "Rayures", "Ne s'allume pas", "Traces d'eau"].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        className="text-xs px-2 py-0.5 rounded-full border border-border bg-muted hover:bg-accent transition-colors"
+                        onClick={() => {
+                          const current = field.value || "";
+                          const parts = current.split(", ").filter(Boolean);
+                          if (!parts.includes(preset)) {
+                            field.onChange([...parts, preset].join(", "));
+                          }
+                        }}
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <DialogFooter>
               <Button
                 type="button"

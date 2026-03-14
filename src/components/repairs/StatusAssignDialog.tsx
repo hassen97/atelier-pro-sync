@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserCheck, Wrench } from "lucide-react";
+import { Combobox } from "@/components/ui/combobox";
+import { useTeamMembers } from "@/hooks/useTeam";
 
 interface StatusAssignDialogProps {
   open: boolean;
@@ -15,6 +16,14 @@ interface StatusAssignDialogProps {
 export function StatusAssignDialog({ open, onOpenChange, onConfirm, isLoading }: StatusAssignDialogProps) {
   const [receivedBy, setReceivedBy] = useState("");
   const [repairedBy, setRepairedBy] = useState("");
+  const { data: teamMembers } = useTeamMembers();
+
+  const memberOptions = useMemo(() => {
+    return (teamMembers || []).map((m) => {
+      const name = m.profile?.full_name || m.profile?.username || "";
+      return { value: name, label: name };
+    }).filter((o) => o.value);
+  }, [teamMembers]);
 
   const handleConfirm = () => {
     onConfirm({ received_by: receivedBy.trim(), repaired_by: repairedBy.trim() });
@@ -34,10 +43,14 @@ export function StatusAssignDialog({ open, onOpenChange, onConfirm, isLoading }:
               <UserCheck className="h-4 w-4 text-muted-foreground" />
               Reçu par
             </Label>
-            <Input
-              placeholder="Nom de la personne qui a reçu l'appareil"
+            <Combobox
+              options={memberOptions}
               value={receivedBy}
-              onChange={(e) => setReceivedBy(e.target.value)}
+              onValueChange={setReceivedBy}
+              placeholder="Nom de la personne"
+              searchPlaceholder="Rechercher ou saisir..."
+              emptyText="Aucun membre trouvé."
+              allowCustomValue
             />
           </div>
           <div className="space-y-2">
@@ -45,10 +58,14 @@ export function StatusAssignDialog({ open, onOpenChange, onConfirm, isLoading }:
               <Wrench className="h-4 w-4 text-muted-foreground" />
               Réparé par (technicien)
             </Label>
-            <Input
-              placeholder="Nom du technicien assigné"
+            <Combobox
+              options={memberOptions}
               value={repairedBy}
-              onChange={(e) => setRepairedBy(e.target.value)}
+              onValueChange={setRepairedBy}
+              placeholder="Nom du technicien"
+              searchPlaceholder="Rechercher ou saisir..."
+              emptyText="Aucun membre trouvé."
+              allowCustomValue
             />
           </div>
           <Button onClick={handleConfirm} className="w-full" disabled={isLoading}>

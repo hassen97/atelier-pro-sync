@@ -58,7 +58,7 @@ export function useExpenseCategoryRecords() {
         .order("name");
 
       if (error) throw error;
-      return (data || []) as { id: string; name: string; user_id: string; created_at: string }[];
+      return (data || []) as unknown as { id: string; name: string; user_id: string; created_at: string }[];
     },
     enabled: !!effectiveUserId,
   });

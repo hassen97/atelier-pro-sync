@@ -188,7 +188,8 @@ export default function Repairs() {
     // If moving to in_progress, prompt for received_by / repaired_by
     if (newStatus === "in_progress") {
       setAssignRepair(repair);
-      setAssignDialogOpen(true);
+      // Defer to let the DropdownMenu fully close before opening the dialog
+      setTimeout(() => setAssignDialogOpen(true), 100);
       return;
     }
 

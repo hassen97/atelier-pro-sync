@@ -279,6 +279,9 @@ export default function Repairs() {
     notes?: string;
     estimated_ready_date?: string;
     technician_note?: string;
+    received_by?: string;
+    repaired_by?: string;
+    device_condition?: string;
   }, selectedParts: SelectedPart[] = []) => {
     const repairData = {
       customer_id: data.customer_id || null,
@@ -293,6 +296,9 @@ export default function Repairs() {
       notes: data.notes || null,
       estimated_ready_date: data.estimated_ready_date || null,
       technician_note: data.technician_note || null,
+      received_by: data.received_by || null,
+      repaired_by: data.repaired_by || null,
+      device_condition: data.device_condition || null,
     };
 
     let repairId: string;

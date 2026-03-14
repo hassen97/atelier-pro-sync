@@ -864,6 +864,7 @@ export default function Settings() {
         {/* Categories Settings */}
         <TabsContent value="categories" className="space-y-6">
           <CategoriesSettings />
+          <ExpenseCategoriesSettings />
         </TabsContent>
 
         {/* Backup Settings */}

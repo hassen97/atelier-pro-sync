@@ -185,16 +185,21 @@ export default function Repairs() {
     repair: ReturnType<typeof transformRepair>,
     newStatus: RepairStatus
   ) => {
+    // If moving to in_progress, prompt for received_by / repaired_by
+    if (newStatus === "in_progress") {
+      setAssignRepair(repair);
+      setAssignDialogOpen(true);
+      return;
+    }
+
     // Check if moving to completed or delivered AND not fully paid
     const remaining = repair.total - repair.paid;
     
     if ((newStatus === "completed" || newStatus === "delivered") && remaining > 0) {
-      // Open payment confirmation dialog
       setPaymentConfirmRepair(repair);
       setPendingStatus(newStatus);
       setPaymentConfirmOpen(true);
     } else {
-      // Direct status change for other cases
       updateStatus.mutate(
         { id: repair.id, status: newStatus },
         {
@@ -211,6 +216,23 @@ export default function Repairs() {
           },
         }
       );
+    }
+  };
+
+  const handleAssignConfirm = async (data: { received_by: string; repaired_by: string }) => {
+    if (!assignRepair) return;
+    try {
+      await updateRepair.mutateAsync({
+        id: assignRepair.id,
+        received_by: data.received_by || null,
+        repaired_by: data.repaired_by || null,
+        status: "in_progress",
+      });
+      toast.success("Statut mis à jour", { description: "→ En cours" });
+      setAssignDialogOpen(false);
+      setAssignRepair(null);
+    } catch {
+      toast.error("Erreur lors de la mise à jour");
     }
   };
 

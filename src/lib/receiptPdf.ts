@@ -1,9 +1,4 @@
-import jsPDF from "jspdf";
 import type { ShopSettings } from "@/hooks/useShopSettings";
-
-// 80mm ≈ 226pt  |  58mm ≈ 164pt
-const WIDTHS = { "80mm": 226, "58mm": 164 } as const;
-const MARGIN = 8;
 
 interface ReceiptItem {
   name: string;
@@ -38,28 +33,29 @@ interface ReceiptData {
   deviceCondition?: string;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return r ? [parseInt(r[1], 16), parseInt(r[2], 16), parseInt(r[3], 16)] : [20, 71, 179];
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function getBrandRgb(brandColor: string): [number, number, number] {
-  const presets: Record<string, string> = {
-    "neon blue": "#1447b3", "emerald green": "#1f9d55", "crimson red": "#e02424",
-    "amethyst purple": "#7c3aed", "sunset orange": "#f97316", "teal": "#1d8c9e", "blue": "#1447b3",
-  };
-  const hex = presets[brandColor?.toLowerCase()] || (brandColor?.startsWith("#") ? brandColor : "#1447b3");
-  return hexToRgb(hex);
-}
-
-// Pad / truncate string to fixed width (for monospace column alignment)
-function padEnd(str: string, len: number): string {
-  if (str.length >= len) return str.slice(0, len);
-  return str + " ".repeat(len - str.length);
-}
-function padStart(str: string, len: number): string {
-  if (str.length >= len) return str.slice(-len);
-  return " ".repeat(len - str.length) + str;
+async function generateBarcodeDataUrl(value: string): Promise<string | null> {
+  try {
+    const mod = await import("jsbarcode");
+    const JsBarcode = mod.default;
+    const canvas = document.createElement("canvas");
+    JsBarcode(canvas, value, {
+      format: "CODE128",
+      width: 2,
+      height: 40,
+      displayValue: true,
+      fontSize: 12,
+      margin: 2,
+      background: "#ffffff",
+      lineColor: "#000000",
+    });
+    return canvas.toDataURL("image/png");
+  } catch {
+    return null;
+  }
 }
 
 export async function generateThermalReceipt(
@@ -68,218 +64,59 @@ export async function generateThermalReceipt(
   formatCurrency: (n: number) => string,
   printerWidth: "80mm" | "58mm" = "80mm"
 ) {
-  const RW = WIDTHS[printerWidth];
-  const CW = RW - MARGIN * 2;
-  // Chars that fit in content width at font size 7 (Courier ~4.2pt per char)
-  const CHARS = printerWidth === "80mm" ? 42 : 30;
+  const pageW = printerWidth === "80mm" ? "72mm" : "48mm";
 
-  // ── Dynamic height estimate ──────────────────────────────────────────────
-  let h = 340 + data.items.length * 18;
-  if (data.type === "repair") h += 80;
-  if (data.trackingUrl) h += 110;
-  if (data.ticketNumber) h += 30; // barcode
-
-  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: [RW, h] });
-
-  // Use Courier (monospace) for perfect alignment
-  const MONO = "courier";
-  const brandRgb = getBrandRgb(settings.brand_color || "blue");
-  let y = MARGIN;
-
-  // ── helpers ───────────────────────────────────────────────────────────────
-  const setFont = (size: number, style: "normal" | "bold" = "normal") => {
-    doc.setFontSize(size);
-    doc.setFont(MONO, style);
-  };
-
-  const centerText = (text: string, size: number, bold: "normal" | "bold" = "normal") => {
-    setFont(size, bold);
-    const w = doc.getTextWidth(text);
-    doc.text(text, (RW - w) / 2, y);
-    y += size * 1.35;
-  };
-
-  const leftText = (text: string, size: number, bold: "normal" | "bold" = "normal") => {
-    setFont(size, bold);
-    const lines = doc.splitTextToSize(text, CW);
-    lines.forEach((line: string) => {
-      doc.text(line, MARGIN, y);
-      y += size * 1.35;
-    });
-  };
-
-  // Two-column row: label left, value right
-  const row = (label: string, value: string, size = 7, bold: "normal" | "bold" = "normal") => {
-    setFont(size, bold);
-    doc.text(label, MARGIN, y);
-    const vw = doc.getTextWidth(value);
-    doc.text(value, RW - MARGIN - vw, y);
-    y += size * 1.35;
-  };
-
-  const solidLine = (color: [number, number, number] = [0, 0, 0], width = 0.5) => {
-    doc.setDrawColor(...color);
-    doc.setLineWidth(width);
-    doc.line(MARGIN, y, RW - MARGIN, y);
-    y += 5;
-  };
-
-  const dashedLine = () => {
-    doc.setDrawColor(160, 160, 160);
-    const step = 3;
-    for (let x = MARGIN; x < RW - MARGIN; x += step * 2) {
-      doc.line(x, y, Math.min(x + step, RW - MARGIN), y);
-    }
-    y += 5;
-  };
-
-  const gap = (pts = 4) => { y += pts; };
-
-  // ── HEADER ────────────────────────────────────────────────────────────────
-  if (settings.logo_url) {
-    try {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = settings.logo_url!; });
-      const maxW = 70, maxH = 35;
-      const ratio = Math.min(maxW / img.width, maxH / img.height);
-      const w = img.width * ratio, hh = img.height * ratio;
-      doc.addImage(img, "PNG", (RW - w) / 2, y, w, hh);
-      y += hh + 4;
-    } catch {
-      doc.setTextColor(...brandRgb);
-      centerText(settings.shop_name, 13, "bold");
-      doc.setTextColor(0, 0, 0);
-    }
-  } else {
-    doc.setTextColor(...brandRgb);
-    centerText(settings.shop_name, 13, "bold");
-    doc.setTextColor(0, 0, 0);
-  }
-
-  // Shop contact line(s)
-  doc.setTextColor(60, 60, 60);
-  if (settings.address) centerText(settings.address, 6);
-  const phones = [settings.phone, settings.whatsapp_phone].filter(Boolean);
-  if (phones.length) centerText(`Tél : ${phones.join(" / ")}`, 6);
-  if (settings.email) centerText(settings.email, 6);
-  doc.setTextColor(0, 0, 0);
-
-  gap(3);
-  solidLine(brandRgb, 1);
-
-  // ── RECEIPT TITLE ─────────────────────────────────────────────────────────
-  centerText(data.type === "repair" ? "BON DE RÉPARATION" : "REÇU DE VENTE", 9, "bold");
-
-  // ── TICKET NUMBER (sequential) ─────────────────────────────────────────────
+  // Prepare barcode image
+  let barcodeImgTag = "";
   if (data.ticketNumber) {
-    const ticketStr = String(data.ticketNumber).padStart(5, "0");
-    centerText(`N° ${ticketStr}`, 8, "bold");
+    const barcodeValue = `REP-${String(data.ticketNumber).padStart(5, "0")}`;
+    const barcodeDataUrl = await generateBarcodeDataUrl(barcodeValue);
+    if (barcodeDataUrl) {
+      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(barcodeValue)}" />`;
+    } else {
+      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(barcodeValue)}</p>`;
+    }
   }
 
-  dashedLine();
-
-  // ── REF / DATE / TIME ─────────────────────────────────────────────────────
-  row("Référence :", data.id.slice(0, 8).toUpperCase());
-  row("Date dépôt :", data.date);
-  if (data.time) row("Heure :", data.time);
-
-  dashedLine();
-
-  // ── CUSTOMER ──────────────────────────────────────────────────────────────
-  if (data.customer) {
-    leftText("Client : " + data.customer.name, 7);
-    if (data.customer.phone) leftText("Tél : " + data.customer.phone, 7);
+  // QR code
+  let qrImgTag = "";
+  let shortUrl = "";
+  if (data.trackingUrl) {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.trackingUrl)}&format=png&margin=2`;
+    qrImgTag = `<img src="${qrUrl}" style="width:${printerWidth === "58mm" ? "38mm" : "48mm"};height:auto;" alt="QR" />`;
+    shortUrl = data.trackingUrl.replace(/^https?:\/\//, "");
   }
 
-  if (data.type === "repair" && data.device) {
-    leftText("Appareil : " + data.device, 7);
-    if (data.imei) leftText("IMEI : " + data.imei, 7);
+  // Logo
+  let logoTag = "";
+  if (settings.logo_url) {
+    logoTag = `<img src="${escHtml(settings.logo_url)}" style="max-width:50mm;max-height:20mm;display:block;margin:0 auto 2mm;" alt="logo" crossorigin="anonymous" />`;
   }
 
-  // ── DEVICE CONDITION ───────────────────────────────────────────────────────
-  if (data.deviceCondition) {
-    leftText("État à réception : " + data.deviceCondition, 7);
-  }
-
-  // ── STAFF FIELDS ──────────────────────────────────────────────────────────
-  if (data.receivedBy) leftText("Reçu par : " + data.receivedBy, 7);
-  if (data.repairedBy) leftText("Réparé par : " + data.repairedBy, 7);
-
-  dashedLine();
-
-  // ── PROBLEM DESCRIPTION ───────────────────────────────────────────────────
-  if (data.problem && data.items.length === 0) {
-    setFont(7, "bold");
-    doc.text("Problème déclaré", MARGIN, y);
-    y += 7 * 1.35;
-    setFont(7, "normal");
-    const lines = doc.splitTextToSize(data.problem, CW);
-    lines.forEach((line: string) => { doc.text(line, MARGIN, y); y += 7 * 1.35; });
-    dashedLine();
-  }
-
-  // ── ITEMS TABLE ───────────────────────────────────────────────────────────
+  // Items table
+  let itemsHtml = "";
   if (data.items.length > 0) {
-    setFont(7, "bold");
-    const nameW = Math.floor(CHARS * 0.52);
-    const qtyW = 3;
-    const puW = Math.floor(CHARS * 0.22);
-    const totW = Math.floor(CHARS * 0.22);
-
-    const hdr = padEnd("Article", nameW) + padEnd("Qté", qtyW) + padStart("P.U.", puW) + padStart("Tot.", totW);
-    doc.text(hdr, MARGIN, y);
-    y += 7 * 1.35;
-
-    solidLine([180, 180, 180], 0.3);
-
-    setFont(6.5, "normal");
-    data.items.forEach((item) => {
-      const nameParts = doc.splitTextToSize(item.name, CW * 0.52);
-      nameParts.forEach((part: string, i: number) => {
-        if (i === 0) {
-          const qty = String(item.qty);
-          const pu = formatCurrency(item.unitPrice);
-          const tot = formatCurrency(item.total);
-          const line = padEnd(part, nameW) + padEnd(qty, qtyW) + padStart(pu, puW) + padStart(tot, totW);
-          doc.text(line, MARGIN, y);
-        } else {
-          doc.text(part, MARGIN, y);
-        }
-        y += 6.5 * 1.35;
-      });
-    });
-
-    dashedLine();
+    const rows = data.items.map(item =>
+      `<tr><td>${escHtml(item.name)}</td><td class="center">${item.qty}</td><td class="right">${escHtml(formatCurrency(item.unitPrice))}</td><td class="right">${escHtml(formatCurrency(item.total))}</td></tr>`
+    ).join("");
+    itemsHtml = `
+      <div class="sep"></div>
+      <table>
+        <thead><tr><th>Article</th><th class="center">Qté</th><th class="right">P.U.</th><th class="right">Tot.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
   }
 
-  // ── TOTALS ────────────────────────────────────────────────────────────────
-  setFont(7, "normal");
-  row("Sous-total :", formatCurrency(data.subtotal));
-  // Only show TVA line when tax is enabled AND there's a tax amount
-  if (data.taxEnabled && data.taxRate && data.taxAmount && data.taxAmount > 0) {
-    row(`TVA (${data.taxRate}%) :`, formatCurrency(data.taxAmount));
-  }
-  row("Payé :", formatCurrency(data.paid));
-  if (data.remaining > 0) {
-    doc.setTextColor(180, 0, 0);
-    row("Reste :", formatCurrency(data.remaining));
-    doc.setTextColor(0, 0, 0);
-  }
-  if (data.paymentMethod) {
-    row("Paiement :", data.paymentMethod === "card" ? "Carte" : "Espèces");
+  // Problem (simple mode)
+  let problemHtml = "";
+  if (data.problem && data.items.length === 0) {
+    problemHtml = `
+      <div class="sep"></div>
+      <p class="label">Problème déclaré</p>
+      <p>${escHtml(data.problem)}</p>`;
   }
 
-  gap(2);
-  solidLine(brandRgb, 1.2);
-  setFont(10, "bold");
-  row("TOTAL :", formatCurrency(data.total), 10, "bold");
-  solidLine(brandRgb, 1.2);
-
-  // ── TERMS ─────────────────────────────────────────────────────────────────
-  gap(3);
-  setFont(6, "normal");
-  doc.setTextColor(100, 100, 100);
+  // Terms
   const defaultTerms = [
     "Garantie de 90 jours sur toutes les pièces.",
     "Appareils non récupérés après 30 jours non garantis.",
@@ -287,98 +124,142 @@ export async function generateThermalReceipt(
     "Merci pour votre confiance !",
   ];
   const termsRaw: string = (settings as any).receipt_terms || "";
-  const terms = termsRaw.trim()
-    ? termsRaw.split("\n").filter((l: string) => l.trim())
-    : defaultTerms;
-  terms.forEach((line: string) => centerText(line, 6));
-  doc.setTextColor(0, 0, 0);
+  const terms = termsRaw.trim() ? termsRaw.split("\n").filter((l: string) => l.trim()) : defaultTerms;
+  const termsHtml = terms.map(t => `<p class="terms">${escHtml(t)}</p>`).join("");
 
-  // ── QR CODE ───────────────────────────────────────────────────────────────
-  if (data.trackingUrl) {
-    gap(3);
-    dashedLine();
-    gap(2);
-    centerText("Suivre votre réparation", 7, "bold");
-    centerText("Scannez le QR code ci-dessous", 6);
-    gap(3);
+  // Phones
+  const phones = [settings.phone, settings.whatsapp_phone].filter(Boolean);
 
-    try {
-      const qrSize = printerWidth === "58mm" ? 54 : 68;
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.trackingUrl)}&format=png&margin=2`;
-      const qrImg = new Image();
-      qrImg.crossOrigin = "anonymous";
-      await new Promise<void>((resolve) => {
-        qrImg.onload = () => resolve();
-        qrImg.onerror = () => resolve();
-        qrImg.src = qrUrl;
-      });
-      if (qrImg.complete && qrImg.naturalWidth > 0) {
-        doc.addImage(qrImg, "PNG", (RW - qrSize) / 2, y, qrSize, qrSize);
-        y += qrSize + 4;
-      }
-    } catch { /* skip */ }
+  // Ticket number
+  const ticketStr = data.ticketNumber ? String(data.ticketNumber).padStart(5, "0") : "";
 
-    doc.setTextColor(80, 80, 80);
-    const shortUrl = data.trackingUrl.replace(/^https?:\/\//, "");
-    centerText(shortUrl, 6);
-    doc.setTextColor(0, 0, 0);
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Reçu</title>
+<style>
+  @page { size: ${pageW} auto; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Courier New", "Liberation Mono", monospace;
+    font-size: 12px;
+    color: #000;
+    background: #fff;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: unset;
+    text-rendering: optimizeSpeed;
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+    width: ${pageW};
+    padding: 2mm;
   }
-
-  // ── BARCODE (ticket number) ────────────────────────────────────────────────
-  if (data.ticketNumber) {
-    gap(6);
-    dashedLine();
-    gap(2);
-
-    try {
-      // Generate a simple Code128 barcode using a canvas approach
-      const barcodeValue = `REP-${String(data.ticketNumber).padStart(5, "0")}`;
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        // Draw a simple barcode representation using vertical bars
-        const barWidth = printerWidth === "58mm" ? 1.2 : 1.5;
-        const barcodeW = Math.min(CW, 120);
-        const barcodeH = 24;
-        canvas.width = barcodeW;
-        canvas.height = barcodeH + 12;
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Simple visual representation: alternating bars based on character codes
-        ctx.fillStyle = "black";
-        let xPos = 0;
-        const chars = barcodeValue.split("");
-        chars.forEach((ch) => {
-          const code = ch.charCodeAt(0);
-          for (let bit = 0; bit < 7; bit++) {
-            if ((code >> bit) & 1) {
-              ctx.fillRect(xPos, 0, barWidth, barcodeH);
-            }
-            xPos += barWidth;
-          }
-          xPos += barWidth; // gap between chars
-        });
-
-        ctx.fillStyle = "black";
-        ctx.font = "9px monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(barcodeValue, canvas.width / 2, barcodeH + 10);
-
-        const imgData = canvas.toDataURL("image/png");
-        const bw = Math.min(CW * 0.8, barcodeW);
-        const bh = (barcodeH + 12) * (bw / barcodeW);
-        doc.addImage(imgData, "PNG", (RW - bw) / 2, y, bw, bh);
-        y += bh + 4;
-      }
-    } catch { /* skip barcode if error */ }
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .bold { font-weight: bold; }
+  .shop-name { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 1px; }
+  .shop-info { font-size: 10px; text-align: center; color: #000; }
+  .title { font-size: 14px; font-weight: bold; text-align: center; margin: 3px 0 1px; }
+  .ticket-num { font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 2px; }
+  .sep { border-top: 1px dashed #000; margin: 3px 0; }
+  .sep-bold { border-top: 2px solid #000; margin: 3px 0; }
+  .field { font-size: 12px; margin: 1px 0; }
+  .label { font-weight: bold; font-size: 12px; margin: 2px 0 1px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 2px 0; }
+  th, td { padding: 1px 0; vertical-align: top; text-align: left; }
+  th { font-weight: bold; border-bottom: 1px solid #000; }
+  th.center, td.center { text-align: center; }
+  th.right, td.right { text-align: right; }
+  .total-row { display: flex; justify-content: space-between; font-size: 12px; margin: 1px 0; }
+  .total-row.grand { font-size: 14px; font-weight: bold; }
+  .total-row .val { text-align: right; }
+  .terms { font-size: 9px; text-align: center; color: #000; margin: 1px 0; }
+  .qr-section { text-align: center; margin: 3px 0; }
+  .qr-section img { display: block; margin: 2px auto; }
+  .qr-label { font-size: 10px; font-weight: bold; }
+  .qr-url { font-size: 9px; word-break: break-all; }
+  .barcode-section { text-align: center; margin: 3px 0; }
+  .barcode-section img { display: block; margin: 0 auto; }
+  .footer { font-size: 10px; text-align: center; font-weight: bold; margin-top: 4px; }
+  @media print {
+    body { width: ${pageW}; }
   }
+</style>
+</head>
+<body>
 
-  gap(6);
+${logoTag}
+<p class="shop-name">${escHtml(settings.shop_name)}</p>
+${settings.address ? `<p class="shop-info">${escHtml(settings.address)}</p>` : ""}
+${phones.length ? `<p class="shop-info">Tél : ${escHtml(phones.join(" / "))}</p>` : ""}
+${settings.email ? `<p class="shop-info">${escHtml(settings.email)}</p>` : ""}
 
-  // ── Open PDF ───────────────────────────────────────────────────────────────
-  const blob = doc.output("blob");
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url);
-  if (win) win.onload = () => win.print();
+<div class="sep-bold"></div>
+
+<p class="title">${data.type === "repair" ? "BON DE RÉPARATION" : "REÇU DE VENTE"}</p>
+${ticketStr ? `<p class="ticket-num">N° ${ticketStr}</p>` : ""}
+
+<div class="sep"></div>
+
+<p class="field">Référence : ${escHtml(data.id.slice(0, 8).toUpperCase())}</p>
+<p class="field">Date dépôt : ${escHtml(data.date)}</p>
+${data.time ? `<p class="field">Heure : ${escHtml(data.time)}</p>` : ""}
+
+<div class="sep"></div>
+
+${data.customer ? `<p class="field">Client : ${escHtml(data.customer.name)}</p>` : ""}
+${data.customer?.phone ? `<p class="field">Tél : ${escHtml(data.customer.phone)}</p>` : ""}
+${data.type === "repair" && data.device ? `<p class="field">Appareil : ${escHtml(data.device)}</p>` : ""}
+${data.type === "repair" && data.imei ? `<p class="field">IMEI : ${escHtml(data.imei)}</p>` : ""}
+${data.deviceCondition ? `<p class="field">État à réception : ${escHtml(data.deviceCondition)}</p>` : ""}
+${data.receivedBy ? `<p class="field">Reçu par : ${escHtml(data.receivedBy)}</p>` : ""}
+${data.repairedBy ? `<p class="field">Réparé par : ${escHtml(data.repairedBy)}</p>` : ""}
+
+${problemHtml}
+${itemsHtml}
+
+<div class="sep"></div>
+
+<div class="total-row"><span>Sous-total :</span><span class="val">${escHtml(formatCurrency(data.subtotal))}</span></div>
+${data.taxEnabled && data.taxRate && data.taxAmount && data.taxAmount > 0 ? `<div class="total-row"><span>TVA (${data.taxRate}%) :</span><span class="val">${escHtml(formatCurrency(data.taxAmount))}</span></div>` : ""}
+<div class="total-row"><span>Payé :</span><span class="val">${escHtml(formatCurrency(data.paid))}</span></div>
+${data.remaining > 0 ? `<div class="total-row"><span>Reste :</span><span class="val bold">${escHtml(formatCurrency(data.remaining))}</span></div>` : ""}
+${data.paymentMethod ? `<div class="total-row"><span>Paiement :</span><span class="val">${data.paymentMethod === "card" ? "Carte" : "Espèces"}</span></div>` : ""}
+
+<div class="sep-bold"></div>
+<div class="total-row grand"><span>TOTAL :</span><span class="val">${escHtml(formatCurrency(data.total))}</span></div>
+<div class="sep-bold"></div>
+
+${termsHtml}
+
+${data.trackingUrl ? `
+<div class="sep"></div>
+<div class="qr-section">
+  <p class="qr-label">Suivre votre réparation</p>
+  <p class="terms">Scannez le QR code ci-dessous</p>
+  ${qrImgTag}
+  <p class="qr-url">${escHtml(shortUrl)}</p>
+</div>
+` : ""}
+
+${barcodeImgTag ? `
+<div class="sep"></div>
+<div class="barcode-section">
+  ${barcodeImgTag}
+</div>
+` : ""}
+
+<p class="footer">Présentez ce ticket pour récupérer<br>votre appareil.</p>
+
+</body>
+</html>`;
+
+  const printWindow = window.open("", "_blank", "width=400,height=600");
+  if (!printWindow) return;
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+  }, 400);
 }

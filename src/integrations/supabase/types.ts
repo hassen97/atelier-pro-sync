@@ -206,6 +206,27 @@ export type Database = {
           },
         ]
       }
+      expense_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -715,6 +736,7 @@ export type Database = {
           customer_id: string | null
           delivery_date: string | null
           deposit_date: string
+          device_condition: string | null
           device_model: string
           diagnosis: string | null
           estimated_ready_date: string | null
@@ -726,8 +748,11 @@ export type Database = {
           notes: string | null
           parts_cost: number
           problem_description: string
+          received_by: string | null
+          repaired_by: string | null
           status: string
           technician_note: string | null
+          ticket_number: number | null
           total_cost: number
           tracking_token: string
           updated_at: string
@@ -741,6 +766,7 @@ export type Database = {
           customer_id?: string | null
           delivery_date?: string | null
           deposit_date?: string
+          device_condition?: string | null
           device_model: string
           diagnosis?: string | null
           estimated_ready_date?: string | null
@@ -752,8 +778,11 @@ export type Database = {
           notes?: string | null
           parts_cost?: number
           problem_description: string
+          received_by?: string | null
+          repaired_by?: string | null
           status?: string
           technician_note?: string | null
+          ticket_number?: number | null
           total_cost?: number
           tracking_token?: string
           updated_at?: string
@@ -767,6 +796,7 @@ export type Database = {
           customer_id?: string | null
           delivery_date?: string | null
           deposit_date?: string
+          device_condition?: string | null
           device_model?: string
           diagnosis?: string | null
           estimated_ready_date?: string | null
@@ -778,8 +808,11 @@ export type Database = {
           notes?: string | null
           parts_cost?: number
           problem_description?: string
+          received_by?: string | null
+          repaired_by?: string | null
           status?: string
           technician_note?: string | null
+          ticket_number?: number | null
           total_cost?: number
           tracking_token?: string
           updated_at?: string

@@ -15,6 +15,7 @@ interface ReceiptItem {
 interface ReceiptData {
   type: "repair" | "sale";
   id: string;
+  ticketNumber?: number | null;
   date: string;
   time?: string;
   customer?: { name: string; phone?: string };
@@ -24,6 +25,7 @@ interface ReceiptData {
   items: ReceiptItem[];
   subtotal: number;
   taxRate?: number;
+  taxEnabled?: boolean;
   taxAmount?: number;
   total: number;
   paid: number;
@@ -31,6 +33,9 @@ interface ReceiptData {
   paymentMethod?: string;
   trackingUrl?: string;
   discountItems?: { name: string; discount: string }[];
+  receivedBy?: string;
+  repairedBy?: string;
+  deviceCondition?: string;
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -69,9 +74,10 @@ export async function generateThermalReceipt(
   const CHARS = printerWidth === "80mm" ? 42 : 30;
 
   // ── Dynamic height estimate ──────────────────────────────────────────────
-  let h = 320 + data.items.length * 18;
-  if (data.type === "repair") h += 60;
-  if (data.trackingUrl) h += 100;
+  let h = 340 + data.items.length * 18;
+  if (data.type === "repair") h += 80;
+  if (data.trackingUrl) h += 110;
+  if (data.ticketNumber) h += 30; // barcode
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: [RW, h] });
 
@@ -95,7 +101,6 @@ export async function generateThermalReceipt(
 
   const leftText = (text: string, size: number, bold: "normal" | "bold" = "normal") => {
     setFont(size, bold);
-    // Wrap long text
     const lines = doc.splitTextToSize(text, CW);
     lines.forEach((line: string) => {
       doc.text(line, MARGIN, y);
@@ -165,6 +170,13 @@ export async function generateThermalReceipt(
 
   // ── RECEIPT TITLE ─────────────────────────────────────────────────────────
   centerText(data.type === "repair" ? "BON DE RÉPARATION" : "REÇU DE VENTE", 9, "bold");
+
+  // ── TICKET NUMBER (sequential) ─────────────────────────────────────────────
+  if (data.ticketNumber) {
+    const ticketStr = String(data.ticketNumber).padStart(5, "0");
+    centerText(`N° ${ticketStr}`, 8, "bold");
+  }
+
   dashedLine();
 
   // ── REF / DATE / TIME ─────────────────────────────────────────────────────
@@ -185,11 +197,19 @@ export async function generateThermalReceipt(
     if (data.imei) leftText("IMEI : " + data.imei, 7);
   }
 
+  // ── DEVICE CONDITION ───────────────────────────────────────────────────────
+  if (data.deviceCondition) {
+    leftText("État à réception : " + data.deviceCondition, 7);
+  }
+
+  // ── STAFF FIELDS ──────────────────────────────────────────────────────────
+  if (data.receivedBy) leftText("Reçu par : " + data.receivedBy, 7);
+  if (data.repairedBy) leftText("Réparé par : " + data.repairedBy, 7);
+
   dashedLine();
 
   // ── PROBLEM DESCRIPTION ───────────────────────────────────────────────────
   if (data.problem && data.items.length === 0) {
-    // Simple mode: show problem
     setFont(7, "bold");
     doc.text("Problème déclaré", MARGIN, y);
     y += 7 * 1.35;
@@ -202,7 +222,6 @@ export async function generateThermalReceipt(
   // ── ITEMS TABLE ───────────────────────────────────────────────────────────
   if (data.items.length > 0) {
     setFont(7, "bold");
-    // Column headers
     const nameW = Math.floor(CHARS * 0.52);
     const qtyW = 3;
     const puW = Math.floor(CHARS * 0.22);
@@ -237,7 +256,8 @@ export async function generateThermalReceipt(
   // ── TOTALS ────────────────────────────────────────────────────────────────
   setFont(7, "normal");
   row("Sous-total :", formatCurrency(data.subtotal));
-  if (data.taxRate && data.taxAmount) {
+  // Only show TVA line when tax is enabled AND there's a tax amount
+  if (data.taxEnabled && data.taxRate && data.taxAmount && data.taxAmount > 0) {
     row(`TVA (${data.taxRate}%) :`, formatCurrency(data.taxAmount));
   }
   row("Payé :", formatCurrency(data.paid));
@@ -299,10 +319,59 @@ export async function generateThermalReceipt(
     } catch { /* skip */ }
 
     doc.setTextColor(80, 80, 80);
-    // Show short tracking URL below QR
     const shortUrl = data.trackingUrl.replace(/^https?:\/\//, "");
     centerText(shortUrl, 6);
     doc.setTextColor(0, 0, 0);
+  }
+
+  // ── BARCODE (ticket number) ────────────────────────────────────────────────
+  if (data.ticketNumber) {
+    gap(6);
+    dashedLine();
+    gap(2);
+
+    try {
+      // Generate a simple Code128 barcode using a canvas approach
+      const barcodeValue = `REP-${String(data.ticketNumber).padStart(5, "0")}`;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        // Draw a simple barcode representation using vertical bars
+        const barWidth = printerWidth === "58mm" ? 1.2 : 1.5;
+        const barcodeW = Math.min(CW, 120);
+        const barcodeH = 24;
+        canvas.width = barcodeW;
+        canvas.height = barcodeH + 12;
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Simple visual representation: alternating bars based on character codes
+        ctx.fillStyle = "black";
+        let xPos = 0;
+        const chars = barcodeValue.split("");
+        chars.forEach((ch) => {
+          const code = ch.charCodeAt(0);
+          for (let bit = 0; bit < 7; bit++) {
+            if ((code >> bit) & 1) {
+              ctx.fillRect(xPos, 0, barWidth, barcodeH);
+            }
+            xPos += barWidth;
+          }
+          xPos += barWidth; // gap between chars
+        });
+
+        ctx.fillStyle = "black";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(barcodeValue, canvas.width / 2, barcodeH + 10);
+
+        const imgData = canvas.toDataURL("image/png");
+        const bw = Math.min(CW * 0.8, barcodeW);
+        const bh = (barcodeH + 12) * (bw / barcodeW);
+        doc.addImage(imgData, "PNG", (RW - bw) / 2, y, bw, bh);
+        y += bh + 4;
+      }
+    } catch { /* skip barcode if error */ }
   }
 
   gap(6);

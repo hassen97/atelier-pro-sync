@@ -29,8 +29,7 @@ import {
   useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, type ExpenseWithSupplier,
 } from "@/hooks/useExpenses";
 import { ExpenseDialog } from "@/components/expenses/ExpenseDialog";
-
-const CATEGORIES = ["Toutes", "Loyer", "Électricité", "Stock", "Marketing", "Télécom", "Fournitures", "Maintenance", "Salaires", "Transport", "Autre"];
+import { useExpenseCategories } from "@/hooks/useExpenseCategories";
 
 export default function Expenses() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,10 +38,13 @@ export default function Expenses() {
   const [editingExpense, setEditingExpense] = useState<ExpenseWithSupplier | null>(null);
 
   const { data: expenses = [], isLoading } = useExpenses();
+  const { data: expenseCategories = [] } = useExpenseCategories();
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
   const { format } = useCurrency();
+
+  const allCategories = ["Toutes", ...expenseCategories];
 
   const filteredExpenses = expenses.filter((expense) => {
     const matchesSearch = expense.description?.toLowerCase().includes(searchQuery.toLowerCase()) || expense.category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -93,7 +95,7 @@ export default function Expenses() {
         </div>
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>
-          <SelectContent>{CATEGORIES.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
+          <SelectContent>{allCategories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 

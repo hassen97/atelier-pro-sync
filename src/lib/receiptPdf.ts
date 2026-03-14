@@ -263,3 +263,96 @@ ${barcodeImgTag ? `
     printWindow.print();
   }, 400);
 }
+
+// ── Phone Label (compact sticker for attaching to device) ──────────────
+
+interface PhoneLabelData {
+  ticketNumber?: number | null;
+  customer: string;
+  phone?: string;
+  device: string;
+  problem: string;
+  depositDate: string;
+  receivedBy?: string;
+  repairedBy?: string;
+}
+
+export async function generatePhoneLabel(
+  data: PhoneLabelData,
+  shopName: string,
+  printerWidth: "80mm" | "58mm" = "80mm"
+) {
+  const pageW = printerWidth === "80mm" ? "72mm" : "48mm";
+  const ticketStr = data.ticketNumber ? String(data.ticketNumber).padStart(5, "0") : "";
+
+  let barcodeImgTag = "";
+  if (data.ticketNumber) {
+    const barcodeValue = `REP-${ticketStr}`;
+    const barcodeDataUrl = await generateBarcodeDataUrl(barcodeValue);
+    if (barcodeDataUrl) {
+      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(barcodeValue)}" />`;
+    } else {
+      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(barcodeValue)}</p>`;
+    }
+  }
+
+  const problemTruncated = data.problem.length > 60 ? data.problem.slice(0, 57) + "..." : data.problem;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Étiquette</title>
+<style>
+  @page { size: ${pageW} auto; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Courier New", "Liberation Mono", monospace;
+    font-size: 11px;
+    color: #000;
+    background: #fff;
+    -webkit-font-smoothing: none;
+    text-rendering: optimizeSpeed;
+    line-height: 1.3;
+    letter-spacing: 0.5px;
+    width: ${pageW};
+    padding: 2mm;
+  }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .sep { border-top: 1px dashed #000; margin: 2px 0; }
+  .shop { font-size: 12px; font-weight: bold; text-align: center; }
+  .ticket { font-size: 14px; font-weight: bold; text-align: center; margin: 2px 0; }
+  .field { font-size: 11px; margin: 1px 0; }
+  .barcode { text-align: center; margin: 3px 0; }
+  .barcode img { display: block; margin: 0 auto; }
+  @media print { body { width: ${pageW}; } }
+</style>
+</head>
+<body>
+
+<p class="shop">${escHtml(shopName)}</p>
+${ticketStr ? `<p class="ticket">N° ${ticketStr}</p>` : ""}
+<div class="sep"></div>
+<p class="field"><span class="bold">Client:</span> ${escHtml(data.customer)}</p>
+${data.phone ? `<p class="field"><span class="bold">Tél:</span> ${escHtml(data.phone)}</p>` : ""}
+<p class="field"><span class="bold">Appareil:</span> ${escHtml(data.device)}</p>
+<p class="field"><span class="bold">Problème:</span> ${escHtml(problemTruncated)}</p>
+<p class="field"><span class="bold">Dépôt:</span> ${escHtml(data.depositDate)}</p>
+${data.receivedBy ? `<p class="field"><span class="bold">Reçu par:</span> ${escHtml(data.receivedBy)}</p>` : ""}
+${data.repairedBy ? `<p class="field"><span class="bold">Tech:</span> ${escHtml(data.repairedBy)}</p>` : ""}
+<div class="sep"></div>
+${barcodeImgTag ? `<div class="barcode">${barcodeImgTag}</div>` : ""}
+
+</body>
+</html>`;
+
+  const printWindow = window.open("", "_blank", "width=350,height=400");
+  if (!printWindow) return;
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+  }, 400);
+}

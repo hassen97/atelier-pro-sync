@@ -1,81 +1,45 @@
 
 
-# Modernize Login Page with Role Selection
+## Plan: Status Change Dialog + Phone Label Receipt
 
-## Overview
+### What the user wants
+1. When changing a repair status to "En cours", prompt for **"Reçu par"** (received by) and **"Réparé par"** (technician) before confirming
+2. Show these fields on the receipt (already supported in `receiptPdf.ts`)
+3. Add a **second receipt type**: a compact "phone label" that can be physically attached to the device
 
-Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
+### Changes
 
-## Visual Design
+#### 1. New component: `src/components/repairs/StatusAssignDialog.tsx`
+A small dialog that appears when status changes to `in_progress`. Contains:
+- **Reçu par** — text input (who received the device)
+- **Réparé par** — text input (technician assigned)
+- Confirm button that saves both fields to the repair via `useUpdateRepair` and then changes the status
 
-The new design will feature:
-- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
-- **Glassmorphism card** with backdrop-blur and glowing border accents
-- **Animated wrench/gear icon** with a neon glow effect
-- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
-- **Sleek input fields** with glass styling and subtle focus glow
-- **Gradient accent button** with hover glow effect
+#### 2. Update `src/pages/Repairs.tsx` — `handleStatusChange`
+- When `newStatus === "in_progress"`, instead of directly calling `updateStatus.mutate`, open the new `StatusAssignDialog`
+- On dialog confirm: update `received_by` + `repaired_by` fields, then change status
+- Store pending repair + status in state
 
-```text
-  ┌──────────────────────────────────────┐
-  │     (background: dark gradient       │
-  │      with subtle grid pattern)       │
-  │                                      │
-  │         [Wrench Icon + Glow]         │
-  │        RepairPro Tunisie             │
-  │     "Gestion d'atelier moderne"      │
-  │                                      │
-  │   ┌──────────┐  ┌──────────────┐     │
-  │   │  Owner   │  │   Employee   │     │
-  │   │ (Store)  │  │  (UserCog)   │     │
-  │   │ selected │  │              │     │
-  │   └──────────┘  └──────────────┘     │
-  │                                      │
-  │  ┌────────────────────────────────┐  │
-  │  │  [Connexion] [Inscription]    │  │
-  │  │                                │  │
-  │  │  @ Username ________________  │  │
-  │  │  * Password ________________  │  │
-  │  │                                │  │
-  │  │  [====  Se connecter  ====]   │  │
-  │  │  Mot de passe oublie?         │  │
-  │  └────────────────────────────────┘  │
-  │                                      │
-  │   WhatsApp contact button            │
-  │   (c) 2024 RepairPro Tunisie         │
-  └──────────────────────────────────────┘
-```
+#### 3. Update `src/components/repairs/RepairReceiptDialog.tsx` — Add phone label option
+- Add a third button: **"Étiquette téléphone"** (Phone Label)
+- This prints a compact label with: ticket number/barcode, customer name, device, problem summary, date — designed to be cut and taped to the phone
+- New function `generatePhoneLabel` in `receiptPdf.ts` that produces a small HTML printout (~50mm x 30mm)
 
-## How the Role Selector Works
+#### 4. Update `src/lib/receiptPdf.ts` — Add `generatePhoneLabel`
+- New exported function producing a small compact label:
+  - Ticket barcode
+  - Customer name
+  - Device model
+  - Problem (truncated)
+  - Deposit date
+  - Received by / Repaired by
+- Uses same `window.print()` approach, monospace font, `@page` size ~58mm x ~40mm
 
-- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
-- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
-- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
-- Default selection: Shop Owner
-
-## Changes
-
-### File: `src/pages/Auth.tsx`
-- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
-- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
-- When "Employee" is selected, hide the "Inscription" tab and show login only
-- Restyle the entire page:
-  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
-  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
-  - Inputs: dark glass style with glow on focus
-  - Button: gradient with subtle glow shadow
-  - Wrench icon: animated pulse glow
-
-### File: `src/index.css`
-- Add CSS classes for the login page effects:
-  - `.auth-grid-bg`: subtle animated grid background pattern
-  - `.auth-glow`: neon glow effect for the icon
-  - `.auth-card`: glassmorphism card specific to auth page
-
-## What Stays the Same
-- All form logic, validation, signUp/signIn calls remain identical
-- The admin WhatsApp contact link stays
-- The forgot password link stays
-- Registration form fields unchanged
-- No backend changes needed
+### Files to change
+| File | Change |
+|------|--------|
+| `src/components/repairs/StatusAssignDialog.tsx` | **New** — dialog for assigning received_by/repaired_by on status change |
+| `src/pages/Repairs.tsx` | Intercept `in_progress` status change to open assign dialog |
+| `src/components/repairs/RepairReceiptDialog.tsx` | Add "Étiquette téléphone" print button |
+| `src/lib/receiptPdf.ts` | Add `generatePhoneLabel()` function |
 

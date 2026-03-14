@@ -1,16 +1,9 @@
 import jsPDF from "jspdf";
 import type { ShopSettings } from "@/hooks/useShopSettings";
 
-// Thermal receipt: 80mm wide ≈ 226pt, variable height
-const RECEIPT_WIDTH = 226;
-const MARGIN = 10;
-const CONTENT_WIDTH = RECEIPT_WIDTH - MARGIN * 2;
-
-interface ReceiptLine {
-  label: string;
-  value: string;
-  bold?: boolean;
-}
+// 80mm ≈ 226pt  |  58mm ≈ 164pt
+const WIDTHS = { "80mm": 226, "58mm": 164 } as const;
+const MARGIN = 8;
 
 interface ReceiptItem {
   name: string;
@@ -23,10 +16,11 @@ interface ReceiptData {
   type: "repair" | "sale";
   id: string;
   date: string;
+  time?: string;
   customer?: { name: string; phone?: string };
   device?: string;
   imei?: string;
-  problem?: string; // For simple receipt mode
+  problem?: string;
   items: ReceiptItem[];
   subtotal: number;
   taxRate?: number;
@@ -35,304 +29,287 @@ interface ReceiptData {
   paid: number;
   remaining: number;
   paymentMethod?: string;
-  time?: string;
   trackingUrl?: string;
   discountItems?: { name: string; discount: string }[];
 }
 
 function hexToRgb(hex: string): [number, number, number] {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
-    : [20, 71, 179];
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? [parseInt(r[1], 16), parseInt(r[2], 16), parseInt(r[3], 16)] : [20, 71, 179];
 }
 
 function getBrandRgb(brandColor: string): [number, number, number] {
   const presets: Record<string, string> = {
-    "neon blue": "#1447b3",
-    "emerald green": "#1f9d55",
-    "crimson red": "#e02424",
-    "amethyst purple": "#7c3aed",
-    "sunset orange": "#f97316",
-    "teal": "#1d8c9e",
-    "blue": "#1447b3",
+    "neon blue": "#1447b3", "emerald green": "#1f9d55", "crimson red": "#e02424",
+    "amethyst purple": "#7c3aed", "sunset orange": "#f97316", "teal": "#1d8c9e", "blue": "#1447b3",
   };
-  const hex = presets[brandColor.toLowerCase()] || (brandColor.startsWith("#") ? brandColor : "#1447b3");
+  const hex = presets[brandColor?.toLowerCase()] || (brandColor?.startsWith("#") ? brandColor : "#1447b3");
   return hexToRgb(hex);
+}
+
+// Pad / truncate string to fixed width (for monospace column alignment)
+function padEnd(str: string, len: number): string {
+  if (str.length >= len) return str.slice(0, len);
+  return str + " ".repeat(len - str.length);
+}
+function padStart(str: string, len: number): string {
+  if (str.length >= len) return str.slice(-len);
+  return " ".repeat(len - str.length) + str;
 }
 
 export async function generateThermalReceipt(
   data: ReceiptData,
   settings: ShopSettings,
-  formatCurrency: (n: number) => string
+  formatCurrency: (n: number) => string,
+  printerWidth: "80mm" | "58mm" = "80mm"
 ) {
-  // Calculate height dynamically
-  let estimatedHeight = 400 + data.items.length * 20;
-  if (data.type === "repair") estimatedHeight += 40;
+  const RW = WIDTHS[printerWidth];
+  const CW = RW - MARGIN * 2;
+  // Chars that fit in content width at font size 7 (Courier ~4.2pt per char)
+  const CHARS = printerWidth === "80mm" ? 42 : 30;
 
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "pt",
-    format: [RECEIPT_WIDTH, estimatedHeight],
-  });
+  // ── Dynamic height estimate ──────────────────────────────────────────────
+  let h = 320 + data.items.length * 18;
+  if (data.type === "repair") h += 60;
+  if (data.trackingUrl) h += 100;
 
-  const brandRgb = getBrandRgb(settings.brand_color);
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: [RW, h] });
+
+  // Use Courier (monospace) for perfect alignment
+  const MONO = "courier";
+  const brandRgb = getBrandRgb(settings.brand_color || "blue");
   let y = MARGIN;
 
-  const centerText = (text: string, size: number, bold = false) => {
+  // ── helpers ───────────────────────────────────────────────────────────────
+  const setFont = (size: number, style: "normal" | "bold" = "normal") => {
     doc.setFontSize(size);
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    const w = doc.getTextWidth(text);
-    doc.text(text, (RECEIPT_WIDTH - w) / 2, y);
-    y += size * 1.3;
+    doc.setFont(MONO, style);
   };
 
-  const leftRight = (left: string, right: string, size: number, bold = false) => {
-    doc.setFontSize(size);
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.text(left, MARGIN, y);
-    const rw = doc.getTextWidth(right);
-    doc.text(right, RECEIPT_WIDTH - MARGIN - rw, y);
-    y += size * 1.3;
+  const centerText = (text: string, size: number, bold: "normal" | "bold" = "normal") => {
+    setFont(size, bold);
+    const w = doc.getTextWidth(text);
+    doc.text(text, (RW - w) / 2, y);
+    y += size * 1.35;
+  };
+
+  const leftText = (text: string, size: number, bold: "normal" | "bold" = "normal") => {
+    setFont(size, bold);
+    // Wrap long text
+    const lines = doc.splitTextToSize(text, CW);
+    lines.forEach((line: string) => {
+      doc.text(line, MARGIN, y);
+      y += size * 1.35;
+    });
+  };
+
+  // Two-column row: label left, value right
+  const row = (label: string, value: string, size = 7, bold: "normal" | "bold" = "normal") => {
+    setFont(size, bold);
+    doc.text(label, MARGIN, y);
+    const vw = doc.getTextWidth(value);
+    doc.text(value, RW - MARGIN - vw, y);
+    y += size * 1.35;
+  };
+
+  const solidLine = (color: [number, number, number] = [0, 0, 0], width = 0.5) => {
+    doc.setDrawColor(...color);
+    doc.setLineWidth(width);
+    doc.line(MARGIN, y, RW - MARGIN, y);
+    y += 5;
   };
 
   const dashedLine = () => {
-    doc.setDrawColor(180);
-    // Draw dashed line manually
+    doc.setDrawColor(160, 160, 160);
     const step = 3;
-    for (let x = MARGIN; x < RECEIPT_WIDTH - MARGIN; x += step * 2) {
-      doc.line(x, y, Math.min(x + step, RECEIPT_WIDTH - MARGIN), y);
+    for (let x = MARGIN; x < RW - MARGIN; x += step * 2) {
+      doc.line(x, y, Math.min(x + step, RW - MARGIN), y);
     }
-    y += 6;
+    y += 5;
   };
 
-  // === HEADER with logo or shop name ===
+  const gap = (pts = 4) => { y += pts; };
+
+  // ── HEADER ────────────────────────────────────────────────────────────────
   if (settings.logo_url) {
     try {
       const img = new Image();
       img.crossOrigin = "anonymous";
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject();
-        img.src = settings.logo_url!;
-      });
-      const maxW = 80;
-      const maxH = 40;
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = settings.logo_url!; });
+      const maxW = 70, maxH = 35;
       const ratio = Math.min(maxW / img.width, maxH / img.height);
-      const w = img.width * ratio;
-      const h = img.height * ratio;
-      doc.addImage(img, "PNG", (RECEIPT_WIDTH - w) / 2, y, w, h);
-      y += h + 4;
+      const w = img.width * ratio, hh = img.height * ratio;
+      doc.addImage(img, "PNG", (RW - w) / 2, y, w, hh);
+      y += hh + 4;
     } catch {
-      // Fallback to text
       doc.setTextColor(...brandRgb);
-      centerText(settings.shop_name, 14, true);
-      doc.setTextColor(0);
+      centerText(settings.shop_name, 13, "bold");
+      doc.setTextColor(0, 0, 0);
     }
   } else {
     doc.setTextColor(...brandRgb);
-    centerText(settings.shop_name, 14, true);
-    doc.setTextColor(0);
+    centerText(settings.shop_name, 13, "bold");
+    doc.setTextColor(0, 0, 0);
   }
 
-  // Shop contact details
-  doc.setTextColor(80);
-  doc.setFontSize(6);
-  if (settings.address) {
-    centerText(settings.address, 6);
-  }
-  if (settings.phone) {
-    centerText(`Tél: ${settings.phone}`, 6);
-  }
-  if (settings.whatsapp_phone) {
-    centerText(`WhatsApp: ${settings.whatsapp_phone}`, 6);
-  }
-  if (settings.email) {
-    centerText(settings.email, 6);
-  }
-  doc.setTextColor(0);
+  // Shop contact line(s)
+  doc.setTextColor(60, 60, 60);
+  if (settings.address) centerText(settings.address, 6);
+  const phones = [settings.phone, settings.whatsapp_phone].filter(Boolean);
+  if (phones.length) centerText(`Tél : ${phones.join(" / ")}`, 6);
+  if (settings.email) centerText(settings.email, 6);
+  doc.setTextColor(0, 0, 0);
 
-  y += 2;
+  gap(3);
+  solidLine(brandRgb, 1);
 
-  // Subtitle
-  doc.setTextColor(100);
-  centerText(data.type === "repair" ? "FICHE DE RÉPARATION" : "REÇU DE VENTE", 8, true);
-  doc.setTextColor(0);
+  // ── RECEIPT TITLE ─────────────────────────────────────────────────────────
+  centerText(data.type === "repair" ? "BON DE RÉPARATION" : "REÇU DE VENTE", 9, "bold");
+  dashedLine();
+
+  // ── REF / DATE / TIME ─────────────────────────────────────────────────────
+  row("Référence :", data.id.slice(0, 8).toUpperCase());
+  row("Date dépôt :", data.date);
+  if (data.time) row("Heure :", data.time);
 
   dashedLine();
 
-  // Receipt ID & date
-  leftRight("N°", data.id.slice(0, 8).toUpperCase(), 7, true);
-  leftRight("Date", data.date, 7);
-  if (data.time) {
-    leftRight("Heure", data.time, 7);
-  }
-
-  dashedLine();
-
-  // Customer
+  // ── CUSTOMER ──────────────────────────────────────────────────────────────
   if (data.customer) {
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.text("CLIENT", MARGIN, y);
-    y += 10;
-    doc.setFont("helvetica", "normal");
-    doc.text(data.customer.name, MARGIN, y);
-    y += 9;
-    if (data.customer.phone) {
-      doc.text(`Tél: ${data.customer.phone}`, MARGIN, y);
-      y += 9;
-    }
+    leftText("Client : " + data.customer.name, 7);
+    if (data.customer.phone) leftText("Tél : " + data.customer.phone, 7);
   }
 
-  // Device info for repairs
   if (data.type === "repair" && data.device) {
-    doc.text(`Appareil: ${data.device}`, MARGIN, y);
-    y += 9;
-    if (data.imei) {
-      doc.text(`IMEI: ${data.imei}`, MARGIN, y);
-      y += 9;
-    }
+    leftText("Appareil : " + data.device, 7);
+    if (data.imei) leftText("IMEI : " + data.imei, 7);
   }
 
   dashedLine();
 
-  // Simple mode: just show problem description
+  // ── PROBLEM DESCRIPTION ───────────────────────────────────────────────────
   if (data.problem && data.items.length === 0) {
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text("Description:", MARGIN, y);
-    y += 9;
-    const descLines = doc.splitTextToSize(data.problem, CONTENT_WIDTH);
-    descLines.forEach((line: string) => {
-      doc.text(line, MARGIN, y);
-      y += 9;
-    });
+    // Simple mode: show problem
+    setFont(7, "bold");
+    doc.text("Problème déclaré", MARGIN, y);
+    y += 7 * 1.35;
+    setFont(7, "normal");
+    const lines = doc.splitTextToSize(data.problem, CW);
+    lines.forEach((line: string) => { doc.text(line, MARGIN, y); y += 7 * 1.35; });
     dashedLine();
-  } else if (data.items.length > 0) {
-    // Items header
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.text("Article", MARGIN, y);
-    doc.text("Qté", MARGIN + 110, y);
-    const pxLabel = "P.U.";
-    doc.text(pxLabel, MARGIN + 135, y);
-    const ttlLabel = "Total";
-    const ttlW = doc.getTextWidth(ttlLabel);
-    doc.text(ttlLabel, RECEIPT_WIDTH - MARGIN - ttlW, y);
-    y += 10;
+  }
 
-    doc.setFont("helvetica", "normal");
+  // ── ITEMS TABLE ───────────────────────────────────────────────────────────
+  if (data.items.length > 0) {
+    setFont(7, "bold");
+    // Column headers
+    const nameW = Math.floor(CHARS * 0.52);
+    const qtyW = 3;
+    const puW = Math.floor(CHARS * 0.22);
+    const totW = Math.floor(CHARS * 0.22);
+
+    const hdr = padEnd("Article", nameW) + padEnd("Qté", qtyW) + padStart("P.U.", puW) + padStart("Tot.", totW);
+    doc.text(hdr, MARGIN, y);
+    y += 7 * 1.35;
+
+    solidLine([180, 180, 180], 0.3);
+
+    setFont(6.5, "normal");
     data.items.forEach((item) => {
-      // Wrap long names
-      const lines = doc.splitTextToSize(item.name, 105);
-      lines.forEach((line: string, i: number) => {
-        doc.text(line, MARGIN, y);
+      const nameParts = doc.splitTextToSize(item.name, CW * 0.52);
+      nameParts.forEach((part: string, i: number) => {
         if (i === 0) {
-          doc.text(String(item.qty), MARGIN + 113, y);
-          doc.text(formatCurrency(item.unitPrice), MARGIN + 135, y);
-          const totalStr = formatCurrency(item.total);
-          const tw = doc.getTextWidth(totalStr);
-          doc.text(totalStr, RECEIPT_WIDTH - MARGIN - tw, y);
+          const qty = String(item.qty);
+          const pu = formatCurrency(item.unitPrice);
+          const tot = formatCurrency(item.total);
+          const line = padEnd(part, nameW) + padEnd(qty, qtyW) + padStart(pu, puW) + padStart(tot, totW);
+          doc.text(line, MARGIN, y);
+        } else {
+          doc.text(part, MARGIN, y);
         }
-        y += 9;
+        y += 6.5 * 1.35;
       });
     });
 
     dashedLine();
   }
 
-  // Totals
-  leftRight("Sous-total", formatCurrency(data.subtotal), 7);
+  // ── TOTALS ────────────────────────────────────────────────────────────────
+  setFont(7, "normal");
+  row("Sous-total :", formatCurrency(data.subtotal));
   if (data.taxRate && data.taxAmount) {
-    leftRight(`TVA (${data.taxRate}%)`, formatCurrency(data.taxAmount), 7);
+    row(`TVA (${data.taxRate}%) :`, formatCurrency(data.taxAmount));
   }
-
-  // Accent line
-  doc.setDrawColor(...brandRgb);
-  doc.setLineWidth(1.5);
-  doc.line(MARGIN, y, RECEIPT_WIDTH - MARGIN, y);
-  y += 8;
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  leftRight("TOTAL", formatCurrency(data.total), 10, true);
-
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  leftRight("Payé", formatCurrency(data.paid), 7);
+  row("Payé :", formatCurrency(data.paid));
   if (data.remaining > 0) {
-    doc.setTextColor(200, 0, 0);
-    leftRight("Reste", formatCurrency(data.remaining), 7, true);
-    doc.setTextColor(0);
+    doc.setTextColor(180, 0, 0);
+    row("Reste :", formatCurrency(data.remaining));
+    doc.setTextColor(0, 0, 0);
   }
-
   if (data.paymentMethod) {
-    leftRight("Paiement", data.paymentMethod === "card" ? "Carte" : "Espèces", 7);
+    row("Paiement :", data.paymentMethod === "card" ? "Carte" : "Espèces");
   }
 
-  dashedLine();
+  gap(2);
+  solidLine(brandRgb, 1.2);
+  setFont(10, "bold");
+  row("TOTAL :", formatCurrency(data.total), 10, "bold");
+  solidLine(brandRgb, 1.2);
 
-  // Terms & warranty
-  doc.setFontSize(6);
-  doc.setTextColor(120);
+  // ── TERMS ─────────────────────────────────────────────────────────────────
+  gap(3);
+  setFont(6, "normal");
+  doc.setTextColor(100, 100, 100);
   const defaultTerms = [
     "Garantie de 90 jours sur toutes les pièces.",
-    "Les appareils non récupérés après 30 jours",
-    "ne sont plus sous notre responsabilité.",
+    "Appareils non récupérés après 30 jours non garantis.",
+    "Présentez ce ticket pour récupérer votre appareil.",
     "Merci pour votre confiance !",
   ];
-  const terms = (settings as any).receipt_terms
-    ? (settings as any).receipt_terms.split('\n').filter((l: string) => l.trim())
+  const termsRaw: string = (settings as any).receipt_terms || "";
+  const terms = termsRaw.trim()
+    ? termsRaw.split("\n").filter((l: string) => l.trim())
     : defaultTerms;
-  terms.forEach((line) => {
-    centerText(line, 6);
-  });
+  terms.forEach((line: string) => centerText(line, 6));
+  doc.setTextColor(0, 0, 0);
 
-  y += 4;
-  doc.setTextColor(0);
-  centerText(settings.shop_name, 7, true);
-
-  // === QR CODE SECTION (repair tracking) ===
+  // ── QR CODE ───────────────────────────────────────────────────────────────
   if (data.trackingUrl) {
+    gap(3);
     dashedLine();
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(60);
-    centerText("Scannez pour suivre votre réparation", 7, true);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100);
-    centerText("Suivez l'avancement en temps réel", 6);
-    y += 2;
+    gap(2);
+    centerText("Suivre votre réparation", 7, "bold");
+    centerText("Scannez le QR code ci-dessous", 6);
+    gap(3);
 
     try {
-      const qrSize = 64;
+      const qrSize = printerWidth === "58mm" ? 54 : 68;
       const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.trackingUrl)}&format=png&margin=2`;
       const qrImg = new Image();
       qrImg.crossOrigin = "anonymous";
       await new Promise<void>((resolve) => {
         qrImg.onload = () => resolve();
-        qrImg.onerror = () => resolve(); // skip on error, don't block print
+        qrImg.onerror = () => resolve();
         qrImg.src = qrUrl;
       });
       if (qrImg.complete && qrImg.naturalWidth > 0) {
-        doc.addImage(qrImg, "PNG", (RECEIPT_WIDTH - qrSize) / 2, y, qrSize, qrSize);
+        doc.addImage(qrImg, "PNG", (RW - qrSize) / 2, y, qrSize, qrSize);
         y += qrSize + 4;
       }
-    } catch {
-      // QR fetch failed — continue without it
-    }
+    } catch { /* skip */ }
 
-    doc.setTextColor(0);
+    doc.setTextColor(80, 80, 80);
+    // Show short tracking URL below QR
+    const shortUrl = data.trackingUrl.replace(/^https?:\/\//, "");
+    centerText(shortUrl, 6);
+    doc.setTextColor(0, 0, 0);
   }
 
-  // Open in new window for print
+  gap(6);
+
+  // ── Open PDF ───────────────────────────────────────────────────────────────
   const blob = doc.output("blob");
   const url = URL.createObjectURL(blob);
-  const printWindow = window.open(url);
-  if (printWindow) {
-    printWindow.onload = () => {
-      printWindow.print();
-    };
-  }
+  const win = window.open(url);
+  if (win) win.onload = () => win.print();
 }

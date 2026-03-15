@@ -42,6 +42,34 @@ export default function Auth() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaRef = useRef<HCaptcha>(null);
 
+  // Math challenge state
+  const [mathQuestion, setMathQuestion] = useState("");
+  const [mathChallengeId, setMathChallengeId] = useState("");
+  const [mathAnswer, setMathAnswer] = useState("");
+  const [mathLoading, setMathLoading] = useState(false);
+
+  const fetchMathChallenge = async () => {
+    setMathLoading(true);
+    setMathAnswer("");
+    try {
+      const { data, error } = await supabase.functions.invoke("math-challenge", {
+        body: { action: "generate" },
+      });
+      if (!error && data) {
+        setMathQuestion(data.question || "");
+        setMathChallengeId(data.challengeId || "");
+      }
+    } catch (err) {
+      console.error("[Auth] math-challenge fetch error:", err);
+    }
+    setMathLoading(false);
+  };
+
+  // Fetch math challenge on mount
+  useEffect(() => {
+    fetchMathChallenge();
+  }, []);
+
   // Cooldown timer
   useEffect(() => {
     if (signupCooldown <= 0) return;

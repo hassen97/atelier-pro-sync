@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { motion, useScroll, useTransform } from "framer-motion";
+import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
+import { useJoinWaitlist } from "@/hooks/useWaitlist";
 import {
   Package, Wrench, Truck, RotateCcw,
   Menu, X, ChevronRight, Check, Smartphone,
   Shield, BarChart3, Users, Zap, ArrowRight,
-  Sparkles
+  Sparkles, Mail, Loader2
 } from "lucide-react";
 
 /* ── animation variants ── */
@@ -35,24 +38,6 @@ const features = [
   { icon: Users, title: "Multi-équipe", desc: "Gérez vos employés, assignez des tâches et contrôlez les accès par rôle.", span: "sm:col-span-2 sm:row-span-1" },
 ];
 
-const pricingPlans = [
-  {
-    name: "Débutant", price: "Gratuit", period: "", desc: "Pour les petits ateliers qui démarrent",
-    features: ["1 utilisateur", "Réparations illimitées", "Inventaire de base", "Suivi client"],
-    cta: "Commencer gratuitement", highlight: false, soon: false,
-  },
-  {
-    name: "Pro", price: "49 DT", period: "/mois", desc: "Pour les ateliers en croissance",
-    features: ["5 utilisateurs", "Tout de Débutant", "Gestion fournisseurs", "Statistiques avancées", "Support prioritaire"],
-    cta: "Prochainement", highlight: true, soon: true,
-  },
-  {
-    name: "Entreprise", price: "99 DT", period: "/mois", desc: "Pour les multi-boutiques",
-    features: ["Utilisateurs illimités", "Tout de Pro", "Multi-boutiques", "API & intégrations", "Support dédié"],
-    cta: "Prochainement", highlight: false, soon: true,
-  },
-];
-
 const stats = [
   { value: "500+", label: "Ateliers actifs" },
   { value: "50K+", label: "Réparations suivies" },
@@ -63,9 +48,12 @@ const stats = [
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [waitlistEmail, setWaitlistEmail] = useState("");
   const { user } = useAuth();
   const { scrollYProgress } = useScroll();
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
+  const { data: plans } = usePublicPlans();
+  const joinWaitlist = useJoinWaitlist();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -74,11 +62,19 @@ export default function LandingPage() {
   }, []);
 
   const ctaLink = user ? "/" : "/auth";
-  const ctaLabel = user ? "Accéder au Dashboard" : "Essayer Gratuitement";
+
+  const handleWaitlistSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!waitlistEmail.trim() || !waitlistEmail.includes("@")) return;
+    joinWaitlist.mutate(waitlistEmail.trim(), {
+      onSuccess: () => setWaitlistEmail(""),
+    });
+  };
+
+  const displayPlans = plans || [];
 
   return (
     <div className="landing-page min-h-screen relative" style={{ scrollBehavior: "smooth" }}>
-      {/* Mesh gradient background */}
       <div className="lp-mesh-gradient" />
 
       {/* ─── Floating Navbar ─── */}
@@ -101,11 +97,11 @@ export default function LandingPage() {
             <Link to="/auth">
               <Button variant="ghost" size="sm" className="text-sm" style={{ color: "hsl(240 5% 65%)" }}>Connexion</Button>
             </Link>
-            <Link to={ctaLink}>
+            <a href="#waitlist">
               <Button size="sm" className="lp-glow-btn rounded-full px-5 text-sm font-medium" style={{ background: "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 45%))", color: "white" }}>
-                {ctaLabel}
+                Rejoindre la liste
               </Button>
-            </Link>
+            </a>
           </div>
 
           <button className="md:hidden p-2 relative z-10" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" style={{ color: "hsl(240 5% 65%)" }}>
@@ -121,9 +117,9 @@ export default function LandingPage() {
               <Link to="/auth" onClick={() => setMenuOpen(false)}>
                 <Button variant="ghost" className="w-full justify-start" style={{ color: "hsl(240 5% 65%)" }}>Connexion</Button>
               </Link>
-              <Link to={ctaLink} onClick={() => setMenuOpen(false)}>
-                <Button className="w-full rounded-full" style={{ background: "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 45%))", color: "white" }}>{ctaLabel}</Button>
-              </Link>
+              <a href="#waitlist" onClick={() => setMenuOpen(false)}>
+                <Button className="w-full rounded-full" style={{ background: "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 45%))", color: "white" }}>Rejoindre la liste</Button>
+              </a>
             </div>
           </motion.div>
         )}
@@ -146,26 +142,41 @@ export default function LandingPage() {
 
           <motion.p variants={fadeUp} className="mx-auto mt-6 max-w-2xl text-base sm:text-lg" style={{ color: "hsl(240 5% 55%)", lineHeight: 1.7 }}>
             Gérez votre inventaire, suivez vos réparations, facturez vos clients et pilotez votre activité
-            — le tout depuis une seule plateforme pensée pour les ateliers en Tunisie.
+            — le tout depuis une seule plateforme pensée pour les ateliers en Tunisie et en France.
           </motion.p>
 
-          <motion.div variants={fadeUp} className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link to={ctaLink}>
-              <Button size="lg" className="lp-glow-btn rounded-full px-8 text-base font-medium" style={{ background: "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 40%))", color: "white" }}>
-                {ctaLabel} <ArrowRight className="ml-2 h-4 w-4" />
+          {/* Waitlist CTA */}
+          <motion.div variants={fadeUp} id="waitlist" className="mt-10 mx-auto max-w-md">
+            <form onSubmit={handleWaitlistSubmit} className="flex gap-2">
+              <div className="relative flex-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "hsl(240 5% 40%)" }} />
+                <Input
+                  type="email"
+                  placeholder="votre@email.com"
+                  value={waitlistEmail}
+                  onChange={e => setWaitlistEmail(e.target.value)}
+                  className="pl-10 h-12 rounded-full text-sm"
+                  style={{ background: "hsla(240, 6%, 10%, 0.8)", border: "1px solid hsla(0, 0%, 100%, 0.1)", color: "hsl(0 0% 98%)" }}
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={joinWaitlist.isPending}
+                className="lp-glow-btn rounded-full px-6 h-12 text-sm font-medium shrink-0"
+                style={{ background: "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 40%))", color: "white" }}
+              >
+                {joinWaitlist.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Rejoindre <ArrowRight className="ml-1.5 h-4 w-4" /></>}
               </Button>
-            </Link>
-            <a href="#features">
-              <Button variant="ghost" size="lg" className="rounded-full px-8 text-base font-medium" style={{ color: "hsl(240 5% 65%)", border: "1px solid hsla(0, 0%, 100%, 0.1)" }}>
-                Découvrir
-              </Button>
-            </a>
+            </form>
+            <p className="mt-3 text-xs" style={{ color: "hsl(240 5% 40%)" }}>
+              Rejoignez la liste d'attente — soyez parmi les premiers alertés au lancement.
+            </p>
           </motion.div>
 
           {/* Dashboard Mockup */}
           <motion.div variants={fadeUp} className="mt-16 sm:mt-20">
             <motion.div style={{ opacity: heroOpacity }} className="lp-dashboard-mockup mx-auto max-w-4xl overflow-hidden">
-              {/* Mac-style title bar */}
               <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid hsla(0, 0%, 100%, 0.06)" }}>
                 <div className="flex gap-1.5">
                   <div className="h-3 w-3 rounded-full" style={{ background: "hsl(0 72% 51%)" }} />
@@ -176,7 +187,6 @@ export default function LandingPage() {
                   <span className="text-xs font-medium" style={{ color: "hsl(240 5% 40%)" }}>RepairPro — Dashboard</span>
                 </div>
               </div>
-              {/* Fake dashboard content */}
               <div className="p-4 sm:p-6">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                   {[
@@ -295,7 +305,7 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* ─── Pricing ─── */}
+      {/* ─── Pricing (Dynamic) ─── */}
       <section id="pricing" className="relative z-10 py-20 sm:py-28">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <motion.div className="text-center mb-16" variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
@@ -308,8 +318,8 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.div className="grid gap-6 sm:grid-cols-3" variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}>
-            {pricingPlans.map((plan) => (
-              <motion.div key={plan.name} variants={scaleIn}>
+            {displayPlans.map((plan) => (
+              <motion.div key={plan.id} variants={scaleIn}>
                 <div className={`lp-glass-card rounded-2xl p-6 sm:p-8 flex flex-col h-full relative ${plan.highlight ? "lp-pricing-popular" : ""}`}>
                   {plan.highlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -321,16 +331,18 @@ export default function LandingPage() {
 
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold mb-1" style={{ color: "hsl(0 0% 95%)" }}>{plan.name}</h3>
-                    <p className="text-sm" style={{ color: "hsl(240 5% 45%)" }}>{plan.desc}</p>
+                    <p className="text-sm" style={{ color: "hsl(240 5% 45%)" }}>{plan.description}</p>
                     <div className="mt-4">
-                      <span className="text-4xl font-bold lp-gradient-text">{plan.price}</span>
+                      <span className="text-4xl font-bold lp-gradient-text">
+                        {plan.price === 0 ? "Gratuit" : `${plan.price} ${plan.currency}`}
+                      </span>
                       {plan.period && <span className="text-sm ml-1" style={{ color: "hsl(240 5% 45%)" }}>{plan.period}</span>}
                     </div>
                   </div>
 
                   <ul className="flex-1 space-y-3 mb-8">
-                    {plan.features.map((feat) => (
-                      <li key={feat} className="flex items-start gap-2.5 text-sm" style={{ color: "hsl(240 5% 60%)" }}>
+                    {plan.features.map((feat, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm" style={{ color: "hsl(240 5% 60%)" }}>
                         <Check className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "hsl(217 91% 60%)" }} />
                         {feat}
                       </li>
@@ -338,16 +350,16 @@ export default function LandingPage() {
                   </ul>
 
                   <div>
-                    {plan.soon ? (
-                      <Button variant="ghost" className="w-full rounded-full" disabled style={{ border: "1px solid hsla(0, 0%, 100%, 0.08)", color: "hsl(240 5% 40%)" }}>
-                        {plan.cta}
-                      </Button>
-                    ) : (
+                    {plan.price === 0 ? (
                       <Link to={ctaLink}>
                         <Button className="w-full rounded-full lp-glow-btn" style={{ background: "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 40%))", color: "white" }}>
-                          {plan.cta} <ArrowRight className="ml-2 h-4 w-4" />
+                          Commencer gratuitement <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </Link>
+                    ) : (
+                      <Button variant="ghost" className="w-full rounded-full" disabled style={{ border: "1px solid hsla(0, 0%, 100%, 0.08)", color: "hsl(240 5% 40%)" }}>
+                        Prochainement
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -357,7 +369,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── CTA final ─── */}
+      {/* ─── CTA final (Waitlist) ─── */}
       <section className="relative z-10 py-20 sm:py-28">
         <motion.div className="mx-auto max-w-3xl px-4 text-center sm:px-6" variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true }}>
           <motion.h2 variants={fadeUp} className="text-3xl font-bold sm:text-4xl lp-gradient-text" style={{ letterSpacing: "-0.02em" }}>
@@ -366,12 +378,27 @@ export default function LandingPage() {
           <motion.p variants={fadeUp} className="mx-auto mt-4 max-w-xl text-sm sm:text-base" style={{ color: "hsl(240 5% 50%)" }}>
             Rejoignez des centaines d'ateliers qui utilisent RepairPro pour gérer leur activité au quotidien.
           </motion.p>
-          <motion.div variants={fadeUp}>
-            <Link to={ctaLink}>
-              <Button size="lg" className="mt-8 lp-glow-btn rounded-full px-10 text-base font-medium" style={{ background: "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 40%))", color: "white" }}>
-                {ctaLabel} <ArrowRight className="ml-2 h-4 w-4" />
+          <motion.div variants={fadeUp} className="mt-8 mx-auto max-w-md">
+            <form onSubmit={handleWaitlistSubmit} className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="votre@email.com"
+                value={waitlistEmail}
+                onChange={e => setWaitlistEmail(e.target.value)}
+                className="h-12 rounded-full text-sm flex-1"
+                style={{ background: "hsla(240, 6%, 10%, 0.8)", border: "1px solid hsla(0, 0%, 100%, 0.1)", color: "hsl(0 0% 98%)" }}
+                required
+              />
+              <Button
+                type="submit"
+                disabled={joinWaitlist.isPending}
+                size="lg"
+                className="lp-glow-btn rounded-full px-8 text-sm font-medium shrink-0"
+                style={{ background: "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 40%))", color: "white" }}
+              >
+                {joinWaitlist.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Rejoindre la liste d'attente"}
               </Button>
-            </Link>
+            </form>
           </motion.div>
         </motion.div>
       </section>

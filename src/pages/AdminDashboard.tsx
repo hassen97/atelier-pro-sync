@@ -9,10 +9,14 @@ import { AdminFeedbackInbox } from "@/components/admin/AdminFeedbackInbox";
 import { AdminResetRequests } from "@/components/admin/AdminResetRequests";
 import { AdminSettingsView } from "@/components/admin/AdminSettingsView";
 import { AdminEmployeesView } from "@/components/admin/AdminEmployeesView";
+import { AdminPlansView } from "@/components/admin/AdminPlansView";
+import { AdminPaymentGatewaysView } from "@/components/admin/AdminPaymentGatewaysView";
+import { AdminFeatureFlagsView } from "@/components/admin/AdminFeatureFlagsView";
+import { AdminWaitlistView } from "@/components/admin/AdminWaitlistView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist";
 
 const AdminDashboard = () => {
   const { isLoading } = useAdminData();
@@ -33,13 +37,9 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-[#0B1120] via-[#0F172A] to-[#0B1120] text-white overflow-hidden">
-      {/* Mobile top bar */}
       {isMobile && (
         <header className="flex items-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          >
+          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <Menu className="h-5 w-5 text-slate-300" />
           </button>
           <div className="flex items-center gap-2">
@@ -52,25 +52,16 @@ const AdminDashboard = () => {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar */}
         {!isMobile && (
           <aside className="w-64 shrink-0 admin-glass border-r border-white/10 h-full">
             <AdminSidebar active={activeView} onNavigate={setActiveView} />
           </aside>
         )}
 
-        {/* Mobile sidebar sheet */}
         {isMobile && (
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetContent
-              side="left"
-              className="w-64 p-0 bg-[#0B1120] border-r border-white/10"
-            >
-              <AdminSidebar
-                active={activeView}
-                onNavigate={setActiveView}
-                onClose={() => setSidebarOpen(false)}
-              />
+            <SheetContent side="left" className="w-64 p-0 bg-[#0B1120] border-r border-white/10">
+              <AdminSidebar active={activeView} onNavigate={setActiveView} onClose={() => setSidebarOpen(false)} />
             </SheetContent>
           </Sheet>
         )}
@@ -83,6 +74,10 @@ const AdminDashboard = () => {
           {activeView === "feedback" && <AdminFeedbackInbox />}
           {activeView === "settings" && <AdminSettingsView />}
           {activeView === "employees" && <AdminEmployeesView />}
+          {activeView === "plans" && <AdminPlansView />}
+          {activeView === "gateways" && <AdminPaymentGatewaysView />}
+          {activeView === "feature_flags" && <AdminFeatureFlagsView />}
+          {activeView === "waitlist" && <AdminWaitlistView />}
         </main>
       </div>
     </div>

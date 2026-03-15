@@ -86,6 +86,18 @@ export function ProductDialog({
     },
   });
 
+  const defaultDraftValues = {
+    name: "", sku: "", description: "", category_id: "",
+    cost_price: 0, sell_price: 0, quantity: 0, min_quantity: 5,
+  };
+
+  const { clearDraft } = useFormDraft("product", {
+    watch: form.getValues.bind(form),
+    reset: (values) => form.reset(values),
+    isOpen: open && !product,
+    defaultValues: defaultDraftValues,
+  });
+
   useEffect(() => {
     if (product) {
       form.reset({

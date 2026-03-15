@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllowedPages } from "@/hooks/useTeam";
 import { useIsPlatformAdmin } from "@/hooks/useAdmin";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useRef } from "react";
@@ -15,6 +16,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
   const { allowedPages, isLoading: pagesLoading } = useAllowedPages();
   const { data: isPlatformAdmin, isLoading: adminLoading } = useIsPlatformAdmin();
+  const { isImpersonating, isVerifying } = useImpersonation();
   const hasShownToast = useRef(false);
 
   const isBlocked =
@@ -29,7 +31,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [isBlocked]);
 
-  if (loading || pagesLoading || adminLoading) {
+  if (loading || pagesLoading || adminLoading || isVerifying) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -46,7 +48,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Platform admin redirect logic
   // Allow platform_admin to access tenant routes when impersonating
-  const isImpersonating = new URLSearchParams(location.search).has("impersonate");
   if (isPlatformAdmin && location.pathname !== "/admin" && !isImpersonating) {
     return <Navigate to="/admin" replace />;
   }

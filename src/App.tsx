@@ -63,56 +63,56 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/track/:token" element={<RepairTracking />} />
-              <Route path="/r/:token" element={<RepairTracking />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/landing" element={<LandingPage />} />
-              
-              {/* Admin route - separate layout */}
-              <Route path="/admin" element={
-                <ProtectedRoute>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              
-              {/* Protected routes */}
-              <Route element={
-                <ProtectedRoute>
-                  <ShopSettingsProvider>
-                    <BrandThemeProvider>
-                      <I18nProvider>
-                        <NotificationsProvider>
-                          <ImpersonationProvider>
+          <ImpersonationProvider>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/track/:token" element={<RepairTracking />} />
+                <Route path="/r/:token" element={<RepairTracking />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/landing" element={<LandingPage />} />
+                
+                {/* Admin route - separate layout */}
+                <Route path="/admin" element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Protected routes */}
+                <Route element={
+                  <ProtectedRoute>
+                    <ShopSettingsProvider>
+                      <BrandThemeProvider>
+                        <I18nProvider>
+                          <NotificationsProvider>
                             <MainLayout />
-                          </ImpersonationProvider>
-                        </NotificationsProvider>
-                      </I18nProvider>
-                    </BrandThemeProvider>
-                  </ShopSettingsProvider>
-                </ProtectedRoute>
-              }>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/pos" element={<POS />} />
-                <Route path="/repairs" element={<Repairs />} />
-                <Route path="/inventory" element={<Inventory />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/suppliers" element={<Suppliers />} />
-                <Route path="/expenses" element={<Expenses />} />
-                <Route path="/customer-debts" element={<CustomerDebts />} />
-                <Route path="/invoices" element={<Invoices />} />
-                <Route path="/statistics" element={<Statistics />} />
-                <Route path="/profit" element={<Profit />} />
-                <Route path="/warranty" element={<Warranty />} />
-                <Route path="/settings" element={<Settings />} />
-              </Route>
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+                          </NotificationsProvider>
+                        </I18nProvider>
+                      </BrandThemeProvider>
+                    </ShopSettingsProvider>
+                  </ProtectedRoute>
+                }>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/pos" element={<POS />} />
+                  <Route path="/repairs" element={<Repairs />} />
+                  <Route path="/inventory" element={<Inventory />} />
+                  <Route path="/customers" element={<Customers />} />
+                  <Route path="/suppliers" element={<Suppliers />} />
+                  <Route path="/expenses" element={<Expenses />} />
+                  <Route path="/customer-debts" element={<CustomerDebts />} />
+                  <Route path="/invoices" element={<Invoices />} />
+                  <Route path="/statistics" element={<Statistics />} />
+                  <Route path="/profit" element={<Profit />} />
+                  <Route path="/warranty" element={<Warranty />} />
+                  <Route path="/settings" element={<Settings />} />
+                </Route>
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </ImpersonationProvider>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

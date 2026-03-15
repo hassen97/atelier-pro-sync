@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { toast } from "sonner";
 
 export interface ShopSettings {
@@ -53,25 +54,27 @@ const defaultSettings: ShopSettings = {
 
 export function useShopSettings() {
   const { user } = useAuth();
+  const { impersonatedUserId } = useImpersonation();
+  const effectiveUserId = impersonatedUserId || user?.id || null;
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (effectiveUserId) {
       fetchSettings();
     }
-  }, [user]);
+  }, [effectiveUserId]);
 
   const fetchSettings = async () => {
-    if (!user) return;
+    if (!effectiveUserId) return;
     
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from("shop_settings")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .maybeSingle();
 
       if (error) throw error;

@@ -376,9 +376,8 @@ export function AdminShopsView() {
                           <Megaphone className="h-4 w-4 mr-2" /> Envoyer une annonce
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => {
-                          // Open shop as read-only viewer in new tab
                           const viewUrl = `/?impersonate=${owner.user_id}&mode=readonly`;
-                          window.open(viewUrl, '_blank');
+                          window.location.href = viewUrl;
                         }}>
                           <LogIn className="h-4 w-4 mr-2" /> Accéder à la boutique
                         </DropdownMenuItem>

@@ -162,7 +162,9 @@ export default function Auth() {
           return;
         }
       }
-      const from = (location.state as { from?: Location })?.from?.pathname || "/";
+      const searchParams = new URLSearchParams(location.search);
+      const redirect = searchParams.get("redirect");
+      const from = redirect || (location.state as { from?: Location })?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
 

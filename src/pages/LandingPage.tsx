@@ -62,7 +62,15 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const ctaLink = user ? "/" : "/auth";
+  const ctaLink = user ? "/dashboard" : "/auth";
+
+  const handlePlanClick = (planId: string) => {
+    if (user) {
+      navigate(`/checkout?plan=${planId}`);
+    } else {
+      navigate(`/auth?redirect=${encodeURIComponent(`/checkout?plan=${planId}`)}`);
+    }
+  };
 
   const handleWaitlistSubmit = (e: React.FormEvent) => {
     e.preventDefault();

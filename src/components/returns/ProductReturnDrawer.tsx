@@ -67,6 +67,7 @@ export function ProductReturnDrawer({ open, onOpenChange }: ProductReturnDrawerP
       onSuccess: () => {
         onOpenChange(false);
         resetForm();
+        localStorage.removeItem("repairpro_draft_product_return");
       },
     });
   };
@@ -81,6 +82,33 @@ export function ProductReturnDrawer({ open, onOpenChange }: ProductReturnDrawerP
     setStockAvailable(true);
     setRefundCash(true);
   };
+
+  // Auto-save draft for reason/notes
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      if (reason || notes) {
+        localStorage.setItem("repairpro_draft_product_return", JSON.stringify({ reason, notes, returnQty, stockAvailable, refundCash }));
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [reason, notes, returnQty, stockAvailable, refundCash, open]);
+
+  // Restore draft on open
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const saved = localStorage.getItem("repairpro_draft_product_return");
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.reason) setReason(draft.reason);
+        if (draft.notes) setNotes(draft.notes);
+        if (draft.returnQty) setReturnQty(draft.returnQty);
+        if (draft.stockAvailable !== undefined) setStockAvailable(draft.stockAvailable);
+        if (draft.refundCash !== undefined) setRefundCash(draft.refundCash);
+      }
+    } catch {}
+  }, [open]);
 
   return (
     <Sheet open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>

@@ -71,7 +71,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
     : navigation;
 
   const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/";
+    if (path === "/dashboard") return location.pathname === "/dashboard";
     return location.pathname.startsWith(path);
   };
 

@@ -109,7 +109,7 @@ const App = () => (
                     </ShopSettingsProvider>
                   </ProtectedRoute>
                 }>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/pos" element={<POS />} />
                   <Route path="/repairs" element={<Repairs />} />
                   <Route path="/inventory" element={<Inventory />} />

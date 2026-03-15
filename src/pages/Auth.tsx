@@ -202,6 +202,8 @@ export default function Auth() {
 
     setLoading(false);
     setSignupCooldown(30);
+    setCaptchaToken(null);
+    captchaRef.current?.resetCaptcha();
   };
 
   const activeTab = loginRole === "employee" ? "login" : undefined;

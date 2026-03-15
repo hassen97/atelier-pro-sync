@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const signupMutex = useState({ inProgress: false })[0];
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

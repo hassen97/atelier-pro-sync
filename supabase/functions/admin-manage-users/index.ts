@@ -40,6 +40,7 @@ const ActionSchema = z.object({
   featureFlagId: z.string().uuid().optional(),
   enabled: z.boolean().optional(),
   gatewayId: z.string().uuid().optional(),
+  userIds: z.array(z.string().uuid()).max(100).optional(),
 });
 
 function jsonResp(data: unknown, status = 200) {

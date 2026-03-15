@@ -68,6 +68,20 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { allowedPages } = useAllowedPages();
   const { t } = useI18n();
+  const { user } = useAuth();
+  const [isVerified, setIsVerified] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("verification_status")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        setIsVerified(data?.verification_status === "verified");
+      });
+  }, [user]);
 
   // Filter navigation based on allowed pages
   const filteredNavigation = allowedPages

@@ -284,7 +284,10 @@ export function AdminShopsView() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col">
-                        <span className="text-white text-sm font-medium">{owner.shop_name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white text-sm font-medium">{owner.shop_name}</span>
+                          {owner.verification_status === "verified" && <VerifiedBadge />}
+                        </div>
                         <span className="text-xs text-slate-500">
                           {getCountryByCode(owner.country || "TN")?.flag} {getCurrencyByCode(owner.currency || "TND")?.code}
                         </span>

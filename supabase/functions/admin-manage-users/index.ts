@@ -97,7 +97,7 @@ serve(async (req) => {
       if (!action || action === "list") {
         const { data: profiles } = await adminClient
           .from("profiles")
-          .select("user_id, full_name, username, created_at, is_locked, last_online_at, phone, whatsapp_phone, email")
+          .select("user_id, full_name, username, created_at, is_locked, last_online_at, phone, whatsapp_phone, email, verification_status")
           .order("created_at", { ascending: false });
 
         const { data: roles } = await adminClient.from("user_roles").select("user_id, role");

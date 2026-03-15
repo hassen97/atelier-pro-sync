@@ -19,6 +19,7 @@ const ActionSchema = z.object({
     "list-plans", "update-plan",
     "list-feature-flags", "toggle-feature-flag",
     "list-payment-gateways", "toggle-payment-gateway",
+    "list-verification", "verify-owner", "suspend-owner", "get-verification-request",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),

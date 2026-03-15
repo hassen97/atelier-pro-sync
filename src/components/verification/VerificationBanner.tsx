@@ -173,108 +173,110 @@ export function VerificationBanner() {
   // STATE 1: Full-screen blocking overlay (before submission)
   if (profile.verification_status === "pending_verification" && !hasSubmitted) {
     return (
-      <div className="fixed inset-0 z-[100] bg-gradient-to-b from-red-950 via-red-900/98 to-zinc-950 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="w-full max-w-2xl my-8">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 border-2 border-red-500/40 mb-4">
-              <ShieldCheck className="h-8 w-8 text-red-400" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-red-400">
-              Vérification Requise
-            </h1>
-            <p className="text-red-300/80 mt-2 text-sm sm:text-base">
-              Votre compte doit être vérifié avant de pouvoir accéder à la plateforme.
-            </p>
-            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/15 border border-red-500/30">
-              <Clock className="h-4 w-4 text-red-400" />
-              <span className="text-sm text-red-300">Suspension dans :</span>
-              <span className="font-mono font-bold text-red-200 text-lg">{timeLeft}</span>
-            </div>
-          </div>
-
-          {/* Form Card */}
-          <div className="bg-zinc-900/80 backdrop-blur-sm border border-red-900/50 rounded-xl p-5 sm:p-8 space-y-4">
-            <h2 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-400" />
-              Remplissez le formulaire de vérification
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-sm text-zinc-300">Nom du magasin *</Label>
-                <Input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Mon Atelier" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
+      <div className="fixed inset-0 z-[100] bg-gradient-to-b from-red-950 via-red-900/98 to-zinc-950 overflow-y-auto">
+        <div className="min-h-full flex items-start sm:items-center justify-center px-3 py-4 sm:p-6">
+          <div className="w-full max-w-2xl">
+            {/* Header */}
+            <div className="text-center mb-4 sm:mb-6">
+              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-red-500/20 border-2 border-red-500/40 mb-3 sm:mb-4">
+                <ShieldCheck className="h-6 w-6 sm:h-8 sm:w-8 text-red-400" />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm text-zinc-300">Nom du propriétaire *</Label>
-                <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Ahmed Ben Ali" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-red-400">
+                Vérification Requise
+              </h1>
+              <p className="text-red-300/80 mt-1.5 sm:mt-2 text-xs sm:text-sm md:text-base">
+                Votre compte doit être vérifié avant de pouvoir accéder à la plateforme.
+              </p>
+              <div className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-red-500/15 border border-red-500/30">
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
+                <span className="text-xs sm:text-sm text-red-300">Suspension dans :</span>
+                <span className="font-mono font-bold text-red-200 text-sm sm:text-lg">{timeLeft}</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-sm text-zinc-300">Numéro de téléphone *</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+216 XX XXX XXX" type="tel" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
+            {/* Form Card */}
+            <div className="bg-zinc-900/80 backdrop-blur-sm border border-red-900/50 rounded-xl p-4 sm:p-6 md:p-8 space-y-3 sm:space-y-4">
+              <h2 className="text-base sm:text-lg font-semibold text-zinc-100 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400 shrink-0" />
+                Remplissez le formulaire de vérification
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm text-zinc-300">Nom du magasin *</Label>
+                  <Input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Mon Atelier" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm text-zinc-300">Nom du propriétaire *</Label>
+                  <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Ahmed Ben Ali" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm text-zinc-300">Ville *</Label>
-                <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Tunis" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm text-zinc-300">Numéro de téléphone *</Label>
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+216 XX XXX XXX" type="tel" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm text-zinc-300">Ville *</Label>
+                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Tunis" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm text-zinc-300">Adresse du magasin *</Label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Rue de la République" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-sm text-zinc-300">Lien Google Maps (optionnel)</Label>
-              <Input value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-sm text-zinc-300">Page Facebook (optionnel)</Label>
-                <Input value={facebookUrl} onChange={(e) => setFacebookUrl(e.target.value)} placeholder="https://facebook.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm text-zinc-300">Adresse du magasin *</Label>
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Rue de la République" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm text-zinc-300">Page Instagram (optionnel)</Label>
-                <Input value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
+
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm text-zinc-300">Lien Google Maps (optionnel)</Label>
+                <Input value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm text-zinc-300">Description du magasin (optionnel)</Label>
-              <Textarea value={shopDescription} onChange={(e) => setShopDescription(e.target.value)} placeholder="Décrivez votre activité..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
-            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm text-zinc-300">Page Facebook (optionnel)</Label>
+                  <Input value={facebookUrl} onChange={(e) => setFacebookUrl(e.target.value)} placeholder="https://facebook.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm text-zinc-300">Page Instagram (optionnel)</Label>
+                  <Input value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
+                </div>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm text-zinc-300">Message pour l'administration</Label>
-              <Textarea value={messageToAdmin} onChange={(e) => setMessageToAdmin(e.target.value)} placeholder="Un message pour l'admin..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500" />
-            </div>
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm text-zinc-300">Description du magasin (optionnel)</Label>
+                <Textarea value={shopDescription} onChange={(e) => setShopDescription(e.target.value)} placeholder="Décrivez votre activité..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 text-sm" />
+              </div>
 
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 text-base"
-              size="lg"
-            >
-              {loading ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" />Envoi en cours...</> : (
-                <><ShieldCheck className="h-5 w-5 mr-2" />Soumettre la demande de vérification</>
-              )}
-            </Button>
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm text-zinc-300">Message pour l'administration</Label>
+                <Textarea value={messageToAdmin} onChange={(e) => setMessageToAdmin(e.target.value)} placeholder="Un message pour l'admin..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 text-sm" />
+              </div>
 
-            {adminWhatsapp && (
-              <a
-                href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent("Bonjour, je souhaite vérifier mon compte RepairPro.")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+              <Button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 text-sm sm:text-base"
+                size="lg"
               >
-                <MessageCircle className="h-4 w-4" />
-                Contacter l'administration via WhatsApp
-              </a>
-            )}
+                {loading ? <><Loader2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 animate-spin" />Envoi en cours...</> : (
+                  <><ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />Soumettre la demande</>
+                )}
+              </Button>
+
+              {adminWhatsapp && (
+                <a
+                  href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent("Bonjour, je souhaite vérifier mon compte RepairPro.")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                >
+                  <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Contacter via WhatsApp
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </div>

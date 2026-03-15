@@ -178,9 +178,13 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const globalDiscountAmount = globalDiscountType === "percent"
+    ? subtotal * (Math.min(globalDiscount, 100) / 100)
+    : Math.min(globalDiscount, subtotal);
+  const discountedSubtotal = Math.max(0, subtotal - globalDiscountAmount);
   const taxRate = settings.tax_enabled ? settings.tax_rate / 100 : 0;
-  const tax = subtotal * taxRate;
-  const total = subtotal + tax;
+  const tax = discountedSubtotal * taxRate;
+  const total = discountedSubtotal + tax;
 
   const clearCart = () => setCart([]);
 

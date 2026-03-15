@@ -122,7 +122,7 @@ export function AdminVerificationView() {
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [confirmAction, setConfirmAction] = useState<"bulk-verify" | "bulk-suspend" | "bulk-delete" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"bulk-verify" | "bulk-suspend" | "bulk-delete" | "bulk-revert-to-pending" | null>(null);
 
   const owners = data?.owners || [];
 

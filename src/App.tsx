@@ -80,11 +80,13 @@ const App = () => (
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Public routes */}
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/track/:token" element={<RepairTracking />} />
                 <Route path="/r/:token" element={<RepairTracking />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/landing" element={<LandingPage />} />
+                <Route path="/checkout" element={<Checkout />} />
                 
                 {/* Admin route - separate layout */}
                 <Route path="/admin" element={

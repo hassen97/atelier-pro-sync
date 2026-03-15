@@ -46,6 +46,7 @@ const ActionSchema = z.object({
   userIds: z.array(z.string().uuid()).max(100).optional(),
   orderId: z.string().uuid().optional(),
   adminNote: z.string().optional(),
+  expiresAt: z.string().optional(),
 });
 
 function jsonResp(data: unknown, status = 200) {

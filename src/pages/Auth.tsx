@@ -39,6 +39,8 @@ export default function Auth() {
   const [success, setSuccess] = useState<string | null>(null);
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
   const [signupCooldown, setSignupCooldown] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha>(null);
 
   // Cooldown timer
   useEffect(() => {

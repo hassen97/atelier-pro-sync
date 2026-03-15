@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, Link, useNavigate, Navigate } from "react-router-dom";
 import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
 import { useEnabledGateways, useCreateOrder } from "@/hooks/useCheckout";
 import { useAuth } from "@/contexts/AuthContext";

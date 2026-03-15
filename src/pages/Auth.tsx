@@ -454,6 +454,18 @@ export default function Auth() {
                   </div>
                 </div>
 
+                {HCAPTCHA_SITE_KEY && (
+                  <div className="flex justify-center">
+                    <HCaptcha
+                      ref={captchaRef}
+                      sitekey={HCAPTCHA_SITE_KEY}
+                      size="invisible"
+                      onVerify={(token) => setCaptchaToken(token)}
+                      onExpire={() => setCaptchaToken(null)}
+                    />
+                  </div>
+                )}
+
                 <Button type="submit"
                   className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-[0_0_20px_hsla(217,91%,50%,0.25)] hover:shadow-[0_0_30px_hsla(217,91%,50%,0.4)] transition-shadow"
                   disabled={loading || signupCooldown > 0}>

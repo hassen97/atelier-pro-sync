@@ -133,10 +133,23 @@ export default function Auth() {
 
     setLoading(true);
 
+    // Get captcha token if hCaptcha is configured
+    let tokenForGuard = captchaToken;
+    if (HCAPTCHA_SITE_KEY && !tokenForGuard) {
+      try {
+        const result = await captchaRef.current?.execute({ async: true });
+        tokenForGuard = result?.response || null;
+      } catch {
+        setError("Vérification CAPTCHA échouée. Veuillez réessayer.");
+        setLoading(false);
+        return;
+      }
+    }
+
     // Server-side rate limiting + uniqueness pre-check
     try {
       const guardRes = await supabase.functions.invoke("signup-guard", {
-        body: { username: registerUsername, phone: registerPhone.trim() },
+        body: { username: registerUsername, phone: registerPhone.trim(), captchaToken: tokenForGuard },
       });
 
       if (guardRes.error) {

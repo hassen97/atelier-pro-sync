@@ -1,48 +1,81 @@
 
 
-# Fix: Timer Start on Login, Employee Exemption, Login Role Validation
+# Modernize Login Page with Role Selection
 
-## Problems Identified
+## Overview
 
-1. **Timer starts at signup, not login** — The `handle_new_user` trigger sets `verification_deadline = now() + 48h` at account creation time. The 48-hour window should start at the user's next login instead.
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-2. **Employees get verification too** — The trigger sets `verification_status = 'pending_verification'` and `is_locked = true` for ALL new users, including employees created via the `create-employee` edge function. Employees should be exempt.
+## Visual Design
 
-3. **No login role enforcement** — The owner/employee toggle on the login page is cosmetic. A shop owner can log in with the "Employé" tab selected and vice versa.
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
+
+```text
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
+```
+
+## How the Role Selector Works
+
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
 ## Changes
 
-### 1. Database Migration — Stop setting deadline at signup
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-Update `handle_new_user` trigger:
-- Set `verification_deadline = NULL` instead of `now() + interval '48 hours'`
-- Keep `verification_status = 'pending_verification'` (for owners created via signup)
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
 
-### 2. `create-employee` Edge Function — Exempt employees
-
-After creating the employee user (and after the trigger fires), update their profile:
-- `verification_status = 'verified'`
-- `verification_deadline = NULL`
-- `is_locked = false`
-
-This ensures employees skip verification entirely.
-
-### 3. `VerificationBanner.tsx` — Start timer on first dashboard load
-
-When the banner detects `verification_status = 'pending_verification'` and `verification_deadline IS NULL`, it sets the deadline to `now() + 48 hours` via a profile update. This means the timer starts on first login/dashboard access, not at signup.
-
-### 4. `Auth.tsx` — Enforce login role matching
-
-After successful login, check the user's role in `user_roles`:
-- If "Employé" tab selected but user is `super_admin` → sign out, show "Ce compte est un compte propriétaire"
-- If "Propriétaire" tab selected but user is `employee` → sign out, show "Ce compte est un compte employé"
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| New migration SQL | Update `handle_new_user` to set `verification_deadline = NULL` |
-| `supabase/functions/create-employee/index.ts` | After user creation, set `verification_status = 'verified'`, `is_locked = false` |
-| `src/components/verification/VerificationBanner.tsx` | On mount, if deadline is null + pending, set deadline to now+48h |
-| `src/pages/Auth.tsx` | After login, validate role matches selected tab |
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

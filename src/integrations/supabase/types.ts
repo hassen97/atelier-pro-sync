@@ -1136,6 +1136,62 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_orders: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          created_at: string
+          currency: string
+          gateway_key: string
+          id: string
+          plan_id: string
+          proof_url: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount?: number
+          created_at?: string
+          currency?: string
+          gateway_key: string
+          id?: string
+          plan_id: string
+          proof_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          created_at?: string
+          currency?: string
+          gateway_key?: string
+          id?: string
+          plan_id?: string
+          proof_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_orders_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_plans: {
         Row: {
           created_at: string

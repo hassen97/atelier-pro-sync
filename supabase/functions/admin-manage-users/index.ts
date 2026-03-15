@@ -22,6 +22,7 @@ const ActionSchema = z.object({
     "list-verification", "verify-owner", "suspend-owner", "revert-to-pending", "get-verification-request",
     "bulk-verify", "bulk-suspend", "bulk-delete", "bulk-revert-to-pending",
     "list-subscription-orders", "update-subscription-order",
+    "set-shop-plan",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),

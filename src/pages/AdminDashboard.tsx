@@ -79,6 +79,7 @@ const AdminDashboard = () => {
           {activeView === "gateways" && <AdminPaymentGatewaysView />}
           {activeView === "feature_flags" && <AdminFeatureFlagsView />}
           {activeView === "waitlist" && <AdminWaitlistView />}
+          {activeView === "signup_attempts" && <AdminSignupAttemptsView />}
         </main>
       </div>
     </div>

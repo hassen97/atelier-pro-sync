@@ -37,6 +37,12 @@ const navSections = [
     ],
   },
   {
+    label: "Sécurité",
+    items: [
+      { id: "signup_attempts" as const, label: "Tentatives", icon: Shield },
+    ],
+  },
+  {
     label: "Système",
     items: [
       { id: "settings" as const, label: "Paramètres", icon: Settings },

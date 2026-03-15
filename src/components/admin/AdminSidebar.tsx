@@ -39,6 +39,7 @@ const navSections = [
   {
     label: "Sécurité",
     items: [
+      { id: "verification" as const, label: "Vérification", icon: ShieldCheck },
       { id: "signup_attempts" as const, label: "Tentatives", icon: Shield },
     ],
   },

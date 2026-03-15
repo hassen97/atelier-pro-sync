@@ -92,17 +92,7 @@ export function useEffectiveUserId() {
   const { user } = useAuth();
   const { data: teamInfo } = useMyTeamInfo();
   const { data: isOwner } = useIsOwner();
-
-  // Import dynamically to avoid circular deps - use try/catch for safety
-  let impersonatedUserId: string | null = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { useImpersonation } = require("@/contexts/ImpersonationContext");
-    const impersonation = useImpersonation();
-    impersonatedUserId = impersonation?.impersonatedUserId || null;
-  } catch {
-    // ImpersonationContext not available (e.g., outside provider)
-  }
+  const { impersonatedUserId } = useImpersonation();
 
   if (!user) return null;
   // If platform_admin is impersonating, use the impersonated user's ID

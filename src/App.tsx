@@ -44,6 +44,7 @@ const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Warranty = lazyWithRetry(() => import("./pages/Warranty"));
 const RepairTracking = lazyWithRetry(() => import("./pages/RepairTracking"));
+const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
 
 const queryClient = new QueryClient();
 

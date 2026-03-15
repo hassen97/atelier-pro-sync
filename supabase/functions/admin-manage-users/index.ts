@@ -509,6 +509,54 @@ serve(async (req) => {
         return jsonResp({ request });
       }
 
+      // ─── BULK VERIFY ───
+      if (action === "bulk-verify") {
+        if (!body.userIds || body.userIds.length === 0) return jsonResp({ error: "userIds required" }, 400);
+        let successCount = 0;
+        for (const uid of body.userIds) {
+          await adminClient.from("profiles").update({
+            verification_status: "verified",
+            verified_at: new Date().toISOString(),
+            verified_by_admin: callerId,
+            is_locked: false,
+          }).eq("user_id", uid);
+          await adminClient.auth.admin.updateUserById(uid, { ban_duration: "none" });
+          await adminClient.from("verification_requests").update({
+            status: "approved",
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: callerId,
+          }).eq("user_id", uid).eq("status", "pending");
+          successCount++;
+        }
+        return jsonResp({ success: true, count: successCount });
+      }
+
+      // ─── BULK SUSPEND ───
+      if (action === "bulk-suspend") {
+        if (!body.userIds || body.userIds.length === 0) return jsonResp({ error: "userIds required" }, 400);
+        let successCount = 0;
+        for (const uid of body.userIds) {
+          await adminClient.from("profiles").update({
+            verification_status: "suspended",
+            is_locked: true,
+          }).eq("user_id", uid);
+          await adminClient.auth.admin.updateUserById(uid, { ban_duration: "876000h" });
+          successCount++;
+        }
+        return jsonResp({ success: true, count: successCount });
+      }
+
+      // ─── BULK DELETE ───
+      if (action === "bulk-delete") {
+        if (!body.userIds || body.userIds.length === 0) return jsonResp({ error: "userIds required" }, 400);
+        let successCount = 0;
+        for (const uid of body.userIds) {
+          const { error } = await adminClient.auth.admin.deleteUser(uid);
+          if (!error) successCount++;
+        }
+        return jsonResp({ success: true, count: successCount });
+      }
+
       return jsonResp({ error: "Unknown action" }, 400);
     }
   } catch (err) {

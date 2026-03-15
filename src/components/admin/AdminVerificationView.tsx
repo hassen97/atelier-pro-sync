@@ -45,9 +45,10 @@ function useVerificationData() {
 function useVerifyOwner() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, action }: { userId: string; action: "verify" | "suspend" }) => {
+    mutationFn: async ({ userId, action }: { userId: string; action: "verify" | "suspend" | "revert-to-pending" }) => {
+      const actionMap = { verify: "verify-owner", suspend: "suspend-owner", "revert-to-pending": "revert-to-pending" };
       const { data, error } = await supabase.functions.invoke("admin-manage-users", {
-        body: { action: action === "verify" ? "verify-owner" : "suspend-owner", userId },
+        body: { action: actionMap[action], userId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -56,7 +57,8 @@ function useVerifyOwner() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-verification-data"] });
       queryClient.invalidateQueries({ queryKey: ["admin-data"] });
-      toast.success(variables.action === "verify" ? "Propriétaire vérifié !" : "Propriétaire suspendu");
+      const msgs = { verify: "Propriétaire vérifié !", suspend: "Propriétaire suspendu", "revert-to-pending": "Remis en attente de vérification" };
+      toast.success(msgs[variables.action]);
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -65,7 +67,7 @@ function useVerifyOwner() {
 function useBulkAction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ action, userIds }: { action: "bulk-verify" | "bulk-suspend" | "bulk-delete"; userIds: string[] }) => {
+    mutationFn: async ({ action, userIds }: { action: "bulk-verify" | "bulk-suspend" | "bulk-delete" | "bulk-revert-to-pending"; userIds: string[] }) => {
       const { data, error } = await supabase.functions.invoke("admin-manage-users", {
         body: { action, userIds },
       });
@@ -81,6 +83,7 @@ function useBulkAction() {
         "bulk-verify": `${count} propriétaire(s) vérifié(s)`,
         "bulk-suspend": `${count} propriétaire(s) suspendu(s)`,
         "bulk-delete": `${count} propriétaire(s) supprimé(s)`,
+        "bulk-revert-to-pending": `${count} propriétaire(s) remis en attente`,
       };
       toast.success(labels[variables.action]);
     },
@@ -119,7 +122,7 @@ export function AdminVerificationView() {
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [confirmAction, setConfirmAction] = useState<"bulk-verify" | "bulk-suspend" | "bulk-delete" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"bulk-verify" | "bulk-suspend" | "bulk-delete" | "bulk-revert-to-pending" | null>(null);
 
   const owners = data?.owners || [];
 
@@ -204,6 +207,11 @@ export function AdminVerificationView() {
       btn: "Supprimer tout",
       destructive: true,
     },
+    "bulk-revert-to-pending": {
+      title: "Remettre en attente en masse",
+      desc: `Voulez-vous remettre ${selectedIds.size} propriétaire(s) en attente de vérification ? Un nouveau délai de 48h sera appliqué.`,
+      btn: "Remettre en attente",
+    },
   };
 
   return (
@@ -259,6 +267,16 @@ export function AdminVerificationView() {
           >
             <CheckCircle className="h-3 w-3 mr-1" />
             Vérifier
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs"
+            onClick={() => setConfirmAction("bulk-revert-to-pending")}
+            disabled={bulkAction.isPending}
+          >
+            <Clock className="h-3 w-3 mr-1" />
+            En attente
           </Button>
           <Button
             size="sm"
@@ -388,6 +406,18 @@ export function AdminVerificationView() {
                         >
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Vérifier
+                        </Button>
+                      )}
+                      {owner.verification_status !== "pending_verification" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs"
+                          onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "revert-to-pending" })}
+                          disabled={verifyOwner.isPending}
+                        >
+                          <Clock className="h-3 w-3 mr-1" />
+                          En attente
                         </Button>
                       )}
                       {owner.verification_status !== "suspended" && (

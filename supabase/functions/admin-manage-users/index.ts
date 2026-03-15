@@ -19,8 +19,8 @@ const ActionSchema = z.object({
     "list-plans", "update-plan",
     "list-feature-flags", "toggle-feature-flag",
     "list-payment-gateways", "toggle-payment-gateway",
-    "list-verification", "verify-owner", "suspend-owner", "get-verification-request",
-    "bulk-verify", "bulk-suspend", "bulk-delete",
+    "list-verification", "verify-owner", "suspend-owner", "revert-to-pending", "get-verification-request",
+    "bulk-verify", "bulk-suspend", "bulk-delete", "bulk-revert-to-pending",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
@@ -518,6 +518,20 @@ serve(async (req) => {
         return jsonResp({ success: true });
       }
 
+      // ─── VERIFICATION: REVERT TO PENDING ───
+      if (action === "revert-to-pending") {
+        if (!body.userId) return jsonResp({ error: "userId required" }, 400);
+        await adminClient.from("profiles").update({
+          verification_status: "pending_verification",
+          verification_deadline: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+          verified_at: null,
+          verified_by_admin: null,
+          is_locked: false,
+        }).eq("user_id", body.userId);
+        await adminClient.auth.admin.updateUserById(body.userId, { ban_duration: "none" });
+        return jsonResp({ success: true });
+      }
+
       // ─── VERIFICATION: GET REQUEST ───
       if (action === "get-verification-request") {
         if (!body.userId) return jsonResp({ error: "userId required" }, 400);
@@ -575,6 +589,24 @@ serve(async (req) => {
         for (const uid of body.userIds) {
           const { error } = await adminClient.auth.admin.deleteUser(uid);
           if (!error) successCount++;
+        }
+        return jsonResp({ success: true, count: successCount });
+      }
+
+      // ─── BULK REVERT TO PENDING ───
+      if (action === "bulk-revert-to-pending") {
+        if (!body.userIds || body.userIds.length === 0) return jsonResp({ error: "userIds required" }, 400);
+        let successCount = 0;
+        for (const uid of body.userIds) {
+          await adminClient.from("profiles").update({
+            verification_status: "pending_verification",
+            verification_deadline: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+            verified_at: null,
+            verified_by_admin: null,
+            is_locked: false,
+          }).eq("user_id", uid);
+          await adminClient.auth.admin.updateUserById(uid, { ban_duration: "none" });
+          successCount++;
         }
         return jsonResp({ success: true, count: successCount });
       }

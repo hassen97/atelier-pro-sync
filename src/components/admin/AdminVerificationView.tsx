@@ -83,6 +83,7 @@ function useBulkAction() {
         "bulk-verify": `${count} propriétaire(s) vérifié(s)`,
         "bulk-suspend": `${count} propriétaire(s) suspendu(s)`,
         "bulk-delete": `${count} propriétaire(s) supprimé(s)`,
+        "bulk-revert-to-pending": `${count} propriétaire(s) remis en attente`,
       };
       toast.success(labels[variables.action]);
     },

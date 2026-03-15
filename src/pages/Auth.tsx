@@ -203,7 +203,13 @@ export default function Auth() {
     // Server-side rate limiting + uniqueness pre-check
     try {
       const guardRes = await supabase.functions.invoke("signup-guard", {
-        body: { username: registerUsername, phone: registerPhone.trim(), captchaToken: tokenForGuard },
+        body: {
+          username: registerUsername,
+          phone: registerPhone.trim(),
+          captchaToken: tokenForGuard,
+          mathChallengeId,
+          mathAnswer: parseInt(mathAnswer, 10),
+        },
       });
 
       if (guardRes.error) {

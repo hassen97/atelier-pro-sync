@@ -180,6 +180,17 @@ export function VerificationBanner() {
     }
   };
 
+  // Confetti on first verification
+  useEffect(() => {
+    if (!user || !profile || profile.verification_status !== "verified") return;
+    const confettiKey = `confetti_shown_${user.id}`;
+    if (localStorage.getItem(confettiKey)) return;
+    localStorage.setItem(confettiKey, "true");
+    // Fire confetti
+    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+    setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } }), 300);
+  }, [user, profile?.verification_status]);
+
   if (!isOwner || !profile || profile.verification_status === "verified") return null;
 
   const hasSubmitted = !!profile.verification_requested_at;

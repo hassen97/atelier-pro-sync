@@ -668,6 +668,23 @@ serve(async (req) => {
         return jsonResp({ success: true, count: successCount });
       }
 
+      // ─── SET SHOP PLAN (God Mode) ───
+      if (action === "set-shop-plan") {
+        if (!body.userId || !body.planId) return jsonResp({ error: "userId and planId required" }, 400);
+        // Deactivate old subscriptions
+        await adminClient.from("shop_subscriptions").update({ status: "expired", updated_at: new Date().toISOString() }).eq("user_id", body.userId).eq("status", "active");
+        // Create new
+        const { error } = await adminClient.from("shop_subscriptions").insert({
+          user_id: body.userId,
+          plan_id: body.planId,
+          status: "active",
+          expires_at: body.expiresAt || null,
+          set_by_admin: callerId,
+        });
+        if (error) throw error;
+        return jsonResp({ success: true });
+      }
+
       return jsonResp({ error: "Unknown action" }, 400);
     }
   } catch (err) {

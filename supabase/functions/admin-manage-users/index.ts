@@ -104,6 +104,19 @@ serve(async (req) => {
       const body = parseResult.data;
       const { action } = body;
 
+      // Guard: block destructive actions against platform_admin accounts
+      if (body.userId && PROTECTED_ADMIN_IDS.has(body.userId) &&
+          ["delete", "lock", "suspend-owner", "reset-password"].includes(action || "")) {
+        return jsonResp({ error: "Impossible de modifier un compte administrateur de la plateforme" }, 403);
+      }
+      // Guard for bulk actions: filter out protected IDs
+      if (body.userIds && ["bulk-verify", "bulk-suspend", "bulk-delete"].includes(action || "")) {
+        body.userIds = body.userIds.filter((id: string) => !PROTECTED_ADMIN_IDS.has(id));
+        if (body.userIds.length === 0) {
+          return jsonResp({ error: "Aucun utilisateur éligible pour cette action" }, 400);
+        }
+      }
+
       // ─── LIST OWNERS ───
       if (!action || action === "list") {
         const { data: profiles } = await adminClient

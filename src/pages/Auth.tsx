@@ -225,6 +225,8 @@ export default function Auth() {
           setError("Ce numéro de téléphone est déjà utilisé.");
         } else if (reason === "captcha_failed" || reason === "captcha_required") {
           setError("Vérification CAPTCHA échouée. Veuillez réessayer.");
+        } else if (reason === "math_failed" || reason === "math_required") {
+          setError("Réponse au calcul incorrecte. Veuillez réessayer.");
         } else {
           setError(reason || "Inscription refusée.");
         }

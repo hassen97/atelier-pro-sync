@@ -268,6 +268,30 @@ export type Database = {
           },
         ]
       }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          feature_key: string
+          feature_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          feature_key: string
+          feature_name: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          feature_key?: string
+          feature_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
       inventory_access_codes: {
         Row: {
           code: string
@@ -382,6 +406,69 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      payment_gateways: {
+        Row: {
+          config: Json | null
+          description: string | null
+          gateway_key: string
+          gateway_name: string
+          id: string
+          is_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          description?: string | null
+          gateway_key: string
+          gateway_name: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          description?: string | null
+          gateway_key?: string
+          gateway_name?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      plan_feature_flags: {
+        Row: {
+          feature_flag_id: string
+          id: string
+          plan_id: string
+        }
+        Insert: {
+          feature_flag_id: string
+          id?: string
+          plan_id: string
+        }
+        Update: {
+          feature_flag_id?: string
+          id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_feature_flags_feature_flag_id_fkey"
+            columns: ["feature_flag_id"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_feature_flags_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_announcements: {
         Row: {
@@ -1007,6 +1094,51 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          features: Json
+          highlight: boolean
+          id: string
+          is_active: boolean
+          name: string
+          period: string | null
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: Json
+          highlight?: boolean
+          id?: string
+          is_active?: boolean
+          name: string
+          period?: string | null
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: Json
+          highlight?: boolean
+          id?: string
+          is_active?: boolean
+          name?: string
+          period?: string | null
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       supplier_purchases: {
         Row: {
           created_at: string
@@ -1238,6 +1370,27 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          source?: string | null
         }
         Relationships: []
       }

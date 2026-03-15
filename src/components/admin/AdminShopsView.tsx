@@ -12,7 +12,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn } from "lucide-react";
 import { ShopDetailSheet } from "./ShopDetailSheet";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -374,6 +374,13 @@ export function AdminShopsView() {
                           shopName: owner.shop_name,
                         })}>
                           <Megaphone className="h-4 w-4 mr-2" /> Envoyer une annonce
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          // Open shop as read-only viewer in new tab
+                          const viewUrl = `/?impersonate=${owner.user_id}&mode=readonly`;
+                          window.open(viewUrl, '_blank');
+                        }}>
+                          <LogIn className="h-4 w-4 mr-2" /> Accéder à la boutique
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {owner.is_locked && !owner.last_online_at ? (

@@ -12,7 +12,8 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn, ShieldCheck } from "lucide-react";
+import { VerifiedBadge } from "@/components/verification/VerifiedBadge";
 import { ShopDetailSheet } from "./ShopDetailSheet";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -283,7 +284,10 @@ export function AdminShopsView() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col">
-                        <span className="text-white text-sm font-medium">{owner.shop_name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white text-sm font-medium">{owner.shop_name}</span>
+                          {owner.verification_status === "verified" && <VerifiedBadge />}
+                        </div>
                         <span className="text-xs text-slate-500">
                           {getCountryByCode(owner.country || "TN")?.flag} {getCurrencyByCode(owner.currency || "TND")?.code}
                         </span>

@@ -119,13 +119,18 @@ export default function Auth() {
       if (sessionData.session?.user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("is_locked")
+          .select("is_locked, verification_status")
           .eq("user_id", sessionData.session.user.id)
           .single();
 
         if (profile?.is_locked) {
           await supabase.auth.signOut();
-          setError("Votre compte est en attente de validation par l'administrateur.");
+          const vs = (profile as any).verification_status;
+          if (vs === "suspended") {
+            setError("Votre compte a été suspendu car il n'a pas été vérifié dans les 48 heures. Veuillez contacter l'administration pour réactiver votre compte.");
+          } else {
+            setError("Votre compte est en attente de validation par l'administrateur.");
+          }
           setLoading(false);
           return;
         }

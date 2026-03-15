@@ -19,6 +19,7 @@ export interface ShopOwner {
   phone: string | null;
   whatsapp_phone: string | null;
   email: string | null;
+  verification_status?: string;
 }
 
 export interface AdminStats {

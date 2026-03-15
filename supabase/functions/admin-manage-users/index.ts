@@ -86,6 +86,15 @@ serve(async (req) => {
       return jsonResp({ error: "Forbidden" }, 403);
     }
 
+    // Protected platform_admin IDs - never allow actions against them
+    const PROTECTED_ADMIN_IDS = new Set([callerId]);
+    // Also fetch all platform_admin user IDs to protect them
+    const { data: allPlatformAdmins } = await adminClient
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "platform_admin");
+    (allPlatformAdmins || []).forEach((a: any) => PROTECTED_ADMIN_IDS.add(a.user_id));
+
     if (req.method === "POST" || req.method === "GET") {
       const rawBody = req.method === "POST" ? await req.json().catch(() => ({})) : {};
       const parseResult = ActionSchema.safeParse(rawBody);
@@ -94,6 +103,19 @@ serve(async (req) => {
       }
       const body = parseResult.data;
       const { action } = body;
+
+      // Guard: block destructive actions against platform_admin accounts
+      if (body.userId && PROTECTED_ADMIN_IDS.has(body.userId) &&
+          ["delete", "lock", "suspend-owner", "reset-password"].includes(action || "")) {
+        return jsonResp({ error: "Impossible de modifier un compte administrateur de la plateforme" }, 403);
+      }
+      // Guard for bulk actions: filter out protected IDs
+      if (body.userIds && ["bulk-verify", "bulk-suspend", "bulk-delete"].includes(action || "")) {
+        body.userIds = body.userIds.filter((id: string) => !PROTECTED_ADMIN_IDS.has(id));
+        if (body.userIds.length === 0) {
+          return jsonResp({ error: "Aucun utilisateur éligible pour cette action" }, 400);
+        }
+      }
 
       // ─── LIST OWNERS ───
       if (!action || action === "list") {

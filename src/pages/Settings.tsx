@@ -872,6 +872,11 @@ export default function Settings() {
           <ExpenseCategoriesSettings />
         </TabsContent>
 
+        {/* Subscription & Billing */}
+        <TabsContent value="subscription" className="space-y-6">
+          <SubscriptionTab />
+        </TabsContent>
+
         {/* Backup Settings */}
         <TabsContent value="backup" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">

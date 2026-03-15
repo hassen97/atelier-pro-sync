@@ -160,7 +160,10 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
               </div>
             )}
             <div className="flex flex-col">
-              <span className="font-semibold text-sidebar-foreground text-sm truncate max-w-[140px]">{settings.shop_name}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-sidebar-foreground text-sm truncate max-w-[120px]">{settings.shop_name}</span>
+                {isVerified && <VerifiedBadge variant="elite" size="sm" />}
+              </div>
             </div>
           </div>
         )}

@@ -4,9 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe, Phone, Mail, MessageCircle, Store, UserCog, Calculator } from "lucide-react";
+import { Loader2, Wrench, Lock, AtSign, Phone, Mail, MessageCircle, Store, UserCog, User, AlertCircle, CheckCircle, Globe } from "lucide-react";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY || "";
+const REMEMBER_ME_KEY = "repairpro_remember_me";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -21,8 +21,10 @@ export default function Auth() {
   const { signIn, signUp, user } = useAuth();
 
   const [loginRole, setLoginRole] = useState<"owner" | "employee">("owner");
+  const [authTab, setAuthTab] = useState<"login" | "register">("login");
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [registerUsername, setRegisterUsername] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerFullName, setRegisterFullName] = useState("");
@@ -42,32 +44,18 @@ export default function Auth() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaRef = useRef<HCaptcha>(null);
 
-  // Math challenge state
-  const [mathQuestion, setMathQuestion] = useState("");
-  const [mathChallengeId, setMathChallengeId] = useState("");
-  const [mathAnswer, setMathAnswer] = useState("");
-  const [mathLoading, setMathLoading] = useState(false);
-
-  const fetchMathChallenge = async () => {
-    setMathLoading(true);
-    setMathAnswer("");
-    try {
-      const { data, error } = await supabase.functions.invoke("math-challenge", {
-        body: { action: "generate" },
-      });
-      if (!error && data) {
-        setMathQuestion(data.question || "");
-        setMathChallengeId(data.challengeId || "");
-      }
-    } catch (err) {
-      console.error("[Auth] math-challenge fetch error:", err);
-    }
-    setMathLoading(false);
-  };
-
-  // Fetch math challenge on mount
+  // Restore remembered username
   useEffect(() => {
-    fetchMathChallenge();
+    try {
+      const saved = localStorage.getItem(REMEMBER_ME_KEY);
+      if (saved) {
+        const { username } = JSON.parse(saved);
+        if (username) {
+          setLoginUsername(username);
+          setRememberMe(true);
+        }
+      }
+    } catch {}
   }, []);
 
   // Cooldown timer
@@ -108,29 +96,6 @@ export default function Auth() {
     setError(null);
     setLoading(true);
 
-    // Verify math challenge client-side first
-    if (!mathAnswer.trim()) {
-      setError("Veuillez résoudre le calcul de sécurité.");
-      setLoading(false);
-      return;
-    }
-
-    // Server-side math verification for login
-    try {
-      const { data: mathData, error: mathErr } = await supabase.functions.invoke("math-challenge", {
-        body: { action: "verify", challengeId: mathChallengeId, answer: parseInt(mathAnswer, 10) },
-      });
-      if (mathErr || !mathData?.valid) {
-        setError("Réponse au calcul incorrecte. Veuillez réessayer.");
-        await fetchMathChallenge();
-        setLoading(false);
-        return;
-      }
-    } catch {
-      // Fail open if math-challenge endpoint unreachable
-      console.error("[Auth] math-challenge verify error");
-    }
-
     const { error } = await signIn(loginUsername, loginPassword);
 
     if (error) {
@@ -138,12 +103,18 @@ export default function Auth() {
       if (msg === "Invalid login credentials") {
         setError("Nom d'utilisateur ou mot de passe incorrect");
       } else if (msg.includes("banned") || msg.includes("User is banned")) {
-        setError("Votre compte est en attente de validation par l'administrateur. Vous serez contacté une fois approuvé.");
+        setError("Votre compte est en attente de validation par l'administrateur.");
       } else {
         setError(msg);
       }
-      await fetchMathChallenge();
     } else {
+      // Remember me
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({ username: loginUsername }));
+      } else {
+        localStorage.removeItem(REMEMBER_ME_KEY);
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.user) {
         const { data: profile } = await supabase
@@ -154,8 +125,7 @@ export default function Auth() {
 
         if (profile?.is_locked) {
           await supabase.auth.signOut();
-          setError("Votre compte est en attente de validation par l'administrateur. Vous serez contacté une fois approuvé.");
-          await fetchMathChallenge();
+          setError("Votre compte est en attente de validation par l'administrateur.");
           setLoading(false);
           return;
         }
@@ -172,7 +142,6 @@ export default function Auth() {
     setError(null);
     setSuccess(null);
 
-    // Client-side cooldown check
     if (signupCooldown > 0) {
       setError(`Veuillez patienter ${signupCooldown}s avant de réessayer.`);
       return;
@@ -181,7 +150,6 @@ export default function Auth() {
     const usernameError = validateUsername(registerUsername);
     if (usernameError) { setError(usernameError); return; }
     if (!registerPhone.trim()) { setError("Le numéro de téléphone est obligatoire"); return; }
-    if (!mathAnswer.trim()) { setError("Veuillez résoudre le calcul de sécurité."); return; }
     if (registerPassword !== confirmPassword) { setError("Les mots de passe ne correspondent pas"); return; }
     if (registerPassword.length < 8) { setError("Le mot de passe doit contenir au moins 8 caractères"); return; }
 
@@ -207,14 +175,11 @@ export default function Auth() {
           username: registerUsername,
           phone: registerPhone.trim(),
           captchaToken: tokenForGuard,
-          mathChallengeId,
-          mathAnswer: parseInt(mathAnswer, 10),
         },
       });
 
       if (guardRes.error) {
         console.error("[Auth] signup-guard invocation error:", guardRes.error);
-        // Don't block signup if the guard itself fails
       } else if (guardRes.data && !guardRes.data.allowed) {
         const reason = guardRes.data.reason;
         if (reason === "rate_limited") {
@@ -225,19 +190,15 @@ export default function Auth() {
           setError("Ce numéro de téléphone est déjà utilisé.");
         } else if (reason === "captcha_failed" || reason === "captcha_required") {
           setError("Vérification CAPTCHA échouée. Veuillez réessayer.");
-        } else if (reason === "math_failed" || reason === "math_required") {
-          setError("Réponse au calcul incorrecte. Veuillez réessayer.");
         } else {
           setError(reason || "Inscription refusée.");
         }
         setLoading(false);
         setSignupCooldown(30);
-        await fetchMathChallenge();
         return;
       }
     } catch (guardErr) {
       console.error("[Auth] signup-guard fetch error:", guardErr);
-      // Fail open
     }
 
     const whatsappPhone = useSameWhatsapp ? registerPhone.trim() : (registerWhatsapp.trim() || registerPhone.trim());
@@ -267,346 +228,313 @@ export default function Auth() {
     setSignupCooldown(30);
     setCaptchaToken(null);
     captchaRef.current?.resetCaptcha();
-    await fetchMathChallenge();
-    captchaRef.current?.resetCaptcha();
   };
 
-  const activeTab = loginRole === "employee" ? "login" : undefined;
+  // Force login tab when employee
+  const effectiveTab = loginRole === "employee" ? "login" : authTab;
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-      {/* Animated grid background */}
-      <div className="absolute inset-0 auth-grid-bg opacity-40" />
-      {/* Radial glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-[hsla(217,91%,50%,0.08)] blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-zinc-950 p-4">
+      {/* Subtle grid */}
+      <div className="absolute inset-0 auth-grid-bg opacity-30" />
+      {/* Blue radial glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full bg-[hsla(217,91%,50%,0.07)] blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-[hsla(217,91%,60%,0.04)] blur-[80px] pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 w-full max-w-md animate-fade-in">
         {/* Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-18 h-18 rounded-2xl bg-gradient-primary p-4 mb-4 auth-glow">
-            <Wrench className="h-10 w-10 text-white" />
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-primary p-3.5 mb-3 auth-glow">
+            <Wrench className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">RepairPro Tunisie</h1>
-          <p className="text-slate-400 mt-1 text-sm">Gestion d'atelier moderne</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">RepairPro Tunisie</h1>
+          <p className="text-zinc-500 mt-1 text-sm">Gestion d'atelier moderne</p>
         </div>
 
-        {/* Role Selector */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        {/* Role Selector - Segmented */}
+        <div className="flex bg-white/5 rounded-xl border border-white/10 p-1 mb-5">
           <button
             type="button"
             onClick={() => setLoginRole("owner")}
-            className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
               loginRole === "owner"
-                ? "border-[hsla(217,91%,60%,0.6)] bg-[hsla(217,91%,50%,0.12)] shadow-[0_0_20px_hsla(217,91%,60%,0.15)]"
-                : "border-white/10 bg-white/5 hover:bg-white/8 hover:border-white/20"
+                ? "bg-[hsla(217,91%,50%,0.15)] text-white shadow-sm border border-[hsla(217,91%,60%,0.3)]"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
-            <Store className={`h-6 w-6 ${loginRole === "owner" ? "text-[hsl(217,91%,65%)]" : "text-slate-400"}`} />
-            <span className={`text-sm font-medium ${loginRole === "owner" ? "text-white" : "text-slate-400"}`}>
-              Propriétaire
-            </span>
+            <Store className="h-4 w-4" />
+            Propriétaire
           </button>
           <button
             type="button"
             onClick={() => setLoginRole("employee")}
-            className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
               loginRole === "employee"
-                ? "border-[hsla(217,91%,60%,0.6)] bg-[hsla(217,91%,50%,0.12)] shadow-[0_0_20px_hsla(217,91%,60%,0.15)]"
-                : "border-white/10 bg-white/5 hover:bg-white/8 hover:border-white/20"
+                ? "bg-[hsla(217,91%,50%,0.15)] text-white shadow-sm border border-[hsla(217,91%,60%,0.3)]"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
-            <UserCog className={`h-6 w-6 ${loginRole === "employee" ? "text-[hsl(217,91%,65%)]" : "text-slate-400"}`} />
-            <span className={`text-sm font-medium ${loginRole === "employee" ? "text-white" : "text-slate-400"}`}>
-              Employé
-            </span>
+            <UserCog className="h-4 w-4" />
+            Employé
           </button>
         </div>
 
         {/* Auth Card */}
         <div className="auth-card rounded-2xl p-6">
-          <Tabs defaultValue="login" value={activeTab} className="w-full">
-            {loginRole === "owner" && (
-              <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/5 border border-white/10">
-                <TabsTrigger value="login" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-slate-400">
-                  Connexion
-                </TabsTrigger>
-                <TabsTrigger value="register" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-slate-400">
-                  Inscription
-                </TabsTrigger>
-              </TabsList>
-            )}
+          {/* Auth Type Tabs - Segmented */}
+          {loginRole === "owner" && (
+            <div className="flex bg-white/5 rounded-lg border border-white/8 p-0.5 mb-5">
+              <button
+                type="button"
+                onClick={() => setAuthTab("login")}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+                  effectiveTab === "login"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                Connexion
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthTab("register")}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+                  effectiveTab === "register"
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                Inscription
+              </button>
+            </div>
+          )}
 
-            {loginRole === "employee" && (
-              <h2 className="text-lg font-semibold text-white mb-4">Connexion Employé</h2>
-            )}
+          {loginRole === "employee" && (
+            <h2 className="text-lg font-semibold text-white mb-4">Connexion Employé</h2>
+          )}
 
-            {error && (
-              <Alert variant="destructive" className="mb-4 border-red-500/30 bg-red-500/10">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          {error && (
+            <Alert variant="destructive" className="mb-4 border-red-500/30 bg-red-500/10">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-            {success && (
-              <Alert className="mb-4 border-emerald-500/30 bg-emerald-500/10">
-                <CheckCircle className="h-4 w-4 text-emerald-400" />
-                <AlertDescription className="text-emerald-300">{success}</AlertDescription>
-              </Alert>
-            )}
+          {success && (
+            <Alert className="mb-4 border-emerald-500/30 bg-emerald-500/10">
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+              <AlertDescription className="text-emerald-300">{success}</AlertDescription>
+            </Alert>
+          )}
 
-            {/* Login Form */}
-            <TabsContent value="login" className="mt-0">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-username" className="text-slate-300 text-sm">Nom d'utilisateur</Label>
-                  <div className="relative">
-                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input
-                      id="login-username"
-                      type="text"
-                      placeholder="ahmed123"
-                      value={loginUsername}
-                      onChange={(e) => setLoginUsername(e.target.value)}
-                      className="pl-10 auth-input"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+          {/* Login Form */}
+          {effectiveTab === "login" && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="login-username" className="text-zinc-400 text-sm">Nom d'utilisateur</Label>
+                <div className="relative">
+                  <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                  <Input
+                    id="login-username"
+                    type="text"
+                    placeholder="ahmed123"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    className="pl-10 auth-input"
+                    required
+                    disabled={loading}
+                    autoComplete="username"
+                  />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-slate-300 text-sm">Mot de passe</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="pl-10 auth-input"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-password" className="text-zinc-400 text-sm">Mot de passe</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="pl-10 auth-input"
+                    required
+                    disabled={loading}
+                    autoComplete="current-password"
+                  />
                 </div>
+              </div>
 
-                {/* Math Challenge */}
-                <div className="space-y-2">
-                  <Label className="text-slate-300 text-sm flex items-center gap-1.5">
-                    <Calculator className="h-3.5 w-3.5" />
-                    Vérification de sécurité
-                  </Label>
-                  <div className="flex items-center gap-3">
-                    <span className="text-white font-mono text-lg bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 select-none whitespace-nowrap">
-                      {mathLoading ? "..." : mathQuestion || "..."}
-                    </span>
-                    <Input
-                      type="number"
-                      placeholder="?"
-                      value={mathAnswer}
-                      onChange={(e) => setMathAnswer(e.target.value)}
-                      className="auth-input w-24 text-center font-mono text-lg"
-                      required
-                      disabled={loading || mathLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={fetchMathChallenge}
-                      className="text-slate-400 hover:text-white text-xs underline whitespace-nowrap"
-                      disabled={mathLoading}
-                    >
-                      Autre
-                    </button>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-[0_0_20px_hsla(217,91%,50%,0.25)] hover:shadow-[0_0_30px_hsla(217,91%,50%,0.4)] transition-shadow"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connexion...</>
-                  ) : (
-                    "Se connecter"
-                  )}
-                </Button>
-
-                <div className="text-center">
-                  <Link to="/reset-password" className="text-sm text-[hsl(217,91%,65%)] hover:text-[hsl(217,91%,75%)] transition-colors">
-                    Mot de passe oublié ?
-                  </Link>
-                </div>
-              </form>
-            </TabsContent>
-
-            {/* Register Form */}
-            <TabsContent value="register" className="mt-0">
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="register-username" className="text-slate-300 text-sm">Nom d'utilisateur</Label>
-                  <div className="relative">
-                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input id="register-username" type="text" placeholder="ahmed123" value={registerUsername}
-                      onChange={(e) => setRegisterUsername(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
-                  </div>
-                  <p className="text-xs text-slate-500">3-20 caractères, lettres, chiffres et underscores</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-name" className="text-slate-300 text-sm">Nom complet</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input id="register-name" type="text" placeholder="Ahmed Ben Ali" value={registerFullName}
-                      onChange={(e) => setRegisterFullName(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="register-country" className="text-slate-300 text-sm">Pays</Label>
-                    <Select value={registerCountry} onValueChange={(val) => {
-                      setRegisterCountry(val);
-                      const curr = getCurrencyForCountry(val);
-                      if (curr) setRegisterCurrency(curr.code);
-                    }} disabled={loading}>
-                      <SelectTrigger id="register-country" className="auth-input">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countries.map((c) => (
-                          <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-currency" className="text-slate-300 text-sm">Devise</Label>
-                    <Select value={registerCurrency} onValueChange={setRegisterCurrency} disabled={loading}>
-                      <SelectTrigger id="register-currency" className="auth-input">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {currencies.map((c) => (
-                          <SelectItem key={c.code} value={c.code}>{c.symbol} - {c.code}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-phone" className="text-slate-300 text-sm">Numéro de téléphone *</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input id="register-phone" type="tel" placeholder="+216 XX XXX XXX" value={registerPhone}
-                      onChange={(e) => setRegisterPhone(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
-                  </div>
-                </div>
-
+              {/* Remember Me */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="same-whatsapp" checked={useSameWhatsapp}
-                    onCheckedChange={(checked) => setUseSameWhatsapp(!!checked)} disabled={loading} />
-                  <Label htmlFor="same-whatsapp" className="text-sm cursor-pointer text-slate-300">
-                    Utiliser ce numéro pour WhatsApp
+                  <Checkbox
+                    id="remember-me"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(!!checked)}
+                    disabled={loading}
+                    className="border-zinc-600 data-[state=checked]:bg-[hsl(217,91%,50%)] data-[state=checked]:border-[hsl(217,91%,50%)]"
+                  />
+                  <Label htmlFor="remember-me" className="text-sm cursor-pointer text-zinc-400">
+                    Se souvenir de moi
                   </Label>
                 </div>
+                <Link to="/reset-password" className="text-sm text-[hsl(217,91%,65%)] hover:text-[hsl(217,91%,75%)] transition-colors">
+                  Mot de passe oublié ?
+                </Link>
+              </div>
 
-                {!useSameWhatsapp && (
-                  <div className="space-y-2 animate-fade-in">
-                    <Label htmlFor="register-whatsapp" className="text-slate-300 text-sm">Numéro WhatsApp</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                      <Input id="register-whatsapp" type="tel" placeholder="+216 XX XXX XXX" value={registerWhatsapp}
-                        onChange={(e) => setRegisterWhatsapp(e.target.value)} className="pl-10 auth-input" disabled={loading} />
-                    </div>
-                  </div>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-[0_0_20px_hsla(217,91%,50%,0.25)] hover:shadow-[0_0_30px_hsla(217,91%,50%,0.4)] transition-all h-11"
+                disabled={loading}
+              >
+                {loading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connexion...</>
+                ) : (
+                  "Se connecter"
                 )}
+              </Button>
+            </form>
+          )}
 
+          {/* Register Form */}
+          {effectiveTab === "register" && (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="register-username" className="text-zinc-400 text-sm">Nom d'utilisateur</Label>
+                <div className="relative">
+                  <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                  <Input id="register-username" type="text" placeholder="ahmed123" value={registerUsername}
+                    onChange={(e) => setRegisterUsername(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
+                </div>
+                <p className="text-xs text-zinc-600">3-20 caractères, lettres, chiffres et underscores</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="register-name" className="text-zinc-400 text-sm">Nom complet</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                  <Input id="register-name" type="text" placeholder="Ahmed Ben Ali" value={registerFullName}
+                    onChange={(e) => setRegisterFullName(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="register-email" className="text-slate-300 text-sm">Email (optionnel)</Label>
+                  <Label htmlFor="register-country" className="text-zinc-400 text-sm">Pays</Label>
+                  <Select value={registerCountry} onValueChange={(val) => {
+                    setRegisterCountry(val);
+                    const curr = getCurrencyForCountry(val);
+                    if (curr) setRegisterCurrency(curr.code);
+                  }} disabled={loading}>
+                    <SelectTrigger id="register-country" className="auth-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-currency" className="text-zinc-400 text-sm">Devise</Label>
+                  <Select value={registerCurrency} onValueChange={setRegisterCurrency} disabled={loading}>
+                    <SelectTrigger id="register-currency" className="auth-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>{c.symbol} - {c.code}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="register-phone" className="text-zinc-400 text-sm">Numéro de téléphone *</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                  <Input id="register-phone" type="tel" placeholder="+216 XX XXX XXX" value={registerPhone}
+                    onChange={(e) => setRegisterPhone(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox id="same-whatsapp" checked={useSameWhatsapp}
+                  onCheckedChange={(checked) => setUseSameWhatsapp(!!checked)} disabled={loading}
+                  className="border-zinc-600 data-[state=checked]:bg-[hsl(217,91%,50%)] data-[state=checked]:border-[hsl(217,91%,50%)]" />
+                <Label htmlFor="same-whatsapp" className="text-sm cursor-pointer text-zinc-400">
+                  Utiliser ce numéro pour WhatsApp
+                </Label>
+              </div>
+
+              {!useSameWhatsapp && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label htmlFor="register-whatsapp" className="text-zinc-400 text-sm">Numéro WhatsApp</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input id="register-email" type="email" placeholder="exemple@email.com" value={registerEmail}
-                      onChange={(e) => setRegisterEmail(e.target.value)} className="pl-10 auth-input" disabled={loading} />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                    <Input id="register-whatsapp" type="tel" placeholder="+216 XX XXX XXX" value={registerWhatsapp}
+                      onChange={(e) => setRegisterWhatsapp(e.target.value)} className="pl-10 auth-input" disabled={loading} />
                   </div>
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="register-password" className="text-slate-300 text-sm">Mot de passe</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input id="register-password" type="password" placeholder="••••••••" value={registerPassword}
-                      onChange={(e) => setRegisterPassword(e.target.value)} className="pl-10 auth-input" required minLength={8} disabled={loading} />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-email" className="text-zinc-400 text-sm">Email (optionnel)</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                  <Input id="register-email" type="email" placeholder="exemple@email.com" value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)} className="pl-10 auth-input" disabled={loading} />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password" className="text-slate-300 text-sm">Confirmer le mot de passe</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                    <Input id="confirm-password" type="password" placeholder="••••••••" value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-password" className="text-zinc-400 text-sm">Mot de passe</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                  <Input id="register-password" type="password" placeholder="••••••••" value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)} className="pl-10 auth-input" required minLength={8} disabled={loading} />
                 </div>
+              </div>
 
-                {/* Math Challenge */}
-                <div className="space-y-2">
-                  <Label className="text-slate-300 text-sm flex items-center gap-1.5">
-                    <Calculator className="h-3.5 w-3.5" />
-                    Vérification de sécurité
-                  </Label>
-                  <div className="flex items-center gap-3">
-                    <span className="text-white font-mono text-lg bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 select-none whitespace-nowrap">
-                      {mathLoading ? "..." : mathQuestion || "..."}
-                    </span>
-                    <Input
-                      type="number"
-                      placeholder="?"
-                      value={mathAnswer}
-                      onChange={(e) => setMathAnswer(e.target.value)}
-                      className="auth-input w-24 text-center font-mono text-lg"
-                      required
-                      disabled={loading || mathLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={fetchMathChallenge}
-                      className="text-slate-400 hover:text-white text-xs underline whitespace-nowrap"
-                      disabled={mathLoading}
-                    >
-                      Autre
-                    </button>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password" className="text-zinc-400 text-sm">Confirmer le mot de passe</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                  <Input id="confirm-password" type="password" placeholder="••••••••" value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
                 </div>
+              </div>
 
-                {HCAPTCHA_SITE_KEY && (
-                  <div className="flex justify-center">
-                    <HCaptcha
-                      ref={captchaRef}
-                      sitekey={HCAPTCHA_SITE_KEY}
-                      size="invisible"
-                      onVerify={(token) => setCaptchaToken(token)}
-                      onExpire={() => setCaptchaToken(null)}
-                    />
-                  </div>
+              {HCAPTCHA_SITE_KEY && (
+                <div className="flex justify-center">
+                  <HCaptcha
+                    ref={captchaRef}
+                    sitekey={HCAPTCHA_SITE_KEY}
+                    size="invisible"
+                    onVerify={(token) => setCaptchaToken(token)}
+                    onExpire={() => setCaptchaToken(null)}
+                  />
+                </div>
+              )}
+
+              <Button type="submit"
+                className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-[0_0_20px_hsla(217,91%,50%,0.25)] hover:shadow-[0_0_30px_hsla(217,91%,50%,0.4)] transition-all h-11"
+                disabled={loading || signupCooldown > 0}>
+                {loading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</>
+                ) : signupCooldown > 0 ? (
+                  `Patienter ${signupCooldown}s`
+                ) : (
+                  "Créer un compte"
                 )}
-
-                <Button type="submit"
-                  className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-[0_0_20px_hsla(217,91%,50%,0.25)] hover:shadow-[0_0_30px_hsla(217,91%,50%,0.4)] transition-shadow"
-                  disabled={loading || signupCooldown > 0}>
-                  {loading ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</>
-                  ) : signupCooldown > 0 ? (
-                    `Patienter ${signupCooldown}s`
-                  ) : (
-                    "Créer un compte"
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              </Button>
+            </form>
+          )}
         </div>
 
         {/* WhatsApp Contact */}
@@ -624,7 +552,7 @@ export default function Auth() {
           </div>
         )}
 
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-sm text-zinc-600 mt-6">
           © 2024 RepairPro Tunisie. Tous droits réservés.
         </p>
       </div>

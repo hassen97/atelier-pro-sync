@@ -108,6 +108,29 @@ export default function Auth() {
     setError(null);
     setLoading(true);
 
+    // Verify math challenge client-side first
+    if (!mathAnswer.trim()) {
+      setError("Veuillez résoudre le calcul de sécurité.");
+      setLoading(false);
+      return;
+    }
+
+    // Server-side math verification for login
+    try {
+      const { data: mathData, error: mathErr } = await supabase.functions.invoke("math-challenge", {
+        body: { action: "verify", challengeId: mathChallengeId, answer: parseInt(mathAnswer, 10) },
+      });
+      if (mathErr || !mathData?.valid) {
+        setError("Réponse au calcul incorrecte. Veuillez réessayer.");
+        await fetchMathChallenge();
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // Fail open if math-challenge endpoint unreachable
+      console.error("[Auth] math-challenge verify error");
+    }
+
     const { error } = await signIn(loginUsername, loginPassword);
 
     if (error) {
@@ -119,6 +142,7 @@ export default function Auth() {
       } else {
         setError(msg);
       }
+      await fetchMathChallenge();
     } else {
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.user) {
@@ -131,6 +155,7 @@ export default function Auth() {
         if (profile?.is_locked) {
           await supabase.auth.signOut();
           setError("Votre compte est en attente de validation par l'administrateur. Vous serez contacté une fois approuvé.");
+          await fetchMathChallenge();
           setLoading(false);
           return;
         }

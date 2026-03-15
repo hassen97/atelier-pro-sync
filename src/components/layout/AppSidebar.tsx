@@ -33,7 +33,7 @@ import { useAllowedPages } from "@/hooks/useTeam";
 import { useI18n } from "@/contexts/I18nContext";
 
 const navigation = [
-  { nameKey: "nav.dashboard" as const, href: "/", icon: LayoutDashboard },
+  { nameKey: "nav.dashboard" as const, href: "/dashboard", icon: LayoutDashboard },
   { nameKey: "nav.pos" as const, href: "/pos", icon: ShoppingCart },
   { nameKey: "nav.repairs" as const, href: "/repairs", icon: Wrench },
   { nameKey: "nav.inventory" as const, href: "/inventory", icon: Package },

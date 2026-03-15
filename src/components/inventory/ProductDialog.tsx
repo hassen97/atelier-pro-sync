@@ -126,6 +126,7 @@ export function ProductDialog({
 
   const handleSubmit = async (data: ProductFormValues) => {
     await onSubmit(data);
+    clearDraft();
     form.reset();
   };
 

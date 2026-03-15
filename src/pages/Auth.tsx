@@ -163,6 +163,8 @@ export default function Auth() {
           setError("Ce nom d'utilisateur est déjà pris.");
         } else if (reason === "phone_taken") {
           setError("Ce numéro de téléphone est déjà utilisé.");
+        } else if (reason === "captcha_failed" || reason === "captcha_required") {
+          setError("Vérification CAPTCHA échouée. Veuillez réessayer.");
         } else {
           setError(reason || "Inscription refusée.");
         }

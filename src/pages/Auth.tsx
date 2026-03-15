@@ -117,10 +117,35 @@ export default function Auth() {
 
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.user) {
+        const userId = sessionData.session.user.id;
+
+        // Role matching: check user role vs selected tab
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .single();
+
+        const userRole = roleData?.role;
+
+        if (loginRole === "employee" && (userRole === "super_admin" || userRole === "admin")) {
+          await supabase.auth.signOut();
+          setError("Ce compte est un compte propriétaire. Veuillez utiliser l'onglet « Propriétaire ».");
+          setLoading(false);
+          return;
+        }
+
+        if (loginRole === "owner" && (userRole === "employee" || userRole === "manager")) {
+          await supabase.auth.signOut();
+          setError("Ce compte est un compte employé. Veuillez utiliser l'onglet « Employé ».");
+          setLoading(false);
+          return;
+        }
+
         const { data: profile } = await supabase
           .from("profiles")
           .select("is_locked, verification_status")
-          .eq("user_id", sessionData.session.user.id)
+          .eq("user_id", userId)
           .single();
 
         if (profile?.is_locked) {

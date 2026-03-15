@@ -122,6 +122,16 @@ Deno.serve(async (req) => {
       .update({ role })
       .eq("user_id", newUserId);
 
+    // Exempt employees from verification (trigger sets pending_verification for all)
+    await adminClient
+      .from("profiles")
+      .update({
+        verification_status: "verified",
+        verification_deadline: null,
+        is_locked: false,
+      })
+      .eq("user_id", newUserId);
+
     // Add to team_members
     await adminClient.from("team_members").insert({
       owner_id: ownerId,

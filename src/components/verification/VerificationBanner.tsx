@@ -67,12 +67,25 @@ export function VerificationBanner() {
       });
   }, []);
 
+  // On first login: set verification_deadline if null + pending
+  useEffect(() => {
+    if (!user || !profile) return;
+    if (profile.verification_status !== "pending_verification") return;
+    if (profile.verification_deadline) return; // already set
+
+    const newDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    supabase
+      .from("profiles")
+      .update({ verification_deadline: newDeadline } as any)
+      .eq("user_id", user.id)
+      .then(() => {
+        setProfile((prev: any) => prev ? { ...prev, verification_deadline: newDeadline } : prev);
+      });
+  }, [user, profile?.verification_status, profile?.verification_deadline]);
+
   // Countdown timer
   useEffect(() => {
     if (!profile?.verification_deadline || profile?.verification_status !== "pending_verification") {
-      if (profile?.verification_status === "pending_verification" && !profile?.verification_deadline) {
-        setTimeLeft("--:--:--");
-      }
       return;
     }
 

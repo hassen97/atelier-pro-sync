@@ -700,43 +700,67 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          device_hash: string | null
+          device_user_agent: string | null
           email: string | null
           full_name: string | null
           id: string
           is_locked: boolean
           last_online_at: string | null
           phone: string | null
+          registration_ip: string | null
           updated_at: string
           user_id: string
           username: string | null
+          verification_deadline: string | null
+          verification_requested_at: string | null
+          verification_status: string
+          verified_at: string | null
+          verified_by_admin: string | null
           whatsapp_phone: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          device_hash?: string | null
+          device_user_agent?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_locked?: boolean
           last_online_at?: string | null
           phone?: string | null
+          registration_ip?: string | null
           updated_at?: string
           user_id: string
           username?: string | null
+          verification_deadline?: string | null
+          verification_requested_at?: string | null
+          verification_status?: string
+          verified_at?: string | null
+          verified_by_admin?: string | null
           whatsapp_phone?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          device_hash?: string | null
+          device_user_agent?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_locked?: boolean
           last_online_at?: string | null
           phone?: string | null
+          registration_ip?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null
+          verification_deadline?: string | null
+          verification_requested_at?: string | null
+          verification_status?: string
+          verified_at?: string | null
+          verified_by_admin?: string | null
           whatsapp_phone?: string | null
         }
         Relationships: []
@@ -1387,6 +1411,63 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      verification_requests: {
+        Row: {
+          address: string
+          city: string
+          created_at: string
+          facebook_url: string | null
+          google_maps_url: string | null
+          id: string
+          instagram_url: string | null
+          message_to_admin: string | null
+          owner_name: string
+          phone: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shop_description: string | null
+          shop_name: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          city: string
+          created_at?: string
+          facebook_url?: string | null
+          google_maps_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          message_to_admin?: string | null
+          owner_name: string
+          phone: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shop_description?: string | null
+          shop_name: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string
+          facebook_url?: string | null
+          google_maps_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          message_to_admin?: string | null
+          owner_name?: string
+          phone?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shop_description?: string | null
+          shop_name?: string
+          status?: string
           user_id?: string
         }
         Relationships: []

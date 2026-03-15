@@ -18,7 +18,7 @@ import { AdminSignupAttemptsView } from "@/components/admin/AdminSignupAttemptsV
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "verification";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts";
 
 const AdminDashboard = () => {
   const { isLoading } = useAdminData();

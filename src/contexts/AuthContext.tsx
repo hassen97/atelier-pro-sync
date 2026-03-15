@@ -31,8 +31,8 @@ function isNetworkError(err: unknown): boolean {
 }
 
 // Fallback: Direct fetch to Supabase Auth REST API with timeout + retries
-async function authFetch(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: Error | null }> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+async function authFetch(endpoint: string, body: Record<string, unknown>, maxRetries = 3): Promise<{ data: any; error: Error | null }> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
 
@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const signupMutex = useState({ inProgress: false })[0];
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -116,40 +117,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...(email && { email }),
     };
 
-    // Primary: Supabase JS client
-    console.log("[Auth] signUp: attempting with Supabase client...");
+    // Mutex: prevent concurrent signup calls
+    if (signupMutex.inProgress) {
+      return { error: new Error("Inscription en cours, veuillez patienter.") };
+    }
+    signupMutex.inProgress = true;
+
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // Primary: Supabase JS client
+      console.log("[Auth] signUp: attempting with Supabase client...");
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: internalEmail,
+          password,
+          options: { data: metadata },
+        });
+        console.log("[Auth] signUp: client result", { error: error?.message });
+        if (!error) return { error: null };
+        if (!isNetworkError(error)) return { error };
+        // Network error → fall through to fallback
+      } catch (err) {
+        if (!isNetworkError(err)) return { error: err as Error };
+      }
+
+      // Fallback: direct REST fetch (single attempt only for signup)
+      console.log("[Auth] signUp: falling back to REST (single attempt)...");
+      const { data, error } = await authFetch("signup", {
         email: internalEmail,
         password,
-        options: { data: metadata },
-      });
-      console.log("[Auth] signUp: client result", { error: error?.message });
-      if (!error) return { error: null };
-      if (!isNetworkError(error)) return { error };
-      // Network error → fall through to fallback
-    } catch (err) {
-      if (!isNetworkError(err)) return { error: err as Error };
+        data: metadata,
+      }, 1);
+
+      if (error) return { error };
+
+      if (data?.access_token && data?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+      }
+
+      return { error: null };
+    } finally {
+      signupMutex.inProgress = false;
     }
-
-    // Fallback: direct REST fetch
-    console.log("[Auth] signUp: falling back to REST...");
-    const { data, error } = await authFetch("signup", {
-      email: internalEmail,
-      password,
-      data: metadata,
-    });
-
-    if (error) return { error };
-
-    if (data?.access_token && data?.refresh_token) {
-      await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-      });
-    }
-
-    return { error: null };
   };
 
   const signIn = async (username: string, password: string) => {

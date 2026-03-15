@@ -35,6 +35,16 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
+  const [signupCooldown, setSignupCooldown] = useState(0);
+
+  // Cooldown timer
+  useEffect(() => {
+    if (signupCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setSignupCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [signupCooldown]);
 
   useEffect(() => {
     supabase
@@ -104,6 +114,12 @@ export default function Auth() {
     setError(null);
     setSuccess(null);
 
+    // Client-side cooldown check
+    if (signupCooldown > 0) {
+      setError(`Veuillez patienter ${signupCooldown}s avant de réessayer.`);
+      return;
+    }
+
     const usernameError = validateUsername(registerUsername);
     if (usernameError) { setError(usernameError); return; }
     if (!registerPhone.trim()) { setError("Le numéro de téléphone est obligatoire"); return; }
@@ -111,6 +127,36 @@ export default function Auth() {
     if (registerPassword.length < 8) { setError("Le mot de passe doit contenir au moins 8 caractères"); return; }
 
     setLoading(true);
+
+    // Server-side rate limiting + uniqueness pre-check
+    try {
+      const guardRes = await supabase.functions.invoke("signup-guard", {
+        body: { username: registerUsername, phone: registerPhone.trim() },
+      });
+
+      if (guardRes.error) {
+        console.error("[Auth] signup-guard invocation error:", guardRes.error);
+        // Don't block signup if the guard itself fails
+      } else if (guardRes.data && !guardRes.data.allowed) {
+        const reason = guardRes.data.reason;
+        if (reason === "rate_limited") {
+          setError("Trop de tentatives d'inscription. Veuillez réessayer dans une heure.");
+        } else if (reason === "username_taken") {
+          setError("Ce nom d'utilisateur est déjà pris.");
+        } else if (reason === "phone_taken") {
+          setError("Ce numéro de téléphone est déjà utilisé.");
+        } else {
+          setError(reason || "Inscription refusée.");
+        }
+        setLoading(false);
+        setSignupCooldown(30);
+        return;
+      }
+    } catch (guardErr) {
+      console.error("[Auth] signup-guard fetch error:", guardErr);
+      // Fail open
+    }
+
     const whatsappPhone = useSameWhatsapp ? registerPhone.trim() : (registerWhatsapp.trim() || registerPhone.trim());
 
     const { error } = await signUp(
@@ -135,6 +181,7 @@ export default function Auth() {
     }
 
     setLoading(false);
+    setSignupCooldown(30);
   };
 
   const activeTab = loginRole === "employee" ? "login" : undefined;
@@ -389,9 +436,11 @@ export default function Auth() {
 
                 <Button type="submit"
                   className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-[0_0_20px_hsla(217,91%,50%,0.25)] hover:shadow-[0_0_30px_hsla(217,91%,50%,0.4)] transition-shadow"
-                  disabled={loading}>
+                  disabled={loading || signupCooldown > 0}>
                   {loading ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</>
+                  ) : signupCooldown > 0 ? (
+                    `Patienter ${signupCooldown}s`
                   ) : (
                     "Créer un compte"
                   )}

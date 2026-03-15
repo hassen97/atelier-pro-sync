@@ -1,35 +1,81 @@
 
 
-# Combine Verification and Shops Tabs
+# Modernize Login Page with Role Selection
 
 ## Overview
 
-Merge the separate "Boutiques" and "Vérification" sidebar items into a single unified "Boutiques" view with two sub-tabs inside.
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-## Approach
+## Visual Design
 
-Use Radix Tabs inside the existing `AdminShopsView` to create two sub-tabs:
-- **Boutiques** — current shops table with all existing functionality (filters, search, sort, actions, ShopDetailSheet, dialogs)
-- **Vérification** — current verification table with bulk actions, status filters, verification request dialog
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
+
+```text
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
+```
+
+## How the Role Selector Works
+
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
 ## Changes
 
-### 1. `AdminShopsView.tsx`
-- Import `Tabs, TabsList, TabsTrigger, TabsContent` from UI
-- Import the `AdminVerificationView` component
-- Wrap existing shops content in a `TabsContent value="shops"`
-- Add `TabsContent value="verification"` rendering `<AdminVerificationView />`
-- Add a `TabsList` with two triggers: "Boutiques" and "Vérification" at the top, styled to match the dark admin theme
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-### 2. `AdminSidebar.tsx`
-- Remove the "verification" nav item from the "Sécurité" section
-- Remove `verification` from the `AdminView` type
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
 
-### 3. `AdminDashboard.tsx`
-- Remove the `verification` case from `AdminView` type
-- Remove the `{activeView === "verification" && <AdminVerificationView />}` render line
-- Remove the `AdminVerificationView` import
-
-### 4. `AdminVerificationView.tsx`
-- No changes needed — it stays as a standalone component, just rendered inside the shops tab now
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

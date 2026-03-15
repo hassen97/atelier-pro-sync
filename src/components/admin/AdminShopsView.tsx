@@ -218,6 +218,12 @@ export function AdminShopsView() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <Tabs defaultValue="shops" className="w-full">
+        <TabsList className="bg-white/5 border border-white/10 mb-4">
+          <TabsTrigger value="shops" className="data-[state=active]:bg-[#00D4FF]/15 data-[state=active]:text-[#00D4FF] text-slate-400">Boutiques</TabsTrigger>
+          <TabsTrigger value="verification" className="data-[state=active]:bg-[#00D4FF]/15 data-[state=active]:text-[#00D4FF] text-slate-400">Vérification</TabsTrigger>
+        </TabsList>
+        <TabsContent value="shops" className="mt-0 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-semibold text-white">Gestion des boutiques</h2>
         <Button

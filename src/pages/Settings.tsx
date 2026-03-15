@@ -56,6 +56,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { BRAND_COLOR_PRESETS, useBrandTheme } from "@/contexts/BrandThemeContext";
 import { useI18n } from "@/contexts/I18nContext";
+import { SubscriptionTab } from "@/components/settings/SubscriptionTab";
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettingsContext();

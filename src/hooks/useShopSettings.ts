@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useMyTeamInfo, useIsOwner } from "@/hooks/useTeam";
 import { toast } from "sonner";
 
 export interface ShopSettings {

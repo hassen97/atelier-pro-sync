@@ -466,6 +466,11 @@ export function AdminShopsView() {
         />
       )}
       <ShopDetailSheet userId={selectedShopId} onClose={() => setSelectedShopId(null)} />
+        </TabsContent>
+        <TabsContent value="verification" className="mt-0">
+          <AdminVerificationView />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

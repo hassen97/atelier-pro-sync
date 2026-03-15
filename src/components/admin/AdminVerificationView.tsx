@@ -45,9 +45,10 @@ function useVerificationData() {
 function useVerifyOwner() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, action }: { userId: string; action: "verify" | "suspend" }) => {
+    mutationFn: async ({ userId, action }: { userId: string; action: "verify" | "suspend" | "revert-to-pending" }) => {
+      const actionMap = { verify: "verify-owner", suspend: "suspend-owner", "revert-to-pending": "revert-to-pending" };
       const { data, error } = await supabase.functions.invoke("admin-manage-users", {
-        body: { action: action === "verify" ? "verify-owner" : "suspend-owner", userId },
+        body: { action: actionMap[action], userId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -56,7 +57,8 @@ function useVerifyOwner() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-verification-data"] });
       queryClient.invalidateQueries({ queryKey: ["admin-data"] });
-      toast.success(variables.action === "verify" ? "Propriétaire vérifié !" : "Propriétaire suspendu");
+      const msgs = { verify: "Propriétaire vérifié !", suspend: "Propriétaire suspendu", "revert-to-pending": "Remis en attente de vérification" };
+      toast.success(msgs[variables.action]);
     },
     onError: (err: any) => toast.error(err.message),
   });

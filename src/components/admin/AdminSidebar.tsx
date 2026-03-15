@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound, Settings, Users, CreditCard, Tags, ToggleRight, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound, Settings, Users, CreditCard, Tags, ToggleRight, ClipboardList, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts";
 
 interface AdminSidebarProps {
   active: AdminView;
@@ -34,6 +34,12 @@ const navSections = [
       { id: "reset_requests" as const, label: "Demandes", icon: KeyRound },
       { id: "announcements" as const, label: "Annonces", icon: Megaphone },
       { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
+    ],
+  },
+  {
+    label: "Sécurité",
+    items: [
+      { id: "signup_attempts" as const, label: "Tentatives", icon: Shield },
     ],
   },
   {

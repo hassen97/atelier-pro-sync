@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
+
+const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY || "";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -36,6 +39,8 @@ export default function Auth() {
   const [success, setSuccess] = useState<string | null>(null);
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
   const [signupCooldown, setSignupCooldown] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha>(null);
 
   // Cooldown timer
   useEffect(() => {
@@ -128,10 +133,23 @@ export default function Auth() {
 
     setLoading(true);
 
+    // Get captcha token if hCaptcha is configured
+    let tokenForGuard = captchaToken;
+    if (HCAPTCHA_SITE_KEY && !tokenForGuard) {
+      try {
+        const result = await captchaRef.current?.execute({ async: true });
+        tokenForGuard = result?.response || null;
+      } catch {
+        setError("Vérification CAPTCHA échouée. Veuillez réessayer.");
+        setLoading(false);
+        return;
+      }
+    }
+
     // Server-side rate limiting + uniqueness pre-check
     try {
       const guardRes = await supabase.functions.invoke("signup-guard", {
-        body: { username: registerUsername, phone: registerPhone.trim() },
+        body: { username: registerUsername, phone: registerPhone.trim(), captchaToken: tokenForGuard },
       });
 
       if (guardRes.error) {
@@ -145,6 +163,8 @@ export default function Auth() {
           setError("Ce nom d'utilisateur est déjà pris.");
         } else if (reason === "phone_taken") {
           setError("Ce numéro de téléphone est déjà utilisé.");
+        } else if (reason === "captcha_failed" || reason === "captcha_required") {
+          setError("Vérification CAPTCHA échouée. Veuillez réessayer.");
         } else {
           setError(reason || "Inscription refusée.");
         }
@@ -182,6 +202,8 @@ export default function Auth() {
 
     setLoading(false);
     setSignupCooldown(30);
+    setCaptchaToken(null);
+    captchaRef.current?.resetCaptcha();
   };
 
   const activeTab = loginRole === "employee" ? "login" : undefined;
@@ -433,6 +455,18 @@ export default function Auth() {
                       onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
                   </div>
                 </div>
+
+                {HCAPTCHA_SITE_KEY && (
+                  <div className="flex justify-center">
+                    <HCaptcha
+                      ref={captchaRef}
+                      sitekey={HCAPTCHA_SITE_KEY}
+                      size="invisible"
+                      onVerify={(token) => setCaptchaToken(token)}
+                      onExpire={() => setCaptchaToken(null)}
+                    />
+                  </div>
+                )}
 
                 <Button type="submit"
                   className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-[0_0_20px_hsla(217,91%,50%,0.25)] hover:shadow-[0_0_30px_hsla(217,91%,50%,0.4)] transition-shadow"

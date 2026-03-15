@@ -14,7 +14,7 @@ import { AdminPaymentGatewaysView } from "@/components/admin/AdminPaymentGateway
 import { AdminFeatureFlagsView } from "@/components/admin/AdminFeatureFlagsView";
 import { AdminWaitlistView } from "@/components/admin/AdminWaitlistView";
 import { AdminSignupAttemptsView } from "@/components/admin/AdminSignupAttemptsView";
-import { AdminVerificationView } from "@/components/admin/AdminVerificationView";
+
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 

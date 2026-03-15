@@ -25,6 +25,7 @@ const navSections = [
     items: [
       { id: "plans" as const, label: "Tarifs & Plans", icon: Tags },
       { id: "gateways" as const, label: "Paiements", icon: CreditCard },
+      { id: "revenue_ledger" as const, label: "Revenus", icon: DollarSign },
       { id: "feature_flags" as const, label: "Feature Flags", icon: ToggleRight },
     ],
   },

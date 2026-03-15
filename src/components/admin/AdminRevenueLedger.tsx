@@ -15,7 +15,8 @@ const statusColors: Record<string, string> = {
 };
 
 export function AdminRevenueLedger() {
-  const { data: orders = [], isLoading } = useAdminOrders();
+  const { data, isLoading } = useAdminOrders();
+  const orders = (data as any)?.orders || [];
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [gatewayFilter, setGatewayFilter] = useState<string>("all");
 

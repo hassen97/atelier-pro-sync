@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { toast } from "sonner";
 
 export interface TeamMember {
@@ -86,13 +87,16 @@ export function useMyTeamInfo() {
   });
 }
 
-// Get the effective user_id for data queries (owner's ID if team member)
+// Get the effective user_id for data queries (owner's ID if team member, or impersonated user)
 export function useEffectiveUserId() {
   const { user } = useAuth();
   const { data: teamInfo } = useMyTeamInfo();
   const { data: isOwner } = useIsOwner();
+  const { impersonatedUserId } = useImpersonation();
 
   if (!user) return null;
+  // If platform_admin is impersonating, use the impersonated user's ID
+  if (impersonatedUserId) return impersonatedUserId;
   // If user is a team member, use the owner's user_id
   if (teamInfo?.owner_id && !isOwner) return teamInfo.owner_id;
   // Otherwise use own user_id

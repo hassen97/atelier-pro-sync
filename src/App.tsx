@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ShopSettingsProvider } from "@/contexts/ShopSettingsContext";
 import { I18nProvider } from "@/contexts/I18nContext";
@@ -85,7 +86,9 @@ const App = () => (
                     <BrandThemeProvider>
                       <I18nProvider>
                         <NotificationsProvider>
-                          <MainLayout />
+                          <ImpersonationProvider>
+                            <MainLayout />
+                          </ImpersonationProvider>
                         </NotificationsProvider>
                       </I18nProvider>
                     </BrandThemeProvider>

@@ -1,38 +1,81 @@
 
 
-# Fix: Verification Timer Not Working
+# Modernize Login Page with Role Selection
 
-## Root Cause
+## Overview
 
-All existing `pending_verification` accounts have `verification_deadline = NULL` in the database. The `handle_new_user` trigger correctly sets it for **new** accounts, but accounts created before the migration were never backfilled.
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-The timer code in `VerificationBanner.tsx` line 72 exits early when `verification_deadline` is null:
-```typescript
-if (!profile?.verification_deadline || ...) return;
+## Visual Design
+
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
+
+```text
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
 ```
 
-So the countdown never starts and `timeLeft` stays empty.
+## How the Role Selector Works
 
-## Fix
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
-### 1. Database Migration — Backfill existing accounts
-Run a migration to set `verification_deadline` for all existing `pending_verification` profiles that have a NULL deadline:
+## Changes
 
-```sql
-UPDATE profiles
-SET verification_deadline = created_at + interval '48 hours'
-WHERE verification_status = 'pending_verification'
-  AND verification_deadline IS NULL;
-```
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-This uses each account's `created_at` to calculate the correct 48-hour window retroactively.
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
 
-### 2. Frontend — Handle edge case gracefully
-In `VerificationBanner.tsx`, add a fallback so that if `verification_deadline` is somehow still null, the banner still renders (showing the form) but without a countdown, rather than silently returning null. This prevents the entire verification flow from being invisible if data is missing.
-
-### Files to modify
-| File | Change |
-|------|--------|
-| New migration SQL | Backfill `verification_deadline` for existing accounts |
-| `src/components/verification/VerificationBanner.tsx` | Add fallback when deadline is null — still show overlay/form, just hide the timer display |
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

@@ -69,7 +69,12 @@ export function VerificationBanner() {
 
   // Countdown timer
   useEffect(() => {
-    if (!profile?.verification_deadline || profile?.verification_status !== "pending_verification") return;
+    if (!profile?.verification_deadline || profile?.verification_status !== "pending_verification") {
+      if (profile?.verification_status === "pending_verification" && !profile?.verification_deadline) {
+        setTimeLeft("--:--:--");
+      }
+      return;
+    }
 
     const updateTimer = () => {
       const deadline = new Date(profile.verification_deadline).getTime();

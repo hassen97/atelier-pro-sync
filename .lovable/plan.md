@@ -1,66 +1,81 @@
 
 
-# Full-Screen Verification Blocker + Settings Pre-fill
+# Modernize Login Page with Role Selection
 
-## What Changes
+## Overview
 
-### 1. Replace Banner with Full-Screen Blocking Overlay
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-The current `VerificationBanner` is a small amber strip at the top of the page. It will be completely rewritten into a **full-screen overlay** that blocks the entire dashboard.
+## Visual Design
 
-**Two states:**
-
-- **Before submission** (`verification_requested_at` is null): A bold red full-screen blocker with countdown timer, preventing any interaction with the app. The verification form is embedded directly (not in a dialog). The user cannot dismiss this overlay.
-
-- **After submission** (`verification_requested_at` is set): The overlay disappears. Instead, a non-blocking amber/yellow top banner shows "Votre demande est en cours d'examen" with the countdown. The user can use the app normally while waiting.
-
-### 2. Full-Screen Overlay Design
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
 
 ```text
-┌──────────────────────────────────────────┐
-│  ████████ FULL RED OVERLAY ██████████████ │
-│                                          │
-│     🛡️  Vérification Requise            │
-│                                          │
-│  Votre compte doit être vérifié avant    │
-│  de pouvoir accéder à la plateforme.     │
-│                                          │
-│  Suspension dans: 47:32:15               │
-│                                          │
-│  ┌────────────────────────────────────┐  │
-│  │  [Embedded Verification Form]     │  │
-│  │  Shop name, owner, phone, city... │  │
-│  │  [Soumettre la demande]           │  │
-│  └────────────────────────────────────┘  │
-│                                          │
-│  WhatsApp contact link                   │
-└──────────────────────────────────────────┘
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
 ```
 
-### 3. Pre-fill Shop Settings After Submission
+## How the Role Selector Works
 
-When the verification form is submitted, the data (shop_name, phone, address, google_maps_url) will also be saved to `shop_settings` for that user. This way their settings page is pre-populated.
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
-In the `VerificationRequestDialog` submit handler, after inserting into `verification_requests`, update `shop_settings`:
-- `shop_name` → `shop_settings.shop_name`
-- `phone` → `shop_settings.phone`  
-- `address` → `shop_settings.address`
-- `google_maps_url` → `shop_settings.google_maps_url`
+## Changes
 
-### 4. Files to Modify
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-| File | Change |
-|------|--------|
-| `src/components/verification/VerificationBanner.tsx` | Complete rewrite: full-screen red overlay (pre-submission) vs. amber banner (post-submission). Embed the form inline instead of using a dialog. |
-| `src/components/verification/VerificationRequestDialog.tsx` | Update `handleSubmit` to also upsert matching fields into `shop_settings`. Keep the dialog for potential reuse but the banner will embed the form directly. |
-| `src/components/layout/MainLayout.tsx` | Move `VerificationBanner` to render as a sibling overlay on top of everything (outside the flex layout), so it truly blocks the entire page. |
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
 
-### 5. Technical Details
-
-- The full-screen overlay uses `fixed inset-0 z-[100]` to cover everything including sidebar and header
-- Red gradient background: `bg-gradient-to-b from-red-950 via-red-900/98 to-zinc-950`
-- Countdown timer logic stays the same (server-enforced `verification_deadline`)
-- After form submission: set local state + refetch profile so `verification_requested_at` is populated → overlay disappears, banner appears
-- Settings pre-fill uses existing `supabase.from("shop_settings").update(...)` filtered by `user_id`
-- No database schema changes needed — all fields already exist in both tables
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

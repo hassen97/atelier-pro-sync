@@ -54,18 +54,20 @@ const defaultSettings: ShopSettings = {
 
 export function useShopSettings() {
   const { user } = useAuth();
+  const { impersonatedUserId } = useImpersonation();
+  const effectiveUserId = impersonatedUserId || user?.id || null;
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (effectiveUserId) {
       fetchSettings();
     }
-  }, [user]);
+  }, [effectiveUserId]);
 
   const fetchSettings = async () => {
-    if (!user) return;
+    if (!effectiveUserId) return;
     
     try {
       setLoading(true);

@@ -46,6 +46,8 @@ export default function POS() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>("");
   const [amountPaidInput, setAmountPaidInput] = useState<string>("");
+  const [globalDiscount, setGlobalDiscount] = useState<number>(0);
+  const [globalDiscountType, setGlobalDiscountType] = useState<"fixed" | "percent">("percent");
   const scanRef = useRef<HTMLInputElement>(null);
   const beepRef = useRef<AudioContext | null>(null);
 

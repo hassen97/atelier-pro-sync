@@ -440,6 +440,73 @@ serve(async (req) => {
         return jsonResp({ success: true });
       }
 
+      // ─── VERIFICATION: LIST ───
+      if (action === "list-verification") {
+        const { data: profiles } = await adminClient
+          .from("profiles")
+          .select("user_id, full_name, username, created_at, phone, verification_status, verification_deadline, verification_requested_at, verified_at")
+          .order("created_at", { ascending: false });
+
+        const { data: roles } = await adminClient.from("user_roles").select("user_id, role");
+        const { data: shopSettings } = await adminClient.from("shop_settings").select("user_id, shop_name");
+
+        const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
+        const shopMap = new Map((shopSettings || []).map((s: any) => [s.user_id, s.shop_name]));
+
+        const owners = (profiles || [])
+          .filter((p: any) => roleMap.get(p.user_id) === "super_admin")
+          .map((p: any) => ({
+            ...p,
+            shop_name: shopMap.get(p.user_id) || "Mon Atelier",
+          }));
+
+        return jsonResp({ owners });
+      }
+
+      // ─── VERIFICATION: VERIFY OWNER ───
+      if (action === "verify-owner") {
+        if (!body.userId) return jsonResp({ error: "userId required" }, 400);
+        await adminClient.from("profiles").update({
+          verification_status: "verified",
+          verified_at: new Date().toISOString(),
+          verified_by_admin: callerId,
+          is_locked: false,
+        }).eq("user_id", body.userId);
+        // Unban
+        await adminClient.auth.admin.updateUserById(body.userId, { ban_duration: "none" });
+        // Update verification request status if any
+        await adminClient.from("verification_requests").update({
+          status: "approved",
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: callerId,
+        }).eq("user_id", body.userId).eq("status", "pending");
+        return jsonResp({ success: true });
+      }
+
+      // ─── VERIFICATION: SUSPEND OWNER ───
+      if (action === "suspend-owner") {
+        if (!body.userId) return jsonResp({ error: "userId required" }, 400);
+        await adminClient.from("profiles").update({
+          verification_status: "suspended",
+          is_locked: true,
+        }).eq("user_id", body.userId);
+        await adminClient.auth.admin.updateUserById(body.userId, { ban_duration: "876000h" });
+        return jsonResp({ success: true });
+      }
+
+      // ─── VERIFICATION: GET REQUEST ───
+      if (action === "get-verification-request") {
+        if (!body.userId) return jsonResp({ error: "userId required" }, 400);
+        const { data: request } = await adminClient
+          .from("verification_requests")
+          .select("*")
+          .eq("user_id", body.userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        return jsonResp({ request });
+      }
+
       return jsonResp({ error: "Unknown action" }, 400);
     }
   } catch (err) {

@@ -35,6 +35,16 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
+  const [signupCooldown, setSignupCooldown] = useState(0);
+
+  // Cooldown timer
+  useEffect(() => {
+    if (signupCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setSignupCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [signupCooldown]);
 
   useEffect(() => {
     supabase

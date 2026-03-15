@@ -366,8 +366,12 @@ export default function LandingPage() {
                         </Button>
                       </Link>
                     ) : (
-                      <Button variant="ghost" className="w-full rounded-full" disabled style={{ border: "1px solid hsla(0, 0%, 100%, 0.08)", color: "hsl(240 5% 40%)" }}>
-                        Prochainement
+                      <Button
+                        onClick={() => handlePlanClick(plan.id)}
+                        className="w-full rounded-full lp-glow-btn"
+                        style={{ background: plan.highlight ? "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 40%))" : "hsla(0, 0%, 100%, 0.06)", color: plan.highlight ? "white" : "hsl(0 0% 90%)", border: plan.highlight ? "none" : "1px solid hsla(0, 0%, 100%, 0.1)" }}
+                      >
+                        Choisir ce plan <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     )}
                   </div>

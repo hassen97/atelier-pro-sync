@@ -267,6 +267,8 @@ export default function Auth() {
     setSignupCooldown(30);
     setCaptchaToken(null);
     captchaRef.current?.resetCaptcha();
+    await fetchMathChallenge();
+    captchaRef.current?.resetCaptcha();
   };
 
   const activeTab = loginRole === "employee" ? "login" : undefined;

@@ -101,6 +101,8 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useImpersonation() {
-  return useContext(ImpersonationContext);
+export function useImpersonation(): ImpersonationContextType {
+  const context = useContext(ImpersonationContext);
+  // Safe to use outside provider - returns default values
+  return context;
 }

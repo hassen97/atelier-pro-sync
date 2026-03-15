@@ -181,6 +181,7 @@ export default function Auth() {
     const usernameError = validateUsername(registerUsername);
     if (usernameError) { setError(usernameError); return; }
     if (!registerPhone.trim()) { setError("Le numéro de téléphone est obligatoire"); return; }
+    if (!mathAnswer.trim()) { setError("Veuillez résoudre le calcul de sécurité."); return; }
     if (registerPassword !== confirmPassword) { setError("Les mots de passe ne correspondent pas"); return; }
     if (registerPassword.length < 8) { setError("Le mot de passe doit contenir au moins 8 caractères"); return; }
 

@@ -287,6 +287,7 @@ export function RepairDialog({
       ...data,
       device_model: fullDeviceModel,
     }, selectedParts);
+    clearDraft();
     form.reset();
     setSelectedBrand("");
     setSelectedParts([]);

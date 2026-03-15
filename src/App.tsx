@@ -86,7 +86,9 @@ const App = () => (
                     <BrandThemeProvider>
                       <I18nProvider>
                         <NotificationsProvider>
-                          <MainLayout />
+                          <ImpersonationProvider>
+                            <MainLayout />
+                          </ImpersonationProvider>
                         </NotificationsProvider>
                       </I18nProvider>
                     </BrandThemeProvider>

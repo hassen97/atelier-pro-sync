@@ -45,7 +45,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // Platform admin redirect logic
-  if (isPlatformAdmin && location.pathname !== "/admin") {
+  // Allow platform_admin to access tenant routes when impersonating
+  const isImpersonating = new URLSearchParams(location.search).has("impersonate");
+  if (isPlatformAdmin && location.pathname !== "/admin" && !isImpersonating) {
     return <Navigate to="/admin" replace />;
   }
   if (!isPlatformAdmin && location.pathname === "/admin") {

@@ -1,62 +1,81 @@
 
 
-# Math Challenge Security Layer for Login & Signup
+# Modernize Login Page with Role Selection
 
 ## Overview
-Add a simple math equation challenge to both login and signup forms. The challenge is generated server-side, signed with HMAC to prevent tampering, and verified on both client and server.
 
-## How It Works
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
+
+## Visual Design
+
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
 
 ```text
-Client                           Server (signup-guard / new login-guard)
-  │                                  │
-  │  1. GET math challenge           │
-  │  ─────────────────────────►      │
-  │                                  │
-  │  { question: "7 + 3 = ?",       │
-  │    challengeId: "hmac_signed" }  │
-  │  ◄─────────────────────────      │
-  │                                  │
-  │  2. User solves: answer=10       │
-  │  POST with answer+challengeId   │
-  │  ─────────────────────────►      │
-  │                                  │
-  │  Server recomputes HMAC,         │
-  │  verifies answer matches         │
-  │  ─────────────────────────►      │
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
 ```
 
-## Math Equation Design
-- Simple operations: addition (a + b), subtraction (a - b), multiplication (a × b)
-- Numbers range: 1-20 for add/subtract, 2-9 for multiply
-- Always positive results (for subtraction, ensure a > b)
-- Challenge is encoded as: `base64(operand1:operator:operand2):hmac_signature`
-- HMAC uses `SUPABASE_SERVICE_ROLE_KEY` as secret — no new secrets needed
+## How the Role Selector Works
+
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
 ## Changes
 
-### 1. New Edge Function: `math-challenge`
-- **GET**: Generate a random math equation, return `{ question, challengeId }` where challengeId = `base64(a:op:b):hmac`
-- **POST**: Verify `{ challengeId, answer }` — recompute HMAC, solve equation, compare answer
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-### 2. Update `signup-guard` Edge Function
-- Accept `mathChallengeId` + `mathAnswer` in the request body
-- Verify the math challenge server-side before proceeding
-- Block if math answer is wrong (`reason: "math_failed"`)
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
 
-### 3. Update `Auth.tsx` — Both Login & Signup Forms
-- On form mount / after each submission, fetch a new math challenge from `math-challenge`
-- Display the equation (e.g., "7 + 3 = ?") with an input field for the answer
-- Client-side pre-validation: check answer is a number
-- For **signup**: send `mathChallengeId` + `mathAnswer` to `signup-guard`
-- For **login**: verify via a direct call to `math-challenge` POST endpoint before calling `signIn`
-
-### 4. Config Update: `supabase/config.toml`
-- Add `[functions.math-challenge]` with `verify_jwt = false`
-
-## Security Properties
-- HMAC-signed challenge prevents forging/replaying challenges
-- Server-side verification on both login and signup paths
-- Challenge expires implicitly (new one fetched each time)
-- No database storage needed — stateless HMAC verification
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

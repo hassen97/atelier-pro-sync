@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe, Phone, Mail, MessageCircle, Store, UserCog } from "lucide-react";
+import { Loader2, Wrench, Lock, User, AlertCircle, CheckCircle, AtSign, Globe, Phone, Mail, MessageCircle, Store, UserCog, Calculator } from "lucide-react";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,6 +41,34 @@ export default function Auth() {
   const [signupCooldown, setSignupCooldown] = useState(0);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaRef = useRef<HCaptcha>(null);
+
+  // Math challenge state
+  const [mathQuestion, setMathQuestion] = useState("");
+  const [mathChallengeId, setMathChallengeId] = useState("");
+  const [mathAnswer, setMathAnswer] = useState("");
+  const [mathLoading, setMathLoading] = useState(false);
+
+  const fetchMathChallenge = async () => {
+    setMathLoading(true);
+    setMathAnswer("");
+    try {
+      const { data, error } = await supabase.functions.invoke("math-challenge", {
+        body: { action: "generate" },
+      });
+      if (!error && data) {
+        setMathQuestion(data.question || "");
+        setMathChallengeId(data.challengeId || "");
+      }
+    } catch (err) {
+      console.error("[Auth] math-challenge fetch error:", err);
+    }
+    setMathLoading(false);
+  };
+
+  // Fetch math challenge on mount
+  useEffect(() => {
+    fetchMathChallenge();
+  }, []);
 
   // Cooldown timer
   useEffect(() => {
@@ -80,6 +108,29 @@ export default function Auth() {
     setError(null);
     setLoading(true);
 
+    // Verify math challenge client-side first
+    if (!mathAnswer.trim()) {
+      setError("Veuillez résoudre le calcul de sécurité.");
+      setLoading(false);
+      return;
+    }
+
+    // Server-side math verification for login
+    try {
+      const { data: mathData, error: mathErr } = await supabase.functions.invoke("math-challenge", {
+        body: { action: "verify", challengeId: mathChallengeId, answer: parseInt(mathAnswer, 10) },
+      });
+      if (mathErr || !mathData?.valid) {
+        setError("Réponse au calcul incorrecte. Veuillez réessayer.");
+        await fetchMathChallenge();
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // Fail open if math-challenge endpoint unreachable
+      console.error("[Auth] math-challenge verify error");
+    }
+
     const { error } = await signIn(loginUsername, loginPassword);
 
     if (error) {
@@ -91,6 +142,7 @@ export default function Auth() {
       } else {
         setError(msg);
       }
+      await fetchMathChallenge();
     } else {
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.user) {
@@ -103,6 +155,7 @@ export default function Auth() {
         if (profile?.is_locked) {
           await supabase.auth.signOut();
           setError("Votre compte est en attente de validation par l'administrateur. Vous serez contacté une fois approuvé.");
+          await fetchMathChallenge();
           setLoading(false);
           return;
         }
@@ -128,6 +181,7 @@ export default function Auth() {
     const usernameError = validateUsername(registerUsername);
     if (usernameError) { setError(usernameError); return; }
     if (!registerPhone.trim()) { setError("Le numéro de téléphone est obligatoire"); return; }
+    if (!mathAnswer.trim()) { setError("Veuillez résoudre le calcul de sécurité."); return; }
     if (registerPassword !== confirmPassword) { setError("Les mots de passe ne correspondent pas"); return; }
     if (registerPassword.length < 8) { setError("Le mot de passe doit contenir au moins 8 caractères"); return; }
 
@@ -149,7 +203,13 @@ export default function Auth() {
     // Server-side rate limiting + uniqueness pre-check
     try {
       const guardRes = await supabase.functions.invoke("signup-guard", {
-        body: { username: registerUsername, phone: registerPhone.trim(), captchaToken: tokenForGuard },
+        body: {
+          username: registerUsername,
+          phone: registerPhone.trim(),
+          captchaToken: tokenForGuard,
+          mathChallengeId,
+          mathAnswer: parseInt(mathAnswer, 10),
+        },
       });
 
       if (guardRes.error) {
@@ -165,11 +225,14 @@ export default function Auth() {
           setError("Ce numéro de téléphone est déjà utilisé.");
         } else if (reason === "captcha_failed" || reason === "captcha_required") {
           setError("Vérification CAPTCHA échouée. Veuillez réessayer.");
+        } else if (reason === "math_failed" || reason === "math_required") {
+          setError("Réponse au calcul incorrecte. Veuillez réessayer.");
         } else {
           setError(reason || "Inscription refusée.");
         }
         setLoading(false);
         setSignupCooldown(30);
+        await fetchMathChallenge();
         return;
       }
     } catch (guardErr) {
@@ -203,6 +266,8 @@ export default function Auth() {
     setLoading(false);
     setSignupCooldown(30);
     setCaptchaToken(null);
+    captchaRef.current?.resetCaptcha();
+    await fetchMathChallenge();
     captchaRef.current?.resetCaptcha();
   };
 
@@ -323,6 +388,36 @@ export default function Auth() {
                       required
                       disabled={loading}
                     />
+                  </div>
+                </div>
+
+                {/* Math Challenge */}
+                <div className="space-y-2">
+                  <Label className="text-slate-300 text-sm flex items-center gap-1.5">
+                    <Calculator className="h-3.5 w-3.5" />
+                    Vérification de sécurité
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-white font-mono text-lg bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 select-none whitespace-nowrap">
+                      {mathLoading ? "..." : mathQuestion || "..."}
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="?"
+                      value={mathAnswer}
+                      onChange={(e) => setMathAnswer(e.target.value)}
+                      className="auth-input w-24 text-center font-mono text-lg"
+                      required
+                      disabled={loading || mathLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={fetchMathChallenge}
+                      className="text-slate-400 hover:text-white text-xs underline whitespace-nowrap"
+                      disabled={mathLoading}
+                    >
+                      Autre
+                    </button>
                   </div>
                 </div>
 
@@ -453,6 +548,36 @@ export default function Auth() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                     <Input id="confirm-password" type="password" placeholder="••••••••" value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10 auth-input" required disabled={loading} />
+                  </div>
+                </div>
+
+                {/* Math Challenge */}
+                <div className="space-y-2">
+                  <Label className="text-slate-300 text-sm flex items-center gap-1.5">
+                    <Calculator className="h-3.5 w-3.5" />
+                    Vérification de sécurité
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-white font-mono text-lg bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 select-none whitespace-nowrap">
+                      {mathLoading ? "..." : mathQuestion || "..."}
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="?"
+                      value={mathAnswer}
+                      onChange={(e) => setMathAnswer(e.target.value)}
+                      className="auth-input w-24 text-center font-mono text-lg"
+                      required
+                      disabled={loading || mathLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={fetchMathChallenge}
+                      className="text-slate-400 hover:text-white text-xs underline whitespace-nowrap"
+                      disabled={mathLoading}
+                    >
+                      Autre
+                    </button>
                   </div>
                 </div>
 

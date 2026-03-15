@@ -19,7 +19,7 @@ export function useEnabledGateways() {
         .select("id, gateway_key, gateway_name, description, config")
         .eq("is_enabled", true);
       if (error) throw error;
-      return (data || []) as EnabledGateway[];
+      return (data || []) as unknown as EnabledGateway[];
     },
   });
 }

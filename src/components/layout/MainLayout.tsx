@@ -70,6 +70,7 @@ export function MainLayout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Read-only impersonation banner */}
         <ReadOnlyBanner />
+        <VerificationBanner />
         {/* Header */}
         <header className="h-16 shrink-0 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">

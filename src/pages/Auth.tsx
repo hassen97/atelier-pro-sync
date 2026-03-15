@@ -114,6 +114,12 @@ export default function Auth() {
     setError(null);
     setSuccess(null);
 
+    // Client-side cooldown check
+    if (signupCooldown > 0) {
+      setError(`Veuillez patienter ${signupCooldown}s avant de réessayer.`);
+      return;
+    }
+
     const usernameError = validateUsername(registerUsername);
     if (usernameError) { setError(usernameError); return; }
     if (!registerPhone.trim()) { setError("Le numéro de téléphone est obligatoire"); return; }
@@ -121,6 +127,36 @@ export default function Auth() {
     if (registerPassword.length < 8) { setError("Le mot de passe doit contenir au moins 8 caractères"); return; }
 
     setLoading(true);
+
+    // Server-side rate limiting + uniqueness pre-check
+    try {
+      const guardRes = await supabase.functions.invoke("signup-guard", {
+        body: { username: registerUsername, phone: registerPhone.trim() },
+      });
+
+      if (guardRes.error) {
+        console.error("[Auth] signup-guard invocation error:", guardRes.error);
+        // Don't block signup if the guard itself fails
+      } else if (guardRes.data && !guardRes.data.allowed) {
+        const reason = guardRes.data.reason;
+        if (reason === "rate_limited") {
+          setError("Trop de tentatives d'inscription. Veuillez réessayer dans une heure.");
+        } else if (reason === "username_taken") {
+          setError("Ce nom d'utilisateur est déjà pris.");
+        } else if (reason === "phone_taken") {
+          setError("Ce numéro de téléphone est déjà utilisé.");
+        } else {
+          setError(reason || "Inscription refusée.");
+        }
+        setLoading(false);
+        setSignupCooldown(30);
+        return;
+      }
+    } catch (guardErr) {
+      console.error("[Auth] signup-guard fetch error:", guardErr);
+      // Fail open
+    }
+
     const whatsappPhone = useSameWhatsapp ? registerPhone.trim() : (registerWhatsapp.trim() || registerPhone.trim());
 
     const { error } = await signUp(
@@ -145,6 +181,7 @@ export default function Auth() {
     }
 
     setLoading(false);
+    setSignupCooldown(30);
   };
 
   const activeTab = loginRole === "employee" ? "login" : undefined;

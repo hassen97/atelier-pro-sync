@@ -593,6 +593,24 @@ serve(async (req) => {
         return jsonResp({ success: true, count: successCount });
       }
 
+      // ─── BULK REVERT TO PENDING ───
+      if (action === "bulk-revert-to-pending") {
+        if (!body.userIds || body.userIds.length === 0) return jsonResp({ error: "userIds required" }, 400);
+        let successCount = 0;
+        for (const uid of body.userIds) {
+          await adminClient.from("profiles").update({
+            verification_status: "pending_verification",
+            verification_deadline: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+            verified_at: null,
+            verified_by_admin: null,
+            is_locked: false,
+          }).eq("user_id", uid);
+          await adminClient.auth.admin.updateUserById(uid, { ban_duration: "none" });
+          successCount++;
+        }
+        return jsonResp({ success: true, count: successCount });
+      }
+
       return jsonResp({ error: "Unknown action" }, 400);
     }
   } catch (err) {

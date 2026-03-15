@@ -68,12 +68,18 @@ function useBulkAction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ action, userIds }: { action: "bulk-verify" | "bulk-suspend" | "bulk-delete" | "bulk-revert-to-pending"; userIds: string[] }) => {
-      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
-        body: { action, userIds },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
+      const CHUNK_SIZE = 80;
+      let totalCount = 0;
+      for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
+        const chunk = userIds.slice(i, i + CHUNK_SIZE);
+        const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+          body: { action, userIds: chunk },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        totalCount += data?.count || chunk.length;
+      }
+      return { count: totalCount };
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-verification-data"] });

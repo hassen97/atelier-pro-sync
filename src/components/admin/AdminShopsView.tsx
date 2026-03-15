@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useAdminData, useDeleteOwner, useLockOwner } from "@/hooks/useAdmin";
+import { useAdminData, useDeleteOwner, useLockOwner, useSetShopPlan } from "@/hooks/useAdmin";
 import { useCreateAnnouncement } from "@/hooks/useAnnouncements";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";

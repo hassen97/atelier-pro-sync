@@ -38,8 +38,7 @@ export default function Checkout() {
   const gateway = gateways?.find(g => g.gateway_key === selectedGateway);
 
   if (!user) {
-    navigate(`/auth?redirect=/checkout?plan=${planId}`);
-    return null;
+    return <Navigate to={`/auth?redirect=${encodeURIComponent(`/checkout?plan=${planId}`)}`} replace />;
   }
 
   if (!plan) {

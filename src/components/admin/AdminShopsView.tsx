@@ -138,16 +138,28 @@ export function AdminShopsView() {
   const { data } = useAdminData();
   const deleteOwner = useDeleteOwner();
   const lockOwner = useLockOwner();
+  const setShopPlan = useSetShopPlan();
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
   const [announcementTarget, setAnnouncementTarget] = useState<{ userId: string; shopName: string } | null>(null);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
+  const [planTarget, setPlanTarget] = useState<{ userId: string; shopName: string } | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [planExpiry, setPlanExpiry] = useState("");
+  const [plans, setPlans] = useState<any[]>([]);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const owners = data?.owners || [];
+
+  // Load plans for God Mode dialog
+  useEffect(() => {
+    supabase.from("subscription_plans").select("id, name, price, currency").order("sort_order").then(({ data }) => {
+      setPlans(data || []);
+    });
+  }, []);
 
   const filteredOwners = useMemo(() => {
     const now = Date.now();

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useMyTeamInfo, useIsOwner } from "@/hooks/useTeam";
 import { toast } from "sonner";
 
 export interface ShopSettings {
@@ -55,7 +56,13 @@ const defaultSettings: ShopSettings = {
 export function useShopSettings() {
   const { user } = useAuth();
   const { impersonatedUserId } = useImpersonation();
-  const effectiveUserId = impersonatedUserId || user?.id || null;
+  const { data: teamInfo } = useMyTeamInfo();
+  const { data: isOwner } = useIsOwner();
+  // Employees should load the owner's shop settings
+  const effectiveUserId = impersonatedUserId 
+    || (teamInfo?.owner_id && !isOwner ? teamInfo.owner_id : null) 
+    || user?.id 
+    || null;
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

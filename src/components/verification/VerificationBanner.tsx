@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { AlertTriangle, ShieldCheck, Clock, Loader2, MessageCircle, CheckCircle } from "lucide-react";
+import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -178,6 +179,17 @@ export function VerificationBanner() {
       setLoading(false);
     }
   };
+
+  // Confetti on first verification
+  useEffect(() => {
+    if (!user || !profile || profile.verification_status !== "verified") return;
+    const confettiKey = `confetti_shown_${user.id}`;
+    if (localStorage.getItem(confettiKey)) return;
+    localStorage.setItem(confettiKey, "true");
+    // Fire confetti
+    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+    setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 } }), 300);
+  }, [user, profile?.verification_status]);
 
   if (!isOwner || !profile || profile.verification_status === "verified") return null;
 

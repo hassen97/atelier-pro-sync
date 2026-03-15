@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useAdminData, useDeleteOwner, useLockOwner } from "@/hooks/useAdmin";
+import { useState, useMemo, useEffect } from "react";
+import { useAdminData, useDeleteOwner, useLockOwner, useSetShopPlan } from "@/hooks/useAdmin";
 import { useCreateAnnouncement } from "@/hooks/useAnnouncements";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
@@ -12,9 +12,10 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn, ShieldCheck } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn, ShieldCheck, Crown, Clock, AlertTriangle } from "lucide-react";
 import { VerifiedBadge } from "@/components/verification/VerifiedBadge";
 import { ShopDetailSheet } from "./ShopDetailSheet";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -138,16 +139,28 @@ export function AdminShopsView() {
   const { data } = useAdminData();
   const deleteOwner = useDeleteOwner();
   const lockOwner = useLockOwner();
+  const setShopPlan = useSetShopPlan();
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
   const [announcementTarget, setAnnouncementTarget] = useState<{ userId: string; shopName: string } | null>(null);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
+  const [planTarget, setPlanTarget] = useState<{ userId: string; shopName: string } | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [planExpiry, setPlanExpiry] = useState("");
+  const [plans, setPlans] = useState<any[]>([]);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const owners = data?.owners || [];
+
+  // Load plans for God Mode dialog
+  useEffect(() => {
+    supabase.from("subscription_plans").select("id, name, price, currency").order("sort_order").then(({ data }) => {
+      setPlans(data || []);
+    });
+  }, []);
 
   const filteredOwners = useMemo(() => {
     const now = Date.now();

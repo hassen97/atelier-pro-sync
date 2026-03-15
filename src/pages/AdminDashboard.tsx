@@ -14,11 +14,12 @@ import { AdminPaymentGatewaysView } from "@/components/admin/AdminPaymentGateway
 import { AdminFeatureFlagsView } from "@/components/admin/AdminFeatureFlagsView";
 import { AdminWaitlistView } from "@/components/admin/AdminWaitlistView";
 import { AdminSignupAttemptsView } from "@/components/admin/AdminSignupAttemptsView";
+import { AdminRevenueLedger } from "@/components/admin/AdminRevenueLedger";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "revenue_ledger";
 
 const AdminDashboard = () => {
   const { isLoading } = useAdminData();
@@ -81,6 +82,7 @@ const AdminDashboard = () => {
           {activeView === "feature_flags" && <AdminFeatureFlagsView />}
           {activeView === "waitlist" && <AdminWaitlistView />}
           {activeView === "signup_attempts" && <AdminSignupAttemptsView />}
+          {activeView === "revenue_ledger" && <AdminRevenueLedger />}
           
         </main>
       </div>

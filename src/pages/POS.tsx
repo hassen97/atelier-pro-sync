@@ -46,6 +46,8 @@ export default function POS() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>("");
   const [amountPaidInput, setAmountPaidInput] = useState<string>("");
+  const [globalDiscount, setGlobalDiscount] = useState<number>(0);
+  const [globalDiscountType, setGlobalDiscountType] = useState<"fixed" | "percent">("percent");
   const scanRef = useRef<HTMLInputElement>(null);
   const beepRef = useRef<AudioContext | null>(null);
 
@@ -176,9 +178,13 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const globalDiscountAmount = globalDiscountType === "percent"
+    ? subtotal * (Math.min(globalDiscount, 100) / 100)
+    : Math.min(globalDiscount, subtotal);
+  const discountedSubtotal = Math.max(0, subtotal - globalDiscountAmount);
   const taxRate = settings.tax_enabled ? settings.tax_rate / 100 : 0;
-  const tax = subtotal * taxRate;
-  const total = subtotal + tax;
+  const tax = discountedSubtotal * taxRate;
+  const total = discountedSubtotal + tax;
 
   const clearCart = () => setCart([]);
 
@@ -542,6 +548,43 @@ export default function POS() {
             <div className="shrink-0 pt-3 space-y-2">
               <Separator />
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="font-mono-numbers">{format(subtotal)}</span></div>
+              {/* Global cart discount */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground shrink-0">Remise globale:</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={globalDiscount || ""}
+                  onChange={(e) => setGlobalDiscount(parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  className="w-16 h-6 text-[10px] text-right font-mono-numbers px-1"
+                />
+                <Button
+                  variant={globalDiscountType === "fixed" ? "default" : "outline"}
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setGlobalDiscountType("fixed")}
+                >
+                  <DollarSign className="h-2.5 w-2.5" />
+                </Button>
+                <Button
+                  variant={globalDiscountType === "percent" ? "default" : "outline"}
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setGlobalDiscountType("percent")}
+                >
+                  <Percent className="h-2.5 w-2.5" />
+                </Button>
+                {globalDiscountAmount > 0 && (
+                  <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-success/10 text-success">
+                    -{format(globalDiscountAmount)}
+                  </Badge>
+                )}
+              </div>
+              {globalDiscountAmount > 0 && (
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Après remise</span><span className="font-mono-numbers">{format(discountedSubtotal)}</span></div>
+              )}
               {settings.tax_enabled && <div className="flex justify-between text-sm"><span className="text-muted-foreground">TVA ({settings.tax_rate}%)</span><span className="font-mono-numbers">{format(tax)}</span></div>}
               <Separator />
               <div className="flex justify-between text-lg font-bold"><span>Total</span><span className="font-mono-numbers text-primary">{format(total)}</span></div>

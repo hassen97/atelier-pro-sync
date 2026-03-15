@@ -67,7 +67,7 @@ function useVerifyOwner() {
 function useBulkAction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ action, userIds }: { action: "bulk-verify" | "bulk-suspend" | "bulk-delete"; userIds: string[] }) => {
+    mutationFn: async ({ action, userIds }: { action: "bulk-verify" | "bulk-suspend" | "bulk-delete" | "bulk-revert-to-pending"; userIds: string[] }) => {
       const { data, error } = await supabase.functions.invoke("admin-manage-users", {
         body: { action, userIds },
       });

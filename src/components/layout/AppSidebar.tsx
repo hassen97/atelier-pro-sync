@@ -31,6 +31,10 @@ import {
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useAllowedPages } from "@/hooks/useTeam";
 import { useI18n } from "@/contexts/I18nContext";
+import { VerifiedBadge } from "@/components/verification/VerifiedBadge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const navigation = [
   { nameKey: "nav.dashboard" as const, href: "/dashboard", icon: LayoutDashboard },

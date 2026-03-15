@@ -86,6 +86,15 @@ serve(async (req) => {
       return jsonResp({ error: "Forbidden" }, 403);
     }
 
+    // Protected platform_admin IDs - never allow actions against them
+    const PROTECTED_ADMIN_IDS = new Set([callerId]);
+    // Also fetch all platform_admin user IDs to protect them
+    const { data: allPlatformAdmins } = await adminClient
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "platform_admin");
+    (allPlatformAdmins || []).forEach((a: any) => PROTECTED_ADMIN_IDS.add(a.user_id));
+
     if (req.method === "POST" || req.method === "GET") {
       const rawBody = req.method === "POST" ? await req.json().catch(() => ({})) : {};
       const parseResult = ActionSchema.safeParse(rawBody);

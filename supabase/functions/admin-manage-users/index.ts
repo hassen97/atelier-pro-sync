@@ -518,6 +518,20 @@ serve(async (req) => {
         return jsonResp({ success: true });
       }
 
+      // ─── VERIFICATION: REVERT TO PENDING ───
+      if (action === "revert-to-pending") {
+        if (!body.userId) return jsonResp({ error: "userId required" }, 400);
+        await adminClient.from("profiles").update({
+          verification_status: "pending_verification",
+          verification_deadline: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+          verified_at: null,
+          verified_by_admin: null,
+          is_locked: false,
+        }).eq("user_id", body.userId);
+        await adminClient.auth.admin.updateUserById(body.userId, { ban_duration: "none" });
+        return jsonResp({ success: true });
+      }
+
       // ─── VERIFICATION: GET REQUEST ───
       if (action === "get-verification-request") {
         if (!body.userId) return jsonResp({ error: "userId required" }, 400);

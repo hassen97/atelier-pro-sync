@@ -232,6 +232,7 @@ export default function Auth() {
         }
         setLoading(false);
         setSignupCooldown(30);
+        await fetchMathChallenge();
         return;
       }
     } catch (guardErr) {

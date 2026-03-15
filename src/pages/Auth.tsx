@@ -551,6 +551,36 @@ export default function Auth() {
                   </div>
                 </div>
 
+                {/* Math Challenge */}
+                <div className="space-y-2">
+                  <Label className="text-slate-300 text-sm flex items-center gap-1.5">
+                    <Calculator className="h-3.5 w-3.5" />
+                    Vérification de sécurité
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-white font-mono text-lg bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 select-none whitespace-nowrap">
+                      {mathLoading ? "..." : mathQuestion || "..."}
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="?"
+                      value={mathAnswer}
+                      onChange={(e) => setMathAnswer(e.target.value)}
+                      className="auth-input w-24 text-center font-mono text-lg"
+                      required
+                      disabled={loading || mathLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={fetchMathChallenge}
+                      className="text-slate-400 hover:text-white text-xs underline whitespace-nowrap"
+                      disabled={mathLoading}
+                    >
+                      Autre
+                    </button>
+                  </div>
+                </div>
+
                 {HCAPTCHA_SITE_KEY && (
                   <div className="flex justify-center">
                     <HCaptcha

@@ -357,6 +357,148 @@
   box-shadow: 0 0 0 2px hsla(217, 91%, 60%, 0.15) !important;
 }
 
+/* Landing Page - Premium Dark SaaS */
+.landing-page {
+  --lp-bg: 240 10% 4%;
+  --lp-card: 240 6% 10%;
+  --lp-card-hover: 240 6% 13%;
+  --lp-border: 240 4% 16%;
+  --lp-border-hover: 240 4% 22%;
+  --lp-text: 0 0% 98%;
+  --lp-text-muted: 240 5% 55%;
+  --lp-accent: 217 91% 60%;
+  --lp-accent-glow: 217 91% 50%;
+  background-color: hsl(var(--lp-bg));
+  color: hsl(var(--lp-text));
+}
+
+.lp-glass {
+  backdrop-filter: blur(20px) saturate(1.5);
+  background: hsla(240, 6%, 10%, 0.6);
+  border: 1px solid hsla(0, 0%, 100%, 0.06);
+}
+
+.lp-glass-card {
+  backdrop-filter: blur(16px);
+  background: hsla(240, 6%, 10%, 0.5);
+  border: 1px solid hsla(0, 0%, 100%, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lp-glass-card:hover {
+  background: hsla(240, 6%, 13%, 0.6);
+  border-color: hsla(217, 91%, 60%, 0.15);
+  box-shadow: 0 8px 32px hsla(217, 91%, 60%, 0.08);
+  transform: translateY(-2px);
+}
+
+.lp-gradient-text {
+  background: linear-gradient(135deg, hsl(0 0% 100%), hsl(217 91% 70%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.lp-gradient-text-accent {
+  background: linear-gradient(135deg, hsl(217 91% 60%), hsl(187 72% 55%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.lp-glow-btn {
+  position: relative;
+  overflow: visible;
+}
+
+.lp-glow-btn::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, hsl(217 91% 60%), hsl(187 72% 50%));
+  opacity: 0;
+  filter: blur(16px);
+  transition: opacity 0.4s;
+  z-index: -1;
+}
+
+.lp-glow-btn:hover::before {
+  opacity: 0.6;
+}
+
+.lp-mesh-gradient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 600px 400px at 10% 20%, hsla(217, 91%, 50%, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 500px at 85% 80%, hsla(187, 72%, 50%, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 300px at 50% 50%, hsla(260, 60%, 50%, 0.04) 0%, transparent 70%);
+}
+
+.lp-navbar-scrolled {
+  backdrop-filter: blur(20px) saturate(1.8);
+  background: hsla(240, 10%, 4%, 0.75) !important;
+  border-bottom: 1px solid hsla(0, 0%, 100%, 0.06);
+}
+
+.lp-bento-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.lp-bento-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsla(217, 91%, 60%, 0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.lp-bento-card:hover::before {
+  opacity: 1;
+}
+
+.lp-pricing-popular {
+  position: relative;
+}
+
+.lp-pricing-popular::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, hsl(217 91% 60%), hsl(187 72% 50%), hsl(260 60% 60%), hsl(217 91% 60%));
+  background-size: 300% 300%;
+  animation: lp-border-rotate 4s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+@keyframes lp-border-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.lp-dashboard-mockup {
+  background: hsla(240, 6%, 8%, 0.9);
+  border: 1px solid hsla(0, 0%, 100%, 0.08);
+  border-radius: 12px;
+  box-shadow:
+    0 25px 50px -12px hsla(0, 0%, 0%, 0.5),
+    0 0 0 1px hsla(0, 0%, 100%, 0.05),
+    inset 0 1px 0 hsla(0, 0%, 100%, 0.05);
+}
+
 @media print {
   .no-print { display: none !important; }
   .print-only { display: block !important; }

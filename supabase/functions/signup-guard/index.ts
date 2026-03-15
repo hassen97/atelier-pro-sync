@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const MAX_ATTEMPTS_PER_HOUR = 5;
+const HCAPTCHA_VERIFY_URL = "https://api.hcaptcha.com/siteverify";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -14,7 +15,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { username, phone } = await req.json().catch(() => ({}));
+    const { username, phone, captchaToken } = await req.json().catch(() => ({}));
 
     // Validate username format server-side
     if (!username || typeof username !== "string") {
@@ -29,6 +30,34 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ allowed: false, reason: "invalid username format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify hCaptcha token
+    const hcaptchaSecret = Deno.env.get("HCAPTCHA_SECRET_KEY");
+    if (hcaptchaSecret && captchaToken) {
+      try {
+        const verifyRes = await fetch(HCAPTCHA_VERIFY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `response=${encodeURIComponent(captchaToken)}&secret=${encodeURIComponent(hcaptchaSecret)}`,
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyData.success) {
+          return new Response(
+            JSON.stringify({ allowed: false, reason: "captcha_failed" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (err) {
+        console.error("hCaptcha verification error:", err);
+        // Fail open if hCaptcha API is unreachable
+      }
+    } else if (hcaptchaSecret && !captchaToken) {
+      // Secret configured but no token provided — block
+      return new Response(
+        JSON.stringify({ allowed: false, reason: "captcha_required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -52,7 +81,6 @@ Deno.serve(async (req) => {
 
     if (countError) {
       console.error("signup-guard count error:", countError);
-      // Fail open but log — don't block legitimate users
       return new Response(
         JSON.stringify({ allowed: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }

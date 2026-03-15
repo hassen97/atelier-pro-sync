@@ -74,7 +74,7 @@ export function useShopSettings() {
       const { data, error } = await supabase
         .from("shop_settings")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .maybeSingle();
 
       if (error) throw error;

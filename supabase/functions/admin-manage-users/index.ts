@@ -18,9 +18,10 @@ const ActionSchema = z.object({
     "get-waitlist-stats", "list-waitlist",
     "list-plans", "update-plan",
     "list-feature-flags", "toggle-feature-flag",
-    "list-payment-gateways", "toggle-payment-gateway",
+    "list-payment-gateways", "toggle-payment-gateway", "update-gateway-config",
     "list-verification", "verify-owner", "suspend-owner", "revert-to-pending", "get-verification-request",
     "bulk-verify", "bulk-suspend", "bulk-delete", "bulk-revert-to-pending",
+    "list-subscription-orders", "update-subscription-order",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
@@ -40,7 +41,10 @@ const ActionSchema = z.object({
   featureFlagId: z.string().uuid().optional(),
   enabled: z.boolean().optional(),
   gatewayId: z.string().uuid().optional(),
+  gatewayConfig: z.any().optional(),
   userIds: z.array(z.string().uuid()).max(100).optional(),
+  orderId: z.string().uuid().optional(),
+  adminNote: z.string().optional(),
 });
 
 function jsonResp(data: unknown, status = 200) {
@@ -88,7 +92,6 @@ serve(async (req) => {
 
     // Protected platform_admin IDs - never allow actions against them
     const PROTECTED_ADMIN_IDS = new Set([callerId]);
-    // Also fetch all platform_admin user IDs to protect them
     const { data: allPlatformAdmins } = await adminClient
       .from("user_roles")
       .select("user_id")
@@ -464,6 +467,60 @@ serve(async (req) => {
         return jsonResp({ success: true });
       }
 
+      // ─── UPDATE GATEWAY CONFIG (admin payment details) ───
+      if (action === "update-gateway-config") {
+        if (!body.gatewayId || !body.gatewayConfig) return jsonResp({ error: "gatewayId and gatewayConfig required" }, 400);
+        const { error } = await adminClient.from("payment_gateways").update({ 
+          config: body.gatewayConfig, 
+          updated_at: new Date().toISOString() 
+        }).eq("id", body.gatewayId);
+        if (error) throw error;
+        return jsonResp({ success: true });
+      }
+
+      // ─── SUBSCRIPTION ORDERS ───
+      if (action === "list-subscription-orders") {
+        const { data: orders } = await adminClient
+          .from("subscription_orders")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        // Enrich with user info and plan info
+        const userIds = [...new Set((orders || []).map((o: any) => o.user_id))];
+        const planIds = [...new Set((orders || []).map((o: any) => o.plan_id))];
+
+        const [{ data: profiles }, { data: plans }] = await Promise.all([
+          userIds.length > 0 ? adminClient.from("profiles").select("user_id, full_name, username").in("user_id", userIds) : { data: [] },
+          planIds.length > 0 ? adminClient.from("subscription_plans").select("id, name").in("id", planIds) : { data: [] },
+        ]);
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+        const planMap = new Map((plans || []).map((p: any) => [p.id, p.name]));
+
+        const enriched = (orders || []).map((o: any) => ({
+          ...o,
+          user_full_name: profileMap.get(o.user_id)?.full_name || null,
+          user_username: profileMap.get(o.user_id)?.username || null,
+          plan_name: planMap.get(o.plan_id) || null,
+        }));
+
+        return jsonResp({ orders: enriched });
+      }
+
+      if (action === "update-subscription-order") {
+        if (!body.orderId || !body.status) return jsonResp({ error: "orderId and status required" }, 400);
+        const updateData: Record<string, unknown> = {
+          status: body.status,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: callerId,
+          updated_at: new Date().toISOString(),
+        };
+        if (body.adminNote) updateData.admin_note = body.adminNote;
+        const { error } = await adminClient.from("subscription_orders").update(updateData).eq("id", body.orderId);
+        if (error) throw error;
+        return jsonResp({ success: true });
+      }
+
       // ─── VERIFICATION: LIST ───
       if (action === "list-verification") {
         const { data: profiles } = await adminClient
@@ -496,9 +553,7 @@ serve(async (req) => {
           verified_by_admin: callerId,
           is_locked: false,
         }).eq("user_id", body.userId);
-        // Unban
         await adminClient.auth.admin.updateUserById(body.userId, { ban_duration: "none" });
-        // Update verification request status if any
         await adminClient.from("verification_requests").update({
           status: "approved",
           reviewed_at: new Date().toISOString(),

@@ -52,11 +52,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/admin" replace />;
   }
   if (!isPlatformAdmin && location.pathname === "/admin") {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (isBlocked) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

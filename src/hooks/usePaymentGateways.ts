@@ -8,6 +8,7 @@ export interface PaymentGateway {
   gateway_name: string;
   description: string | null;
   is_enabled: boolean;
+  config?: Record<string, string> | null;
 }
 
 export function usePaymentGateways() {
@@ -38,5 +39,23 @@ export function useToggleGateway() {
       toast.success("Passerelle mise à jour");
     },
     onError: () => toast.error("Erreur"),
+  });
+}
+
+export function useUpdateGatewayConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ gatewayId, config }: { gatewayId: string; config: Record<string, string> }) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "update-gateway-config", gatewayId, gatewayConfig: config },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-payment-gateways"] });
+      toast.success("Configuration sauvegardée");
+    },
+    onError: () => toast.error("Erreur lors de la sauvegarde"),
   });
 }

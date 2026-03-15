@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +50,7 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const { data: plans } = usePublicPlans();
@@ -61,7 +62,15 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const ctaLink = user ? "/" : "/auth";
+  const ctaLink = user ? "/dashboard" : "/auth";
+
+  const handlePlanClick = (planId: string) => {
+    if (user) {
+      navigate(`/checkout?plan=${planId}`);
+    } else {
+      navigate(`/auth?redirect=${encodeURIComponent(`/checkout?plan=${planId}`)}`);
+    }
+  };
 
   const handleWaitlistSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +89,7 @@ export default function LandingPage() {
       {/* ─── Floating Navbar ─── */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "lp-navbar-scrolled" : "bg-transparent"}`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link to="/landing" className="flex items-center gap-2.5 relative z-10">
+          <Link to="/" className="flex items-center gap-2.5 relative z-10">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "linear-gradient(135deg, hsl(217 91% 60%), hsl(187 72% 50%))" }}>
               <Smartphone className="h-4.5 w-4.5 text-white" />
             </div>
@@ -357,8 +366,12 @@ export default function LandingPage() {
                         </Button>
                       </Link>
                     ) : (
-                      <Button variant="ghost" className="w-full rounded-full" disabled style={{ border: "1px solid hsla(0, 0%, 100%, 0.08)", color: "hsl(240 5% 40%)" }}>
-                        Prochainement
+                      <Button
+                        onClick={() => handlePlanClick(plan.id)}
+                        className="w-full rounded-full lp-glow-btn"
+                        style={{ background: plan.highlight ? "linear-gradient(135deg, hsl(217 91% 55%), hsl(217 91% 40%))" : "hsla(0, 0%, 100%, 0.06)", color: plan.highlight ? "white" : "hsl(0 0% 90%)", border: plan.highlight ? "none" : "1px solid hsla(0, 0%, 100%, 0.1)" }}
+                      >
+                        Choisir ce plan <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     )}
                   </div>

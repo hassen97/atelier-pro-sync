@@ -46,6 +46,7 @@ const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Warranty = lazyWithRetry(() => import("./pages/Warranty"));
 const RepairTracking = lazyWithRetry(() => import("./pages/RepairTracking"));
 const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
+const Checkout = lazyWithRetry(() => import("./pages/Checkout"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,11 +80,13 @@ const App = () => (
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Public routes */}
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/track/:token" element={<RepairTracking />} />
                 <Route path="/r/:token" element={<RepairTracking />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/landing" element={<LandingPage />} />
+                <Route path="/checkout" element={<Checkout />} />
                 
                 {/* Admin route - separate layout */}
                 <Route path="/admin" element={
@@ -106,7 +109,7 @@ const App = () => (
                     </ShopSettingsProvider>
                   </ProtectedRoute>
                 }>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/pos" element={<POS />} />
                   <Route path="/repairs" element={<Repairs />} />
                   <Route path="/inventory" element={<Inventory />} />

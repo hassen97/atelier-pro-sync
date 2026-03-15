@@ -251,22 +251,3 @@ export function useLockOwner() {
     onError: (err: any) => toast.error(err.message || "Erreur"),
   });
 }
-
-export function useSetShopPlan() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, planId, expiresAt }: { userId: string; planId: string; expiresAt?: string }) => {
-      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
-        body: { action: "set-shop-plan", userId, planId, expiresAt },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
-      toast.success("Plan mis à jour avec succès");
-    },
-    onError: (err: any) => toast.error(err.message || "Erreur lors de la mise à jour du plan"),
-  });
-}

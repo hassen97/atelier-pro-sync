@@ -144,59 +144,22 @@ export default function Auth() {
           return;
         }
 
-        // For employees, check the OWNER's lock status instead of theirs
-        if (loginRole === "employee") {
-          const { data: teamInfo } = await supabase
-            .from("team_members")
-            .select("owner_id")
-            .eq("member_user_id", userId)
-            .eq("status", "active")
-            .maybeSingle();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_locked, verification_status")
+          .eq("user_id", userId)
+          .single();
 
-          if (teamInfo?.owner_id) {
-            const { data: ownerProfile } = await supabase
-              .from("profiles")
-              .select("is_locked")
-              .eq("user_id", teamInfo.owner_id)
-              .single();
-
-            if (ownerProfile?.is_locked) {
-              await supabase.auth.signOut();
-              setError("La boutique de votre employeur est actuellement suspendue. Contactez le propriétaire.");
-              setLoading(false);
-              return;
-            }
+        if (profile?.is_locked) {
+          await supabase.auth.signOut();
+          const vs = (profile as any).verification_status;
+          if (vs === "suspended") {
+            setError("Votre compte a été suspendu car il n'a pas été vérifié dans les 48 heures. Veuillez contacter l'administration pour réactiver votre compte.");
+          } else {
+            setError("Votre compte est en attente de validation par l'administrateur.");
           }
-        } else {
-          // Owner: check own lock status
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("is_locked, verification_status")
-            .eq("user_id", userId)
-            .single();
-
-          if (profile?.is_locked) {
-            await supabase.auth.signOut();
-            const vs = (profile as any).verification_status;
-            if (vs === "suspended") {
-              setError("Votre compte a été suspendu car il n'a pas été vérifié dans les 48 heures. Veuillez contacter l'administration pour réactiver votre compte.");
-            } else {
-              setError("Votre compte est en attente de validation par l'administrateur.");
-            }
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Session security: if "remember me" is NOT checked, move session to sessionStorage
-        if (!rememberMe) {
-          // Clear the persisted session from localStorage so it dies with the tab
-          const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID || "uvvpgxjbqrvzhcunkpag"}-auth-token`;
-          const sessionData = localStorage.getItem(storageKey);
-          if (sessionData) {
-            sessionStorage.setItem(storageKey, sessionData);
-            localStorage.removeItem(storageKey);
-          }
+          setLoading(false);
+          return;
         }
       }
       const searchParams = new URLSearchParams(location.search);

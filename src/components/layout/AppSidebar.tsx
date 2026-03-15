@@ -31,10 +31,6 @@ import {
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useAllowedPages } from "@/hooks/useTeam";
 import { useI18n } from "@/contexts/I18nContext";
-import { VerifiedBadge } from "@/components/verification/VerifiedBadge";
-import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 const navigation = [
   { nameKey: "nav.dashboard" as const, href: "/dashboard", icon: LayoutDashboard },
@@ -68,20 +64,6 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { allowedPages } = useAllowedPages();
   const { t } = useI18n();
-  const { user } = useAuth();
-  const [isVerified, setIsVerified] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("profiles")
-      .select("verification_status")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        setIsVerified(data?.verification_status === "verified");
-      });
-  }, [user]);
 
   // Filter navigation based on allowed pages
   const filteredNavigation = allowedPages
@@ -160,10 +142,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
               </div>
             )}
             <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-sidebar-foreground text-sm truncate max-w-[120px]">{settings.shop_name}</span>
-                {isVerified && <VerifiedBadge variant="elite" size="sm" />}
-              </div>
+              <span className="font-semibold text-sidebar-foreground text-sm truncate max-w-[140px]">{settings.shop_name}</span>
             </div>
           </div>
         )}

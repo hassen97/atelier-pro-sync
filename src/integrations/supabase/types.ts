@@ -1118,50 +1118,6 @@ export type Database = {
         }
         Relationships: []
       }
-      shop_subscriptions: {
-        Row: {
-          created_at: string
-          expires_at: string | null
-          id: string
-          plan_id: string
-          set_by_admin: string | null
-          started_at: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          plan_id: string
-          set_by_admin?: string | null
-          started_at?: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          plan_id?: string
-          set_by_admin?: string | null
-          started_at?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shop_subscriptions_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "subscription_plans"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       signup_attempts: {
         Row: {
           created_at: string

@@ -25,7 +25,7 @@ import {
   Lock,
   Copy,
  } from "lucide-react";
-import { Receipt, Crown } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,7 +56,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { BRAND_COLOR_PRESETS, useBrandTheme } from "@/contexts/BrandThemeContext";
 import { useI18n } from "@/contexts/I18nContext";
-import { SubscriptionTab } from "@/components/settings/SubscriptionTab";
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettingsContext();
@@ -296,7 +295,7 @@ export default function Settings() {
       />
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
           <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
           <TabsTrigger value="preferences">
             <Palette className="h-3.5 w-3.5 mr-1" />
@@ -305,10 +304,6 @@ export default function Settings() {
           <TabsTrigger value="categories">
             <Tag className="h-3.5 w-3.5 mr-1" />
             {t("settings.categories")}
-          </TabsTrigger>
-          <TabsTrigger value="subscription">
-            <Crown className="h-3.5 w-3.5 mr-1" />
-            Abonnement
           </TabsTrigger>
           <TabsTrigger value="backup">Sauvegarde</TabsTrigger>
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>
@@ -870,11 +865,6 @@ export default function Settings() {
         <TabsContent value="categories" className="space-y-6">
           <CategoriesSettings />
           <ExpenseCategoriesSettings />
-        </TabsContent>
-
-        {/* Subscription & Billing */}
-        <TabsContent value="subscription" className="space-y-6">
-          <SubscriptionTab />
         </TabsContent>
 
         {/* Backup Settings */}

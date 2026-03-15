@@ -22,7 +22,6 @@ const ActionSchema = z.object({
     "list-verification", "verify-owner", "suspend-owner", "revert-to-pending", "get-verification-request",
     "bulk-verify", "bulk-suspend", "bulk-delete", "bulk-revert-to-pending",
     "list-subscription-orders", "update-subscription-order",
-    "set-shop-plan",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
@@ -46,7 +45,6 @@ const ActionSchema = z.object({
   userIds: z.array(z.string().uuid()).max(100).optional(),
   orderId: z.string().uuid().optional(),
   adminNote: z.string().optional(),
-  expiresAt: z.string().optional(),
 });
 
 function jsonResp(data: unknown, status = 200) {
@@ -666,23 +664,6 @@ serve(async (req) => {
           successCount++;
         }
         return jsonResp({ success: true, count: successCount });
-      }
-
-      // ─── SET SHOP PLAN (God Mode) ───
-      if (action === "set-shop-plan") {
-        if (!body.userId || !body.planId) return jsonResp({ error: "userId and planId required" }, 400);
-        // Deactivate old subscriptions
-        await adminClient.from("shop_subscriptions").update({ status: "expired", updated_at: new Date().toISOString() }).eq("user_id", body.userId).eq("status", "active");
-        // Create new
-        const { error } = await adminClient.from("shop_subscriptions").insert({
-          user_id: body.userId,
-          plan_id: body.planId,
-          status: "active",
-          expires_at: body.expiresAt || null,
-          set_by_admin: callerId,
-        });
-        if (error) throw error;
-        return jsonResp({ success: true });
       }
 
       return jsonResp({ error: "Unknown action" }, 400);

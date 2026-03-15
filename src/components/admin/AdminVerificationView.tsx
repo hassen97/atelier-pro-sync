@@ -272,6 +272,16 @@ export function AdminVerificationView() {
             size="sm"
             variant="ghost"
             className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs"
+            onClick={() => setConfirmAction("bulk-revert-to-pending")}
+            disabled={bulkAction.isPending}
+          >
+            <Clock className="h-3 w-3 mr-1" />
+            En attente
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs"
             onClick={() => setConfirmAction("bulk-suspend")}
             disabled={bulkAction.isPending}
           >

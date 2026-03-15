@@ -69,6 +69,7 @@ const App = () => (
               <Route path="/track/:token" element={<RepairTracking />} />
               <Route path="/r/:token" element={<RepairTracking />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/landing" element={<LandingPage />} />
               
               {/* Admin route - separate layout */}
               <Route path="/admin" element={

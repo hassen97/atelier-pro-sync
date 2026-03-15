@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.signup-guard]
 verify_jwt = false
+
+[functions.math-challenge]
+verify_jwt = false

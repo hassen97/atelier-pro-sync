@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { username, phone, captchaToken } = await req.json().catch(() => ({}));
+    const { username, phone, captchaToken, mathChallengeId, mathAnswer } = await req.json().catch(() => ({}));
 
     // Validate username format server-side
     if (!username || typeof username !== "string") {

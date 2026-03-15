@@ -50,6 +50,7 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const { data: plans } = usePublicPlans();

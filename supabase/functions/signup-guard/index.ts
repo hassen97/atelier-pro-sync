@@ -61,69 +61,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify math challenge
-    if (!mathChallengeId || mathAnswer === undefined || mathAnswer === null || mathAnswer === "") {
-      return new Response(
-        JSON.stringify({ allowed: false, reason: "math_required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const mathParts = String(mathChallengeId).split(":");
-    if (mathParts.length !== 2) {
-      return new Response(
-        JSON.stringify({ allowed: false, reason: "math_failed" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const [mathPayload, mathSignature] = mathParts;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // HMAC verification
-    const encoder = new TextEncoder();
-    const hmacKey = await crypto.subtle.importKey(
-      "raw", encoder.encode(serviceKey),
-      { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-    );
-    const expectedSig = await crypto.subtle.sign("HMAC", hmacKey, encoder.encode(mathPayload));
-    const expectedB64 = btoa(String.fromCharCode(...new Uint8Array(expectedSig)));
-
-    if (expectedB64 !== mathSignature) {
-      return new Response(
-        JSON.stringify({ allowed: false, reason: "math_failed" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    try {
-      const decoded = atob(mathPayload);
-      const [aStr, op, bStr] = decoded.split(":");
-      const a = parseInt(aStr, 10);
-      const b = parseInt(bStr, 10);
-      let correct: number;
-      if (op === "+") correct = a + b;
-      else if (op === "-") correct = a - b;
-      else if (op === "×") correct = a * b;
-      else {
-        return new Response(
-          JSON.stringify({ allowed: false, reason: "math_failed" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      if (parseInt(String(mathAnswer), 10) !== correct) {
-        return new Response(
-          JSON.stringify({ allowed: false, reason: "math_failed" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    } catch {
-      return new Response(
-        JSON.stringify({ allowed: false, reason: "math_failed" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // (Math challenge removed)
 
     // Get client IP
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAdminData, useDeleteOwner, useLockOwner, useSetShopPlan } from "@/hooks/useAdmin";
 import { useCreateAnnouncement } from "@/hooks/useAnnouncements";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";

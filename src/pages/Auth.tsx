@@ -436,9 +436,11 @@ export default function Auth() {
 
                 <Button type="submit"
                   className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-[0_0_20px_hsla(217,91%,50%,0.25)] hover:shadow-[0_0_30px_hsla(217,91%,50%,0.4)] transition-shadow"
-                  disabled={loading}>
+                  disabled={loading || signupCooldown > 0}>
                   {loading ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</>
+                  ) : signupCooldown > 0 ? (
+                    `Patienter ${signupCooldown}s`
                   ) : (
                     "Créer un compte"
                   )}

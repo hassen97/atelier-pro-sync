@@ -31,8 +31,8 @@ function isNetworkError(err: unknown): boolean {
 }
 
 // Fallback: Direct fetch to Supabase Auth REST API with timeout + retries
-async function authFetch(endpoint: string, body: Record<string, unknown>): Promise<{ data: any; error: Error | null }> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+async function authFetch(endpoint: string, body: Record<string, unknown>, maxRetries = 3): Promise<{ data: any; error: Error | null }> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
 

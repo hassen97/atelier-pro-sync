@@ -207,6 +207,11 @@ export function AdminVerificationView() {
       btn: "Supprimer tout",
       destructive: true,
     },
+    "bulk-revert-to-pending": {
+      title: "Remettre en attente en masse",
+      desc: `Voulez-vous remettre ${selectedIds.size} propriétaire(s) en attente de vérification ? Un nouveau délai de 48h sera appliqué.`,
+      btn: "Remettre en attente",
+    },
   };
 
   return (

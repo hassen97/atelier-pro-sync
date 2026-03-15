@@ -185,6 +185,21 @@ export function RepairDialog({
     },
   });
 
+  const defaultDraftValues = {
+    customer_id: "", customer_name: "", customer_phone: "", category_id: "",
+    device_brand: "", device_model: "", imei: "", problem_description: "",
+    diagnosis: "", labor_cost: 0, parts_cost: 0, amount_paid: 0, notes: "",
+    estimated_ready_date: "", technician_note: "", received_by: "", repaired_by: "",
+    device_condition: "",
+  };
+
+  const { clearDraft } = useFormDraft("repair", {
+    watch: form.getValues.bind(form),
+    reset: (values) => form.reset(values),
+    isOpen: open && !repair,
+    defaultValues: defaultDraftValues,
+  });
+
   // Get available models based on selected brand
   const availableModels = useMemo(() => {
     if (!selectedBrand) return [];

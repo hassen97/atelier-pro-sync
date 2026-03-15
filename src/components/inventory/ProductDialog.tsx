@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -85,6 +86,18 @@ export function ProductDialog({
     },
   });
 
+  const defaultDraftValues = {
+    name: "", sku: "", description: "", category_id: "",
+    cost_price: 0, sell_price: 0, quantity: 0, min_quantity: 5,
+  };
+
+  const { clearDraft } = useFormDraft("product", {
+    watch: form.getValues.bind(form),
+    reset: (values) => form.reset(values),
+    isOpen: open && !product,
+    defaultValues: defaultDraftValues,
+  });
+
   useEffect(() => {
     if (product) {
       form.reset({
@@ -113,6 +126,7 @@ export function ProductDialog({
 
   const handleSubmit = async (data: ProductFormValues) => {
     await onSubmit(data);
+    clearDraft();
     form.reset();
   };
 

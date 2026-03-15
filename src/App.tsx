@@ -47,7 +47,19 @@ const Warranty = lazyWithRetry(() => import("./pages/Warranty"));
 const RepairTracking = lazyWithRetry(() => import("./pages/RepairTracking"));
 const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Prevent refetch on window focus / reconnect to avoid data loss
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      // Keep data fresh for 5 minutes
+      staleTime: 5 * 60 * 1000,
+      // Retry once on failure
+      retry: 1,
+    },
+  },
+});
 
 // Loading fallback component
 const PageLoader = () => (

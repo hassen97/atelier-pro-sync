@@ -123,31 +123,64 @@ Deno.serve(async (req) => {
 
     const newUserId = newUser.user.id;
 
-    // Fix role from super_admin (set by trigger) to the chosen role
-    await adminClient
+    // Create/update role explicitly instead of relying on trigger timing
+    const { error: roleUpsertError } = await adminClient
       .from("user_roles")
-      .update({ role })
-      .eq("user_id", newUserId);
+      .upsert(
+        {
+          user_id: newUserId,
+          role,
+        },
+        { onConflict: "user_id" }
+      );
 
-    // Exempt employees from verification + ensure username/full_name are set
-    await adminClient
+    if (roleUpsertError) {
+      console.error("Role upsert error:", roleUpsertError);
+      return new Response(
+        JSON.stringify({ error: "Erreur lors de l'enregistrement du rôle employé" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create/update profile explicitly so username/full name always exist
+    const { error: profileUpsertError } = await adminClient
       .from("profiles")
-      .update({
-        verification_status: "verified",
-        verification_deadline: null,
-        is_locked: false,
-        username: username.toLowerCase(),
-        full_name: fullName.trim(),
-      })
-      .eq("user_id", newUserId);
+      .upsert(
+        {
+          user_id: newUserId,
+          email,
+          username: username.toLowerCase(),
+          full_name: fullName.trim(),
+          verification_status: "verified",
+          verification_deadline: null,
+          is_locked: false,
+        },
+        { onConflict: "user_id" }
+      );
+
+    if (profileUpsertError) {
+      console.error("Profile upsert error:", profileUpsertError);
+      return new Response(
+        JSON.stringify({ error: "Erreur lors de l'enregistrement du profil employé" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Add to team_members
-    await adminClient.from("team_members").insert({
+    const { error: teamMemberError } = await adminClient.from("team_members").insert({
       owner_id: ownerId,
       member_user_id: newUserId,
       role,
-      allowed_pages: allowedPages || ["/", "/pos"],
+      allowed_pages: allowedPages || ["/dashboard", "/pos"],
     });
+
+    if (teamMemberError) {
+      console.error("Team member insert error:", teamMemberError);
+      return new Response(
+        JSON.stringify({ error: "Erreur lors de l'ajout à l'équipe" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ userId: newUserId, username: username.toLowerCase() }),

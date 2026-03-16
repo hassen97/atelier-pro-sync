@@ -49,7 +49,7 @@ export function useAllCustomers() {
 
       const { data, error } = await supabase
         .from("customers")
-        .select("id, name, phone, email, balance")
+        .select("id, name, phone, email, balance, created_at")
         .eq("user_id", effectiveUserId)
         .order("name", { ascending: true });
 

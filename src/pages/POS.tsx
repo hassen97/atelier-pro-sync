@@ -48,8 +48,9 @@ export default function POS() {
   const scanRef = useRef<HTMLInputElement>(null);
   const beepRef = useRef<AudioContext | null>(null);
 
-  const { data: products = [], isLoading: productsLoading } = useProducts();
-  const { data: rawRepairs = [], isLoading: repairsLoading } = useRepairs();
+  const { data: products = [], isLoading: productsLoading } = useAllProducts();
+  const { data: repairsResult = {data:[], count:0}, isLoading: repairsLoading } = useRepairs();
+  const rawRepairs = repairsResult.data;
   const createSale = useCreateSale();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();

@@ -23,7 +23,7 @@ export function useCustomers(page = 0) {
 
       const { data, error, count } = await supabase
         .from("customers")
-        .select("id, name, phone, email, address, notes, balance, created_at, updated_at", {
+        .select("id, name, phone, email, address, notes, balance, created_at, updated_at, user_id", {
           count: "exact",
         })
         .eq("user_id", effectiveUserId)

@@ -359,7 +359,7 @@ export function AdminShopsView() {
                     <span className="text-sm text-white font-mono-numbers">{owner.repair_count}</span>
                     <span className="text-xs text-slate-500 ml-1">({owner.team_count} membres)</span>
                   </TableCell>
-                  <TableCell className="text-right">
+                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
@@ -386,6 +386,30 @@ export function AdminShopsView() {
                           shopName: owner.shop_name,
                         })}>
                           <Megaphone className="h-4 w-4 mr-2" /> Envoyer une annonce
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          const newRole = prompt("Nouveau rôle (super_admin ou employee) :", "employee");
+                          if (!newRole || !["super_admin", "employee"].includes(newRole)) return;
+                          const { error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "change-role", userId: owner.user_id, newRole } });
+                          if (error) { toast.error("Erreur changement de rôle"); } else { toast.success("Rôle modifié"); }
+                        }}>
+                          <UserCog className="h-4 w-4 mr-2" /> Changer le rôle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTransferSource(owner.user_id)}>
+                          <ArrowRightLeft className="h-4 w-4 mr-2" /> Transférer les données
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          toast.info("Export en cours...");
+                          const { data, error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "export-shop-data", userId: owner.user_id } });
+                          if (error) { toast.error("Erreur d'export"); return; }
+                          const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url; a.download = `backup-${owner.shop_name}-${new Date().toISOString().slice(0,10)}.json`; a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success("Export téléchargé");
+                        }}>
+                          <Download className="h-4 w-4 mr-2" /> Sauvegarder (JSON)
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => {
                           const viewUrl = `/?impersonate=${owner.user_id}&mode=readonly`;

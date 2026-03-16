@@ -407,6 +407,17 @@ serve(async (req) => {
         return jsonResp({ success: true });
       }
 
+      // ─── REASSIGN EMPLOYEE ───
+      if (action === "reassign-employee") {
+        if (!body.memberId || !body.newOwnerId) return jsonResp({ error: "memberId and newOwnerId required" }, 400);
+        const { error } = await adminClient
+          .from("team_members")
+          .update({ owner_id: body.newOwnerId })
+          .eq("id", body.memberId);
+        if (error) throw error;
+        return jsonResp({ success: true });
+      }
+
       // ─── WAITLIST ───
       if (action === "get-waitlist-stats") {
         const { count: total } = await adminClient.from("waitlist").select("*", { count: "exact", head: true });

@@ -213,6 +213,17 @@ export function AddMemberDialog() {
                   3-20 caractères (lettres, chiffres, _)
                 </p>
               )}
+              {username && usernameValid && (
+                <div className="flex items-center gap-1 text-xs">
+                  {checkingUsername ? (
+                    <><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /><span className="text-muted-foreground">Vérification...</span></>
+                  ) : usernameAvailable === true ? (
+                    <><CheckCircle2 className="h-3 w-3 text-green-500" /><span className="text-green-600">Disponible</span></>
+                  ) : usernameAvailable === false ? (
+                    <><XCircle className="h-3 w-3 text-destructive" /><span className="text-destructive">Déjà pris</span></>
+                  ) : null}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Mot de passe</Label>

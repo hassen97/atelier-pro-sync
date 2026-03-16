@@ -1192,6 +1192,11 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Billing Tab */}
+        <TabsContent value="billing" className="space-y-6">
+          <BillingTab userId={user?.id} />
+        </TabsContent>
       </Tabs>
     </div>
   );

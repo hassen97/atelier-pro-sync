@@ -53,7 +53,7 @@ export function AddMemberDialog() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [role, setRole] = useState<"employee" | "manager" | "admin">("employee");
-  const [selectedPages, setSelectedPages] = useState<string[]>(["/", "/pos"]);
+  const [selectedPages, setSelectedPages] = useState<string[]>(["/dashboard", "/pos"]);
 
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
   const [checkedUsername, setCheckedUsername] = useState("");

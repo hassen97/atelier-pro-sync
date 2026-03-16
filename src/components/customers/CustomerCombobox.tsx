@@ -16,8 +16,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAllCustomers, type Customer } from "@/hooks/useCustomers";
-...
-  const { data: customers = [] } = useAllCustomers();
 
   const selectedCustomer = customers.find((c) => c.id === value);
 

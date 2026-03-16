@@ -23,6 +23,7 @@ const ActionSchema = z.object({
     "bulk-verify", "bulk-suspend", "bulk-delete", "bulk-revert-to-pending",
     "list-subscription-orders", "update-subscription-order",
     "change-role", "transfer-data", "export-shop-data",
+    "reassign-employee",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
@@ -48,6 +49,7 @@ const ActionSchema = z.object({
   adminNote: z.string().optional(),
   newRole: z.string().optional(),
   targetUserId: z.string().uuid().optional(),
+  newOwnerId: z.string().uuid().optional(),
 });
 
 function jsonResp(data: unknown, status = 200) {

@@ -123,47 +123,34 @@ Deno.serve(async (req) => {
 
     const newUserId = newUser.user.id;
 
-    // Create/update role explicitly instead of relying on trigger timing
-    const { error: roleUpsertError } = await adminClient
-      .from("user_roles")
-      .upsert(
-        {
-          user_id: newUserId,
-          role,
-        },
-        { onConflict: "user_id" }
-      );
+    // Wait briefly for the trigger to create profile/role rows
+    await new Promise((r) => setTimeout(r, 300));
 
-    if (roleUpsertError) {
-      console.error("Role upsert error:", roleUpsertError);
-      return new Response(
-        JSON.stringify({ error: "Erreur lors de l'enregistrement du rôle employé" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Update role from super_admin (set by trigger) to the chosen role
+    const { error: roleUpdateError } = await adminClient
+      .from("user_roles")
+      .update({ role })
+      .eq("user_id", newUserId);
+
+    if (roleUpdateError) {
+      console.error("Role update error:", roleUpdateError);
     }
 
-    // Create/update profile explicitly so username/full name always exist
-    const { error: profileUpsertError } = await adminClient
+    // Update profile to set username/full_name and mark as verified
+    const { error: profileUpdateError } = await adminClient
       .from("profiles")
-      .upsert(
-        {
-          user_id: newUserId,
-          email,
-          username: username.toLowerCase(),
-          full_name: fullName.trim(),
-          verification_status: "verified",
-          verification_deadline: null,
-          is_locked: false,
-        },
-        { onConflict: "user_id" }
-      );
+      .update({
+        username: username.toLowerCase(),
+        full_name: fullName.trim(),
+        email,
+        verification_status: "verified",
+        verification_deadline: null,
+        is_locked: false,
+      })
+      .eq("user_id", newUserId);
 
-    if (profileUpsertError) {
-      console.error("Profile upsert error:", profileUpsertError);
-      return new Response(
-        JSON.stringify({ error: "Erreur lors de l'enregistrement du profil employé" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (profileUpdateError) {
+      console.error("Profile update error:", profileUpdateError);
     }
 
     // Add to team_members

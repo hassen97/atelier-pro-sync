@@ -22,11 +22,11 @@ function normalizeUsername(value: string) {
 }
 
 function normalizeAllowedPages(pages?: string[]) {
-  const cleaned = (pages ?? ["/", "/pos"])
-    .map((page) => page.trim())
+  const cleaned = (pages ?? ["/dashboard", "/pos"])
+    .map((page) => (page.trim() === "/" ? "/dashboard" : page.trim()))
     .filter(Boolean);
 
-  return Array.from(new Set(cleaned.includes("/") ? cleaned : ["/", ...cleaned]));
+  return Array.from(new Set(cleaned.includes("/dashboard") ? cleaned : ["/dashboard", ...cleaned]));
 }
 
 async function usernameExistsGlobally(

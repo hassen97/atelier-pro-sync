@@ -56,11 +56,15 @@ export function useIsOwner() {
     queryKey: ["user-role", user?.id],
     queryFn: async () => {
       if (!user) return false;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
+      if (error) {
+        console.error("useIsOwner error:", error);
+        return false;
+      }
       return data?.role === "super_admin";
     },
     enabled: !!user,
@@ -188,7 +192,10 @@ export function useCreateEmployee() {
         });
       }
 
-      queryClient.invalidateQueries({ queryKey: ["team-members", user?.id] });
+      // Delay invalidation so optimistic data with profile persists
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["team-members", user?.id] });
+      }, 3000);
       toast.success("Compte employé créé et ajouté à l'équipe");
     },
     onError: (err: any) => {

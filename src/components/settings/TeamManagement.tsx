@@ -34,7 +34,13 @@ import {
 import { AddMemberDialog } from "./AddMemberDialog";
 
 function MemberCard({ member }: { member: TeamMember }) {
-  const [pages, setPages] = useState<string[]>(member.allowed_pages || []);
+  const [pages, setPages] = useState<string[]>(
+    (member.allowed_pages || []).map((p) => (p === "/" ? "/dashboard" : p))
+      .filter((p, i, arr) => arr.indexOf(p) === i)
+      .concat(
+        (member.allowed_pages || []).some((p) => p === "/" || p === "/dashboard") ? [] : ["/dashboard"]
+      )
+  );
   const [role, setRole] = useState(member.role);
   const updatePermissions = useUpdateMemberPermissions();
   const removeMember = useRemoveTeamMember();
@@ -58,7 +64,7 @@ function MemberCard({ member }: { member: TeamMember }) {
   const handleSave = () => {
     updatePermissions.mutate({
       memberId: member.id,
-      allowedPages: pages.includes("/") ? pages : ["/", ...pages],
+      allowedPages: pages.includes("/dashboard") ? pages : ["/dashboard", ...pages],
       role: role as any,
     });
   };

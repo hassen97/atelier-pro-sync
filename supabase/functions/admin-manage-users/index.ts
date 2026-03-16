@@ -669,6 +669,72 @@ serve(async (req) => {
         return jsonResp({ success: true, count: successCount });
       }
 
+      // ─── CHANGE ROLE ───
+      if (action === "change-role") {
+        if (!body.userId || !body.newRole) return jsonResp({ error: "userId and newRole required" }, 400);
+        const validRoles = ["super_admin", "employee"];
+        if (!validRoles.includes(body.newRole)) return jsonResp({ error: "Invalid role" }, 400);
+        const { error } = await adminClient.from("user_roles").update({ role: body.newRole }).eq("user_id", body.userId);
+        if (error) throw error;
+        return jsonResp({ success: true });
+      }
+
+      // ─── TRANSFER DATA ───
+      if (action === "transfer-data") {
+        if (!body.userId || !body.targetUserId) return jsonResp({ error: "userId (source) and targetUserId (target) required" }, 400);
+        const src = body.userId;
+        const tgt = body.targetUserId;
+        let cloned = { products: 0, customers: 0, categories: 0 };
+
+        // Clone categories
+        const { data: cats } = await adminClient.from("categories").select("*").eq("user_id", src);
+        for (const c of cats || []) {
+          await adminClient.from("categories").insert({ name: c.name, type: c.type, user_id: tgt });
+          cloned.categories++;
+        }
+
+        // Clone customers
+        const { data: custs } = await adminClient.from("customers").select("*").eq("user_id", src);
+        for (const c of custs || []) {
+          await adminClient.from("customers").insert({ name: c.name, phone: c.phone, email: c.email, address: c.address, notes: c.notes, user_id: tgt });
+          cloned.customers++;
+        }
+
+        // Clone products
+        const { data: prods } = await adminClient.from("products").select("*").eq("user_id", src);
+        for (const p of prods || []) {
+          await adminClient.from("products").insert({ name: p.name, cost_price: p.cost_price, sell_price: p.sell_price, quantity: p.quantity, min_quantity: p.min_quantity, description: p.description, barcodes: p.barcodes, sku: p.sku, user_id: tgt });
+          cloned.products++;
+        }
+
+        return jsonResp({ success: true, cloned });
+      }
+
+      // ─── EXPORT SHOP DATA ───
+      if (action === "export-shop-data") {
+        if (!body.userId) return jsonResp({ error: "userId required" }, 400);
+        const uid = body.userId;
+        const [
+          { data: products }, { data: customers }, { data: sales }, { data: saleItems },
+          { data: repairs }, { data: expenses }, { data: suppliers }, { data: categories },
+        ] = await Promise.all([
+          adminClient.from("products").select("*").eq("user_id", uid),
+          adminClient.from("customers").select("*").eq("user_id", uid),
+          adminClient.from("sales").select("*").eq("user_id", uid),
+          adminClient.from("sale_items").select("*, sales!inner(user_id)").eq("sales.user_id", uid),
+          adminClient.from("repairs").select("*").eq("user_id", uid),
+          adminClient.from("expenses").select("*").eq("user_id", uid),
+          adminClient.from("suppliers").select("*").eq("user_id", uid),
+          adminClient.from("categories").select("*").eq("user_id", uid),
+        ]);
+
+        return jsonResp({
+          exported_at: new Date().toISOString(),
+          user_id: uid,
+          data: { products, customers, sales, sale_items: saleItems, repairs, expenses, suppliers, categories },
+        });
+      }
+
       return jsonResp({ error: "Unknown action" }, 400);
     }
   } catch (err) {

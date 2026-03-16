@@ -244,9 +244,11 @@ export function AdminEmployeesView() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [now, setNow] = useState(() => Date.now());
   const [credentialsTarget, setCredentialsTarget] = useState<EmployeeRecord | null>(null);
   const [reassignTarget, setReassignTarget] = useState<EmployeeRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EmployeeRecord | null>(null);
+  const [roleToggleTarget, setRoleToggleTarget] = useState<EmployeeRecord | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-employees"],

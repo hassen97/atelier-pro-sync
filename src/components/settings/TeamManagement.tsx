@@ -33,14 +33,15 @@ import {
 } from "@/hooks/useTeam";
 import { AddMemberDialog } from "./AddMemberDialog";
 
+function normalizePagesArray(pages: string[]): string[] {
+  const mapped = pages.map((p) => (p === "/" ? "/dashboard" : p));
+  const deduped = Array.from(new Set(mapped));
+  return deduped.includes("/dashboard") ? deduped : ["/dashboard", ...deduped];
+}
+
 function MemberCard({ member }: { member: TeamMember }) {
-  const [pages, setPages] = useState<string[]>(
-    (member.allowed_pages || []).map((p) => (p === "/" ? "/dashboard" : p))
-      .filter((p, i, arr) => arr.indexOf(p) === i)
-      .concat(
-        (member.allowed_pages || []).some((p) => p === "/" || p === "/dashboard") ? [] : ["/dashboard"]
-      )
-  );
+  const normalized = normalizePagesArray(member.allowed_pages || []);
+  const [pages, setPages] = useState<string[]>(normalized);
   const [role, setRole] = useState(member.role);
   const updatePermissions = useUpdateMemberPermissions();
   const removeMember = useRemoveTeamMember();
@@ -57,8 +58,10 @@ function MemberCard({ member }: { member: TeamMember }) {
     );
   };
 
+  // Compare against normalized baseline to avoid false "has changes" from "/" vs "/dashboard"
+  const normalizedBaseline = normalizePagesArray(member.allowed_pages || []);
   const hasChanges =
-    JSON.stringify(pages.sort()) !== JSON.stringify((member.allowed_pages || []).sort()) ||
+    JSON.stringify([...pages].sort()) !== JSON.stringify([...normalizedBaseline].sort()) ||
     role !== member.role;
 
   const handleSave = () => {

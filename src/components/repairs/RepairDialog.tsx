@@ -35,13 +35,13 @@ import { format as formatDate } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
-import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
+import { useAllCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 import { Combobox } from "@/components/ui/combobox";
 import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel, BRANDS_WITH_API } from "@/data/phoneModels";
 import { useAppleDevices } from "@/hooks/useAppleDevices";
 import { useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useProducts } from "@/hooks/useProducts";
+import { useAllProducts } from "@/hooks/useProducts";
 
 export interface SelectedPart {
   product_id: string;

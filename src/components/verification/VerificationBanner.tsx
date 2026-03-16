@@ -181,6 +181,18 @@ export function VerificationBanner() {
     }
   };
 
+  // Confetti on first verification
+  useEffect(() => {
+    if (profile?.verification_status === "verified" && !confettiFired.current) {
+      confettiFired.current = true;
+      const hasSeenConfetti = localStorage.getItem("verification_confetti_seen");
+      if (!hasSeenConfetti) {
+        localStorage.setItem("verification_confetti_seen", "true");
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 } });
+      }
+    }
+  }, [profile?.verification_status]);
+
   if (!isOwner || !profile || profile.verification_status === "verified") return null;
 
   const hasSubmitted = !!profile.verification_requested_at;

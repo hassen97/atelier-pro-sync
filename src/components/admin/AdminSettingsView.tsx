@@ -12,10 +12,12 @@ export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [publicDomain, setPublicDomain] = useState("");
+  const [safeMode, setSafeMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);
   const [savingDomain, setSavingDomain] = useState(false);
+  const [savingSafeMode, setSavingSafeMode] = useState(false);
 
   useEffect(() => {
     loadSettings();

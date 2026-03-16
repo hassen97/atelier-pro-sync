@@ -7,13 +7,75 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
+
 const EmployeeSchema = z.object({
   fullName: z.string().trim().min(1).max(100),
-  username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/),
+  username: z.string().trim().min(3).max(20).regex(USERNAME_PATTERN),
   password: z.string().min(8).max(128),
   role: z.enum(["employee", "manager", "admin"]),
   allowedPages: z.array(z.string().max(50)).max(20).optional(),
 });
+
+function normalizeUsername(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizeAllowedPages(pages?: string[]) {
+  const cleaned = (pages ?? ["/", "/pos"])
+    .map((page) => page.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(cleaned.includes("/") ? cleaned : ["/", ...cleaned]));
+}
+
+async function usernameExistsGlobally(
+  adminClient: ReturnType<typeof createClient>,
+  username: string
+) {
+  const normalizedUsername = normalizeUsername(username);
+  const employeeEmail = `${normalizedUsername}@repairpro.local`;
+
+  const { data: profileMatch, error: profileError } = await adminClient
+    .from("profiles")
+    .select("user_id")
+    .eq("username", normalizedUsername)
+    .limit(1);
+
+  if (profileError) throw profileError;
+  if ((profileMatch ?? []).length > 0) return true;
+
+  let page = 1;
+  const perPage = 200;
+
+  while (true) {
+    const { data, error } = await adminClient.auth.admin.listUsers({
+      page,
+      per_page: perPage,
+    });
+
+    if (error) throw error;
+
+    const users = data?.users ?? [];
+    const authMatch = users.some((user) => {
+      const email = user.email?.trim().toLowerCase();
+      const metadataUsername =
+        typeof user.user_metadata?.username === "string"
+          ? normalizeUsername(user.user_metadata.username)
+          : null;
+
+      return email === employeeEmail || metadataUsername === normalizedUsername;
+    });
+
+    if (authMatch) return true;
+    if (users.length < perPage) break;
+
+    page += 1;
+    if (page > 50) break;
+  }
+
+  return false;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -21,7 +83,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Non autorisé" }), {
@@ -30,7 +91,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Initialize adminClient first - it can validate ES256 tokens from Lovable Cloud
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -38,6 +98,7 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: authError } = await adminClient.auth.getUser(token);
+
     if (authError || !userData?.user) {
       return new Response(JSON.stringify({ error: "Non autorisé" }), {
         status: 401,
@@ -47,137 +108,206 @@ Deno.serve(async (req) => {
 
     const ownerId = userData.user.id;
 
-    // anonClient with user token for RLS-protected role check
-    const anonClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    // Verify super_admin role
-    const { data: roleData } = await anonClient
+    const { data: ownerRole, error: ownerRoleError } = await adminClient
       .from("user_roles")
-      .select("role")
+      .select("id")
       .eq("user_id", ownerId)
-      .single();
-
-    if (roleData?.role !== "super_admin") {
-      return new Response(
-        JSON.stringify({ error: "Seul un super admin peut créer des employés" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Parse and validate body with Zod
-    const rawBody = await req.json();
-    const parseResult = EmployeeSchema.safeParse(rawBody);
-    if (!parseResult.success) {
-      return new Response(
-        JSON.stringify({ error: "Données invalides", details: parseResult.error.issues.map(i => i.message) }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const { fullName, username, password, role, allowedPages } = parseResult.data;
-
-    // Check username uniqueness
-    const { data: existingUser } = await anonClient
-      .from("profiles")
-      .select("user_id")
-      .eq("username", username.toLowerCase())
+      .eq("role", "super_admin")
       .maybeSingle();
 
-    if (existingUser) {
+    if (ownerRoleError) {
+      console.error("Owner role lookup error:", ownerRoleError);
+      return new Response(JSON.stringify({ error: "Erreur lors de la vérification des permissions" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!ownerRole) {
       return new Response(
-        JSON.stringify({ error: "Ce nom d'utilisateur est déjà pris" }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Seul un super admin peut créer des employés" }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    const email = `${username.toLowerCase()}@repairpro.local`;
+    const rawBody = await req.json();
+    const parseResult = EmployeeSchema.safeParse(rawBody);
 
-    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+    if (!parseResult.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Données invalides",
+          details: parseResult.error.issues.map((issue) => issue.message),
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const normalizedUsername = normalizeUsername(parseResult.data.username);
+    const fullName = parseResult.data.fullName.trim();
+    const role = parseResult.data.role;
+    const allowedPages = normalizeAllowedPages(parseResult.data.allowedPages);
+
+    if (await usernameExistsGlobally(adminClient, normalizedUsername)) {
+      return new Response(
+        JSON.stringify({ error: "Ce nom d'utilisateur est déjà pris" }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const email = `${normalizedUsername}@repairpro.local`;
+
+    const { data: createdUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
-      password,
+      password: parseResult.data.password,
       email_confirm: true,
       user_metadata: {
-        full_name: fullName.trim(),
-        username: username.toLowerCase(),
+        full_name: fullName,
+        username: normalizedUsername,
+        email_verified: true,
       },
     });
 
-    if (createError) {
+    if (createError || !createdUser?.user) {
       console.error("Create user error:", createError);
-      // Surface specific known errors to the client
-      if ((createError as any).code === "email_exists" || createError.message?.includes("already been registered")) {
+
+      if (
+        createError?.code === "email_exists" ||
+        createError?.message?.includes("already been registered")
+      ) {
         return new Response(
-          JSON.stringify({ error: "Ce nom d'utilisateur est déjà utilisé (compte existant)" }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Ce nom d'utilisateur est déjà pris" }),
+          {
+            status: 409,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
         );
       }
+
       return new Response(
-        JSON.stringify({ error: "Erreur lors de la création du compte: " + createError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Erreur lors de la création du compte employé" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    const newUserId = newUser.user.id;
+    const newUserId = createdUser.user.id;
 
-    // Wait briefly for the trigger to create profile/role rows
-    await new Promise((r) => setTimeout(r, 300));
-
-    // Update role from super_admin (set by trigger) to the chosen role
-    const { error: roleUpdateError } = await adminClient
-      .from("user_roles")
-      .update({ role })
-      .eq("user_id", newUserId);
-
-    if (roleUpdateError) {
-      console.error("Role update error:", roleUpdateError);
-    }
-
-    // Update profile to set username/full_name and mark as verified
-    const { error: profileUpdateError } = await adminClient
-      .from("profiles")
-      .update({
-        username: username.toLowerCase(),
-        full_name: fullName.trim(),
+    const { error: profileError } = await adminClient.from("profiles").upsert(
+      {
+        user_id: newUserId,
+        full_name: fullName,
+        username: normalizedUsername,
         email,
         verification_status: "verified",
         verification_deadline: null,
         is_locked: false,
-      })
-      .eq("user_id", newUserId);
+      },
+      { onConflict: "user_id" }
+    );
 
-    if (profileUpdateError) {
-      console.error("Profile update error:", profileUpdateError);
+    if (profileError) {
+      console.error("Profile upsert error:", profileError);
+      return new Response(
+        JSON.stringify({ error: "Erreur lors de l'enregistrement du profil employé" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
-    // Add to team_members
-    const { error: teamMemberError } = await adminClient.from("team_members").insert({
-      owner_id: ownerId,
-      member_user_id: newUserId,
+    const { error: deleteRolesError } = await adminClient
+      .from("user_roles")
+      .delete()
+      .eq("user_id", newUserId);
+
+    if (deleteRolesError) {
+      console.error("Role cleanup error:", deleteRolesError);
+      return new Response(
+        JSON.stringify({ error: "Erreur lors de la préparation du rôle employé" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const { error: roleInsertError } = await adminClient.from("user_roles").insert({
+      user_id: newUserId,
       role,
-      allowed_pages: allowedPages || ["/dashboard", "/pos"],
     });
 
-    if (teamMemberError) {
+    if (roleInsertError) {
+      console.error("Role insert error:", roleInsertError);
+      return new Response(
+        JSON.stringify({ error: "Erreur lors de l'enregistrement du rôle employé" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const { data: teamMember, error: teamMemberError } = await adminClient
+      .from("team_members")
+      .insert({
+        owner_id: ownerId,
+        member_user_id: newUserId,
+        role,
+        allowed_pages: allowedPages,
+      })
+      .select("id, owner_id, member_user_id, role, allowed_pages, status, created_at")
+      .single();
+
+    if (teamMemberError || !teamMember) {
       console.error("Team member insert error:", teamMemberError);
       return new Response(
         JSON.stringify({ error: "Erreur lors de l'ajout à l'équipe" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
     return new Response(
-      JSON.stringify({ userId: newUserId, username: username.toLowerCase() }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        userId: newUserId,
+        username: normalizedUsername,
+        fullName,
+        member: {
+          ...teamMember,
+          profile: {
+            username: normalizedUsername,
+            full_name: fullName,
+          },
+        },
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(
       JSON.stringify({ error: "Erreur interne du serveur" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });

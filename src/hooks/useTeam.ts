@@ -161,6 +161,8 @@ export function useSearchUsers() {
 // Create employee account via edge function
 export function useCreateEmployee() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   return useMutation({
     mutationFn: async (params: {
       fullName: string;
@@ -176,8 +178,17 @@ export function useCreateEmployee() {
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["team-members"] });
+    onSuccess: (data) => {
+      if (user && data?.member) {
+        queryClient.setQueryData<TeamMember[]>(["team-members", user.id], (current = []) => {
+          const nextMembers = current.filter(
+            (member) => member.id !== data.member.id && member.member_user_id !== data.member.member_user_id
+          );
+          return [...nextMembers, data.member as TeamMember];
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["team-members", user?.id] });
       toast.success("Compte employé créé et ajouté à l'équipe");
     },
     onError: (err: any) => {

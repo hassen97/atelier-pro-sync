@@ -39,6 +39,11 @@ function MemberCard({ member }: { member: TeamMember }) {
   const updatePermissions = useUpdateMemberPermissions();
   const removeMember = useRemoveTeamMember();
 
+  const displayName = member.profile?.full_name?.trim() || member.profile?.username?.trim() || "Utilisateur";
+  const displayHandle = member.profile?.username?.trim()
+    ? `@${member.profile.username.trim()}`
+    : "Username indisponible";
+
   const togglePage = (href: string) => {
     if (href === "/dashboard") return;
     setPages((prev) =>
@@ -60,14 +65,14 @@ function MemberCard({ member }: { member: TeamMember }) {
 
   return (
     <div className="p-4 rounded-lg border bg-card space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-            {(member.profile?.full_name || member.profile?.username || "?")[0]?.toUpperCase()}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold shrink-0">
+            {displayName[0]?.toUpperCase()}
           </div>
-          <div>
-            <p className="font-medium">{member.profile?.full_name || "Sans nom"}</p>
-            <p className="text-sm text-muted-foreground">@{member.profile?.username}</p>
+          <div className="min-w-0">
+            <p className="font-medium truncate">{displayName}</p>
+            <p className="text-sm text-muted-foreground truncate">{displayHandle}</p>
           </div>
         </div>
         <Select value={role} onValueChange={(v: any) => setRole(v)}>
@@ -126,7 +131,7 @@ function MemberCard({ member }: { member: TeamMember }) {
             <AlertDialogHeader>
               <AlertDialogTitle>Retirer ce membre ?</AlertDialogTitle>
               <AlertDialogDescription>
-                {member.profile?.full_name || member.profile?.username} n'aura plus accès aux données de votre boutique.
+                {displayName} n'aura plus accès aux données de votre boutique.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

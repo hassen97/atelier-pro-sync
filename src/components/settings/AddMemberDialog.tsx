@@ -46,10 +46,38 @@ export function AddMemberDialog() {
   const [role, setRole] = useState<"employee" | "manager" | "admin">("employee");
   const [selectedPages, setSelectedPages] = useState<string[]>(["/", "/pos"]);
 
+  // Username availability
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
   const { user } = useAuth();
   const searchUsers = useSearchUsers();
   const addMember = useAddTeamMember();
   const createEmployee = useCreateEmployee();
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const val = username.toLowerCase().trim();
+    if (!val || val.length < 3 || !/^[a-zA-Z0-9_]+$/.test(val)) {
+      setUsernameAvailable(null);
+      return;
+    }
+    setCheckingUsername(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase.functions.invoke("check-username", {
+          body: { username: val },
+        });
+        setUsernameAvailable(!data?.exists);
+      } catch {
+        setUsernameAvailable(null);
+      } finally {
+        setCheckingUsername(false);
+      }
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [username]);
 
   const resetForm = () => {
     setSearchQuery("");

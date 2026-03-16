@@ -35,7 +35,7 @@ export interface TeamTask {
 
 // All available pages for permission assignment
 export const ALL_PAGES = [
-  { href: "/", label: "Tableau de bord" },
+  { href: "/dashboard", label: "Tableau de bord" },
   { href: "/pos", label: "Point de Vente" },
   { href: "/repairs", label: "Réparations" },
   { href: "/inventory", label: "Stock" },

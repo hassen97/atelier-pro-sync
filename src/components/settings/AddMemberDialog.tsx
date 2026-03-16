@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Search, UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, UserPlus, Loader2, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,

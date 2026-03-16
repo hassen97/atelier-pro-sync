@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useCustomers, useUpdateCustomer, Customer } from "@/hooks/useCustomers";
+import { useAllCustomers, useUpdateCustomer, Customer } from "@/hooks/useCustomers";
 import { useRepairs, useUpdateRepair } from "@/hooks/useRepairs";
 import { useSales, useUpdateSale } from "@/hooks/useSales";
 import { toast } from "sonner";

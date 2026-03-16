@@ -12,11 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useProducts } from "@/hooks/useProducts";
+import { useAllProducts } from "@/hooks/useProducts";
 import { useRepairs } from "@/hooks/useRepairs";
 import { useCreateSale } from "@/hooks/useSales";
-import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers";
-import { useCustomers } from "@/hooks/useCustomers";
+import { useCreateCustomer, useUpdateCustomer, useAllCustomers } from "@/hooks/useCustomers";
 import { useUpdateRepairStatus } from "@/hooks/useRepairs";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";

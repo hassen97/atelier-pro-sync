@@ -108,8 +108,15 @@ Deno.serve(async (req) => {
 
     if (createError) {
       console.error("Create user error:", createError);
+      // Surface specific known errors to the client
+      if ((createError as any).code === "email_exists" || createError.message?.includes("already been registered")) {
+        return new Response(
+          JSON.stringify({ error: "Ce nom d'utilisateur est déjà utilisé (compte existant)" }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       return new Response(
-        JSON.stringify({ error: "Erreur lors de la création du compte" }),
+        JSON.stringify({ error: "Erreur lors de la création du compte: " + createError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search, UserPlus, Loader2, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -23,11 +23,22 @@ import {
 import { useSearchUsers, useAddTeamMember, useCreateEmployee, ALL_PAGES } from "@/hooks/useTeam";
 import { useAuth } from "@/contexts/AuthContext";
 
+type UsernameStatus = "idle" | "invalid" | "checking" | "available" | "taken" | "error";
+
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,20}$/;
+
+function normalizeUsername(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function formatHandle(username: string | null | undefined) {
+  return username ? `@${username}` : "Username indisponible";
+}
+
 export function AddMemberDialog() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"search" | "create">("create");
 
-  // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<{
     user_id: string;
@@ -35,49 +46,83 @@ export function AddMemberDialog() {
     full_name: string | null;
   } | null>(null);
 
-  // Create state
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Shared state
   const [role, setRole] = useState<"employee" | "manager" | "admin">("employee");
   const [selectedPages, setSelectedPages] = useState<string[]>(["/", "/pos"]);
 
-  // Username availability
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
-  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
+  const [checkedUsername, setCheckedUsername] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const latestUsernameRef = useRef("");
 
   const { user } = useAuth();
   const searchUsers = useSearchUsers();
   const addMember = useAddTeamMember();
   const createEmployee = useCreateEmployee();
 
+  const normalizedUsername = normalizeUsername(username);
+  const usernameValid = USERNAME_PATTERN.test(normalizedUsername);
+  const passwordValid = password.length >= 8;
+  const passwordsMatch = password === confirmPassword;
+  const createFormValid =
+    fullName.trim().length > 0 &&
+    usernameValid &&
+    passwordValid &&
+    passwordsMatch &&
+    usernameStatus === "available" &&
+    checkedUsername === normalizedUsername;
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    const val = username.toLowerCase().trim();
-    if (!val || val.length < 3 || !/^[a-zA-Z0-9_]+$/.test(val)) {
-      setUsernameAvailable(null);
+
+    latestUsernameRef.current = normalizedUsername;
+    setCheckedUsername("");
+
+    if (!normalizedUsername) {
+      setUsernameStatus("idle");
       return;
     }
-    setCheckingUsername(true);
+
+    if (!usernameValid) {
+      setUsernameStatus("invalid");
+      return;
+    }
+
+    setUsernameStatus("checking");
+
     debounceRef.current = setTimeout(async () => {
+      const currentUsername = normalizedUsername;
+
       try {
-        const { data } = await supabase.functions.invoke("check-username", {
-          body: { username: val },
+        const { data, error } = await supabase.functions.invoke("check-username", {
+          body: { username: currentUsername },
         });
-        setUsernameAvailable(!data?.exists);
+
+        if (latestUsernameRef.current !== currentUsername) return;
+
+        if (error || data?.error) {
+          setUsernameStatus("error");
+          return;
+        }
+
+        setCheckedUsername(currentUsername);
+        setUsernameStatus(data?.exists ? "taken" : "available");
       } catch {
-        setUsernameAvailable(null);
-      } finally {
-        setCheckingUsername(false);
+        if (latestUsernameRef.current === currentUsername) {
+          setUsernameStatus("error");
+        }
       }
     }, 500);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [username]);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [normalizedUsername, usernameValid]);
 
   const resetForm = () => {
     setSearchQuery("");
@@ -89,8 +134,9 @@ export function AddMemberDialog() {
     setRole("employee");
     setSelectedPages(["/", "/pos"]);
     setShowPassword(false);
-    setUsernameAvailable(null);
-    setCheckingUsername(false);
+    setUsernameStatus("idle");
+    setCheckedUsername("");
+    latestUsernameRef.current = "";
   };
 
   const handleSearch = () => {
@@ -116,17 +162,11 @@ export function AddMemberDialog() {
     resetForm();
   };
 
-  const usernameValid = /^[a-zA-Z0-9_]{3,20}$/.test(username);
-  const passwordValid = password.length >= 8;
-  const passwordsMatch = password === confirmPassword;
-  const createFormValid =
-    fullName.trim().length > 0 && usernameValid && passwordValid && passwordsMatch && usernameAvailable === true;
-
   const handleCreate = async () => {
     if (!createFormValid) return;
     await createEmployee.mutateAsync({
       fullName: fullName.trim(),
-      username: username.toLowerCase(),
+      username: normalizedUsername,
       password,
       role,
       allowedPages: selectedPages,
@@ -135,15 +175,13 @@ export function AddMemberDialog() {
     resetForm();
   };
 
-  const searchResults = (searchUsers.data || []).filter(
-    (u) => u.user_id !== user?.id
-  );
+  const searchResults = (searchUsers.data || []).filter((u) => u.user_id !== user?.id);
 
   const renderPermissions = () => (
     <>
       <div className="space-y-2">
         <Label>Rôle</Label>
-        <Select value={role} onValueChange={(v: any) => setRole(v)}>
+        <Select value={role} onValueChange={(v: "employee" | "manager" | "admin") => setRole(v)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -154,14 +192,12 @@ export function AddMemberDialog() {
           </SelectContent>
         </Select>
       </div>
+
       <div className="space-y-2">
         <Label>Pages autorisées</Label>
         <div className="grid grid-cols-2 gap-2">
           {ALL_PAGES.map((page) => (
-            <label
-              key={page.href}
-              className="flex items-center gap-2 text-sm cursor-pointer"
-            >
+            <label key={page.href} className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox
                 checked={selectedPages.includes(page.href)}
                 onCheckedChange={() => togglePage(page.href)}
@@ -176,19 +212,26 @@ export function AddMemberDialog() {
   );
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) resetForm();
+      }}
+    >
       <DialogTrigger asChild>
         <Button className="bg-gradient-primary hover:opacity-90">
           <UserPlus className="h-4 w-4 mr-2" />
           Ajouter un employé
         </Button>
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Ajouter un employé</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as "search" | "create")}>
           <TabsList className="w-full">
             <TabsTrigger value="create" className="flex-1">Créer un compte</TabsTrigger>
             <TabsTrigger value="search" className="flex-1">Rechercher</TabsTrigger>
@@ -203,6 +246,7 @@ export function AddMemberDialog() {
                 onChange={(e) => setFullName(e.target.value)}
               />
             </div>
+
             <div className="space-y-2">
               <Label>Nom d'utilisateur</Label>
               <Input
@@ -210,23 +254,38 @@ export function AddMemberDialog() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
               />
-              {username && !usernameValid && (
-                <p className="text-xs text-destructive">
-                  3-20 caractères (lettres, chiffres, _)
-                </p>
+
+              {usernameStatus === "invalid" && (
+                <p className="text-xs text-destructive">3-20 caractères, lettres/chiffres/_ uniquement</p>
               )}
-              {username && usernameValid && (
+
+              {usernameStatus !== "idle" && usernameStatus !== "invalid" && (
                 <div className="flex items-center gap-1 text-xs">
-                  {checkingUsername ? (
-                    <><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /><span className="text-muted-foreground">Vérification...</span></>
-                  ) : usernameAvailable === true ? (
-                    <><CheckCircle2 className="h-3 w-3 text-green-500" /><span className="text-green-600">Disponible</span></>
-                  ) : usernameAvailable === false ? (
-                    <><XCircle className="h-3 w-3 text-destructive" /><span className="text-destructive">Déjà pris</span></>
-                  ) : null}
+                  {usernameStatus === "checking" && (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      <span className="text-muted-foreground">Vérification globale...</span>
+                    </>
+                  )}
+                  {usernameStatus === "available" && (
+                    <>
+                      <CheckCircle2 className="h-3 w-3 text-primary" />
+                      <span className="text-primary">Disponible</span>
+                    </>
+                  )}
+                  {usernameStatus === "taken" && (
+                    <>
+                      <XCircle className="h-3 w-3 text-destructive" />
+                      <span className="text-destructive">Déjà pris</span>
+                    </>
+                  )}
+                  {usernameStatus === "error" && (
+                    <span className="text-destructive">Impossible de vérifier maintenant</span>
+                  )}
                 </div>
               )}
             </div>
+
             <div className="space-y-2">
               <Label>Mot de passe</Label>
               <div className="relative">
@@ -239,12 +298,16 @@ export function AddMemberDialog() {
                 <button
                   type="button"
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowPassword((prev) => !prev)}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {password && !passwordValid && (
+                <p className="text-xs text-destructive">Le mot de passe doit contenir au moins 8 caractères</p>
+              )}
             </div>
+
             <div className="space-y-2">
               <Label>Confirmer le mot de passe</Label>
               <Input
@@ -254,9 +317,7 @@ export function AddMemberDialog() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
               {confirmPassword && !passwordsMatch && (
-                <p className="text-xs text-destructive">
-                  Les mots de passe ne correspondent pas
-                </p>
+                <p className="text-xs text-destructive">Les mots de passe ne correspondent pas</p>
               )}
             </div>
 
@@ -286,11 +347,7 @@ export function AddMemberDialog() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   />
-                  <Button
-                    variant="outline"
-                    onClick={handleSearch}
-                    disabled={searchUsers.isPending}
-                  >
+                  <Button variant="outline" onClick={handleSearch} disabled={searchUsers.isPending}>
                     {searchUsers.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
@@ -301,39 +358,40 @@ export function AddMemberDialog() {
 
                 {searchResults.length > 0 && (
                   <div className="space-y-2">
-                    {searchResults.map((u) => (
-                      <button
-                        key={u.user_id}
-                        onClick={() => setSelectedUser(u)}
-                        className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
-                      >
-                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
-                          {(u.full_name || u.username || "?")[0]?.toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{u.full_name || "Sans nom"}</p>
-                          <p className="text-xs text-muted-foreground">@{u.username}</p>
-                        </div>
-                      </button>
-                    ))}
+                    {searchResults.map((result) => {
+                      const displayName = result.full_name || result.username || "Utilisateur";
+                      return (
+                        <button
+                          key={result.user_id}
+                          onClick={() => setSelectedUser(result)}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
+                            {displayName[0]?.toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{displayName}</p>
+                            <p className="text-xs text-muted-foreground">{formatHandle(result.username)}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 
                 {searchUsers.isSuccess && searchResults.length === 0 && searchQuery && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Aucun utilisateur trouvé
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-4">Aucun utilisateur trouvé</p>
                 )}
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
-                    {(selectedUser.full_name || selectedUser.username || "?")[0]?.toUpperCase()}
+                    {(selectedUser.full_name || selectedUser.username || "U")[0]?.toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-medium text-sm">{selectedUser.full_name || "Sans nom"}</p>
-                    <p className="text-xs text-muted-foreground">@{selectedUser.username}</p>
+                    <p className="font-medium text-sm">{selectedUser.full_name || selectedUser.username || "Utilisateur"}</p>
+                    <p className="text-xs text-muted-foreground">{formatHandle(selectedUser.username)}</p>
                   </div>
                   <Button
                     variant="ghost"

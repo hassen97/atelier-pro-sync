@@ -34,8 +34,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   } = useNotifications();
   
   const { settings: notifSettings } = useNotificationSettings();
-  const { data: products } = useProducts();
-  const { data: repairs } = useRepairs();
+  const { data: products } = useAllProducts();
+  const { data: repairsResult } = useRepairs();
+  const repairs = repairsResult?.data;
 
   // Helper to send browser notification
   const sendBrowserNotification = useCallback((title: string, body: string) => {

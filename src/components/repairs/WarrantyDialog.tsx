@@ -31,7 +31,7 @@ export function WarrantyDialog({ open, onOpenChange }: WarrantyDialogProps) {
 
   const searchRepair = useSearchRepairForWarranty();
   const createWarranty = useCreateWarrantyTicket();
-  const { data: products = [] } = useProducts();
+  const { data: products = [] } = useAllProducts();
   const { format } = useCurrency();
 
   const handleSearch = () => {

@@ -17,6 +17,25 @@ import {
 } from "@/components/ui/popover";
 import { useAllCustomers } from "@/hooks/useCustomers";
 
+interface CustomerComboboxProps {
+  value: string;
+  onValueChange: (customerId: string) => void;
+  onAddNew?: () => void;
+  placeholder?: string;
+  className?: string;
+}
+
+export function CustomerCombobox({
+  value,
+  onValueChange,
+  onAddNew,
+  placeholder = "Rechercher client (nom ou tél)...",
+  className,
+}: CustomerComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const { data: customers = [] } = useAllCustomers();
+
   const selectedCustomer = customers.find((c) => c.id === value);
 
   const filtered = useMemo(() => {

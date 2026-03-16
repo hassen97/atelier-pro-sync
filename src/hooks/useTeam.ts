@@ -84,10 +84,14 @@ export function useMyTeamInfo() {
         .eq("member_user_id", user.id)
         .eq("status", "active")
         .maybeSingle();
-      if (error) throw error;
+      if (error) {
+        console.error("useMyTeamInfo error:", error);
+        return null; // Never hang — treat as non-member
+      }
       return data as TeamMember | null;
     },
     enabled: !!user,
+    retry: 1,
   });
 }
 

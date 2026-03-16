@@ -16,6 +16,7 @@ export function VerificationBanner() {
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(false);
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
+  const confettiFired = useRef(false);
 
   // Form fields
   const [shopName, setShopName] = useState("");

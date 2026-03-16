@@ -692,6 +692,54 @@ export function AdminEmployeesView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Role Toggle confirmation */}
+      <AlertDialog open={!!roleToggleTarget} onOpenChange={(o) => !o && setRoleToggleTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5 text-amber-400" />
+              {roleToggleTarget?.role === "employee" ? "Promouvoir en Propriétaire ?" : "Rétrograder en Employé ?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 pt-1">
+              {roleToggleTarget?.role === "employee" ? (
+                <span>
+                  Vous êtes sur le point de promouvoir{" "}
+                  <strong>{roleToggleTarget?.full_name || roleToggleTarget?.username}</strong> au rôle de{" "}
+                  <strong>Propriétaire</strong>.{" "}
+                  Ce compte aura accès complet à la gestion d'une boutique (équipe, paramètres, données).
+                </span>
+              ) : (
+                <span>
+                  Vous êtes sur le point de rétrograder{" "}
+                  <strong>{roleToggleTarget?.full_name || roleToggleTarget?.username}</strong> au rôle d'<strong>Employé</strong>.{" "}
+                  Ses permissions seront limitées aux pages autorisées par son propriétaire.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className={roleToggleTarget?.role === "employee"
+                ? "bg-amber-500 text-white hover:bg-amber-600"
+                : "bg-orange-500 text-white hover:bg-orange-600"}
+              onClick={() => {
+                if (roleToggleTarget) {
+                  changeRole.mutate({
+                    userId: roleToggleTarget.member_user_id,
+                    newRole: roleToggleTarget.role === "employee" ? "super_admin" : "employee",
+                  });
+                  setRoleToggleTarget(null);
+                }
+              }}
+            >
+              {roleToggleTarget?.role === "employee" ? "Confirmer la promotion" : "Confirmer la rétrogradation"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+

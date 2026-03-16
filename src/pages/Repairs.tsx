@@ -21,7 +21,7 @@ import {
   useUpdateRepairStatus,
   useDeleteRepair,
 } from "@/hooks/useRepairs";
-import { useCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
+import { useCustomers, useAllCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

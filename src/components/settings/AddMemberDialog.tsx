@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Search, UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, UserPlus, Loader2, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -45,10 +46,38 @@ export function AddMemberDialog() {
   const [role, setRole] = useState<"employee" | "manager" | "admin">("employee");
   const [selectedPages, setSelectedPages] = useState<string[]>(["/", "/pos"]);
 
+  // Username availability
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
   const { user } = useAuth();
   const searchUsers = useSearchUsers();
   const addMember = useAddTeamMember();
   const createEmployee = useCreateEmployee();
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const val = username.toLowerCase().trim();
+    if (!val || val.length < 3 || !/^[a-zA-Z0-9_]+$/.test(val)) {
+      setUsernameAvailable(null);
+      return;
+    }
+    setCheckingUsername(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase.functions.invoke("check-username", {
+          body: { username: val },
+        });
+        setUsernameAvailable(!data?.exists);
+      } catch {
+        setUsernameAvailable(null);
+      } finally {
+        setCheckingUsername(false);
+      }
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [username]);
 
   const resetForm = () => {
     setSearchQuery("");
@@ -60,6 +89,8 @@ export function AddMemberDialog() {
     setRole("employee");
     setSelectedPages(["/", "/pos"]);
     setShowPassword(false);
+    setUsernameAvailable(null);
+    setCheckingUsername(false);
   };
 
   const handleSearch = () => {
@@ -89,7 +120,7 @@ export function AddMemberDialog() {
   const passwordValid = password.length >= 8;
   const passwordsMatch = password === confirmPassword;
   const createFormValid =
-    fullName.trim().length > 0 && usernameValid && passwordValid && passwordsMatch;
+    fullName.trim().length > 0 && usernameValid && passwordValid && passwordsMatch && usernameAvailable === true;
 
   const handleCreate = async () => {
     if (!createFormValid) return;
@@ -183,6 +214,17 @@ export function AddMemberDialog() {
                 <p className="text-xs text-destructive">
                   3-20 caractères (lettres, chiffres, _)
                 </p>
+              )}
+              {username && usernameValid && (
+                <div className="flex items-center gap-1 text-xs">
+                  {checkingUsername ? (
+                    <><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /><span className="text-muted-foreground">Vérification...</span></>
+                  ) : usernameAvailable === true ? (
+                    <><CheckCircle2 className="h-3 w-3 text-green-500" /><span className="text-green-600">Disponible</span></>
+                  ) : usernameAvailable === false ? (
+                    <><XCircle className="h-3 w-3 text-destructive" /><span className="text-destructive">Déjà pris</span></>
+                  ) : null}
+                </div>
               )}
             </div>
             <div className="space-y-2">

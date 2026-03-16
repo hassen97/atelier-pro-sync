@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAdminData, useDeleteOwner, useLockOwner } from "@/hooks/useAdmin";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useCreateAnnouncement } from "@/hooks/useAnnouncements";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";

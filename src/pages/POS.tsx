@@ -55,7 +55,7 @@ export default function POS() {
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const updateRepairStatus = useUpdateRepairStatus();
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useAllCustomers();
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
 

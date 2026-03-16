@@ -145,6 +145,7 @@ export function AdminShopsView() {
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
   const [announcementTarget, setAnnouncementTarget] = useState<{ userId: string; shopName: string } | null>(null);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
+  const [transferSource, setTransferSource] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);

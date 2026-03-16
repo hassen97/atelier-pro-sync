@@ -333,6 +333,8 @@ serve(async (req) => {
           username: memberProfileMap.get(m.member_user_id)?.username || null,
           phone: memberProfileMap.get(m.member_user_id)?.phone || null,
           last_online_at: memberProfileMap.get(m.member_user_id)?.last_online_at || null,
+          verification_status: memberProfileMap.get(m.member_user_id)?.verification_status || null,
+          is_locked: memberProfileMap.get(m.member_user_id)?.is_locked || false,
           owner_username: ownerProfileMap.get(m.owner_id)?.username || null,
           owner_full_name: ownerProfileMap.get(m.owner_id)?.full_name || null,
           shop_name: shopMap.get(m.owner_id) || "Mon Atelier",

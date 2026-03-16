@@ -24,6 +24,8 @@ import {
   Languages,
   Lock,
   Copy,
+  Package,
+  Settings2,
  } from "lucide-react";
 import { Receipt, CreditCard } from "lucide-react";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
@@ -39,7 +41,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
@@ -56,6 +57,60 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
 import { BRAND_COLOR_PRESETS, useBrandTheme } from "@/contexts/BrandThemeContext";
 import { useI18n } from "@/contexts/I18nContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const TABS = [
+  { value: "boutique", label: "Boutique", icon: Store },
+  { value: "inventaire", label: "Inventaire", icon: Package },
+  { value: "acces", label: "Accès", icon: Users },
+  { value: "systeme", label: "Système", icon: Settings2 },
+] as const;
+
+type TabValue = typeof TABS[number]["value"];
+
+/* ─── Glassmorphism card wrapper ─── */
+function GlassCard({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border/50 bg-card/80 backdrop-blur-md shadow-soft",
+        "dark:bg-zinc-900/50 dark:border-zinc-800",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ─── Section sub-heading inside combined tabs ─── */
+function SectionHeading({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description?: string }) {
+  return (
+    <div className="flex items-start gap-3 mb-4">
+      <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div>
+        <h3 className="font-semibold text-sm">{title}</h3>
+        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Animated tab content wrapper ─── */
+function AnimatedPanel({ active, children }: { active: boolean; children: React.ReactNode }) {
+  if (!active) return null;
+  return (
+    <div
+      className="animate-fade-in space-y-6"
+      style={{ animationDuration: "0.25s" }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function Settings() {
   const { settings, loading, saving, saveSettings } = useShopSettingsContext();
@@ -82,10 +137,12 @@ export default function Settings() {
   const { updatePassword, user } = useAuth();
   const { applyColor } = useBrandTheme();
   const { language, setLanguage, t } = useI18n();
+  const isMobile = useIsMobile();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [brandColor, setBrandColor] = useState("blue");
   const [customHex, setCustomHex] = useState("");
+  const [activeTab, setActiveTab] = useState<TabValue>("boutique");
   
   const [shopName, setShopName] = useState("");
   const [shopCountry, setShopCountry] = useState("TN");
@@ -280,475 +337,181 @@ export default function Settings() {
     return (
       <div className="space-y-6 animate-fade-in">
         <PageHeader title="Paramètres" description="Configuration du système" />
-        <div className="space-y-6">
-          <Skeleton className="h-[400px] w-full" />
-        </div>
+        <Skeleton className="h-[400px] w-full" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Paramètres"
-        description="Configuration du système"
-      />
+      <PageHeader title="Paramètres" description="Configuration du système" />
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
-          <TabsTrigger value="preferences">
-            <Palette className="h-3.5 w-3.5 mr-1" />
-            {t("settings.preferences")}
-          </TabsTrigger>
-          <TabsTrigger value="categories">
-            <Tag className="h-3.5 w-3.5 mr-1" />
-            {t("settings.categories")}
-          </TabsTrigger>
-          <TabsTrigger value="billing">
-            <CreditCard className="h-3.5 w-3.5 mr-1" />
-            Abonnement
-          </TabsTrigger>
-          <TabsTrigger value="backup">Sauvegarde</TabsTrigger>
-          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-          <TabsTrigger value="security">Sécurité</TabsTrigger>
-        </TabsList>
+      {/* ─── Segmented Control / Pill Navigation ─── */}
+      <div className="relative">
+        {/* Gradient fade hint on mobile (right side) */}
+        {isMobile && (
+          <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none bg-gradient-to-l from-background to-transparent" />
+        )}
+        <div
+          className={cn(
+            "flex gap-1 p-1 rounded-xl bg-muted/60 backdrop-blur-sm border border-border/40",
+            "dark:bg-zinc-900/60 dark:border-zinc-800/60",
+            isMobile && "overflow-x-auto scrollbar-hide flex-nowrap -mx-1 px-1"
+          )}
+        >
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.value;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap shrink-0",
+                  isActive
+                    ? "bg-background text-foreground shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-        {/* General Settings */}
-        <TabsContent value="general" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Store className="h-5 w-5" />
-                Informations du magasin
-              </CardTitle>
-              <CardDescription>
-                Configurez les informations de base de votre atelier
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+      {/* ─── TAB: Boutique (Général + Préférences + Suivi) ─── */}
+      <AnimatedPanel active={activeTab === "boutique"}>
+        {/* Shop Info */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Store} title="Détails de l'enseigne" description="Informations de base de votre atelier" />
+            <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="shopName">Nom du magasin</Label>
-                  <Input
-                    id="shopName"
-                    value={shopName}
-                    onChange={(e) => setShopName(e.target.value)}
-                  />
+                  <Input id="shopName" value={shopName} onChange={(e) => setShopName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country">Pays</Label>
-                  <Select value={shopCountry} onValueChange={(val) => {
-                    setShopCountry(val);
-                    const curr = getCurrencyForCountry(val);
-                    if (curr) setShopCurrency(curr.code);
-                  }}>
-                    <SelectTrigger id="country">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countries.map((c) => (
-                        <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={shopCountry} onValueChange={(val) => { setShopCountry(val); const curr = getCurrencyForCountry(val); if (curr) setShopCurrency(curr.code); }}>
+                    <SelectTrigger id="country"><SelectValue /></SelectTrigger>
+                    <SelectContent>{countries.map((c) => (<SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="currency">Devise</Label>
                   <Select value={shopCurrency} onValueChange={setShopCurrency}>
-                    <SelectTrigger id="currency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {currencies.map((c) => (
-                        <SelectItem key={c.code} value={c.code}>{c.symbol} - {c.name} ({c.code})</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectTrigger id="currency"><SelectValue /></SelectTrigger>
+                    <SelectContent>{currencies.map((c) => (<SelectItem key={c.code} value={c.code}>{c.symbol} - {c.name} ({c.code})</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="taxRate">Taux TVA (%)</Label>
-                  <div className="flex gap-3 items-center">
-                    <Input
-                      id="taxRate"
-                      type="number"
-                      value={taxRate}
-                      onChange={(e) => setTaxRate(e.target.value)}
-                      disabled={!taxEnabled}
-                      className={!taxEnabled ? "opacity-50" : ""}
-                    />
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Switch
-                        id="taxEnabled"
-                        checked={taxEnabled}
-                        onCheckedChange={setTaxEnabled}
-                      />
-                      <Label htmlFor="taxEnabled" className="text-sm cursor-pointer whitespace-nowrap">
-                        Activer TVA
-                      </Label>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {taxEnabled ? "La TVA sera appliquée aux ventes" : "TVA désactivée pour les ventes"}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="stockThreshold">Seuil alerte stock</Label>
-                  <Input
-                    id="stockThreshold"
-                    type="number"
-                    value={stockThreshold}
-                    onChange={(e) => setStockThreshold(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Button 
-                className="bg-gradient-primary hover:opacity-90"
-                onClick={handleSaveGeneralSettings}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                {saving ? "Enregistrement..." : "Enregistrer"}
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </GlassCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="h-5 w-5" />
-                Protection de l'inventaire
-              </CardTitle>
-              <CardDescription>
-                Empêcher les employés de modifier l'inventaire sans autorisation
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Protéger l'inventaire</p>
-                  <p className="text-sm text-muted-foreground">
-                    Les employés devront entrer un code temporaire pour modifier les produits
-                  </p>
-                </div>
-                <Switch
-                  checked={inventoryLocked}
-                  onCheckedChange={toggleInventoryLock}
-                />
-              </div>
-              {inventoryLocked && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <Button
-                      variant="outline"
-                      onClick={generateCode}
-                      disabled={generating}
-                      className="gap-2"
-                    >
-                      {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
-                      Générer un code temporaire
-                    </Button>
-                    {generatedCode && (
-                      <div className="p-4 rounded-lg border bg-muted/50 space-y-2">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl font-mono font-bold tracking-[0.3em]">{generatedCode.code}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              navigator.clipboard.writeText(generatedCode.code);
-                              toast.success("Code copié !");
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Expire le {new Date(generatedCode.expires_at).toLocaleString("fr-FR")}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5" />
-                Coordonnées du magasin
-              </CardTitle>
-              <CardDescription>
-                Ces informations apparaîtront sur vos reçus et factures
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* Contact Info */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Phone} title="Coordonnées du magasin" description="Apparaîtront sur vos reçus et factures" />
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="shopAddress">Adresse</Label>
-                <Input
-                  id="shopAddress"
-                  value={shopAddress}
-                  onChange={(e) => setShopAddress(e.target.value)}
-                  placeholder="Adresse du magasin"
-                />
+                <Input id="shopAddress" value={shopAddress} onChange={(e) => setShopAddress(e.target.value)} placeholder="Adresse du magasin" />
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="shopPhoneNum">Téléphone</Label>
-                  <Input
-                    id="shopPhoneNum"
-                    value={shopPhone}
-                    onChange={(e) => setShopPhone(e.target.value)}
-                    placeholder="+216 XX XXX XXX"
-                  />
+                  <Input id="shopPhoneNum" value={shopPhone} onChange={(e) => setShopPhone(e.target.value)} placeholder="+216 XX XXX XXX" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="shopWhatsappNum">WhatsApp</Label>
-                  <Input
-                    id="shopWhatsappNum"
-                    value={shopWhatsapp}
-                    onChange={(e) => setShopWhatsapp(e.target.value)}
-                    placeholder="+216 XX XXX XXX"
-                  />
+                  <Input id="shopWhatsappNum" value={shopWhatsapp} onChange={(e) => setShopWhatsapp(e.target.value)} placeholder="+216 XX XXX XXX" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="shopEmailAddr">Email</Label>
-                  <Input
-                    id="shopEmailAddr"
-                    type="email"
-                    value={shopEmail}
-                    onChange={(e) => setShopEmail(e.target.value)}
-                    placeholder="contact@monmagasin.com"
-                  />
+                  <Input id="shopEmailAddr" type="email" value={shopEmail} onChange={(e) => setShopEmail(e.target.value)} placeholder="contact@monmagasin.com" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* TVA & Receipt */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Receipt} title="Paramètres TVA & Reçus" />
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="taxRate">Taux TVA (%)</Label>
+                  <div className="flex gap-3 items-center">
+                    <Input id="taxRate" type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} disabled={!taxEnabled} className={!taxEnabled ? "opacity-50" : ""} />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Switch id="taxEnabled" checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+                      <Label htmlFor="taxEnabled" className="text-sm cursor-pointer whitespace-nowrap">Activer TVA</Label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{taxEnabled ? "La TVA sera appliquée aux ventes" : "TVA désactivée pour les ventes"}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="receiptMode" className="flex items-center gap-2">Mode reçu par défaut</Label>
+                  <Select value={receiptMode} onValueChange={setReceiptMode}>
+                    <SelectTrigger id="receiptMode"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="detailed">Reçu détaillé (pièces + main d'œuvre)</SelectItem>
+                      <SelectItem value="simple">Reçu simple (total seulement)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="receiptTerms" className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4" />
-                  Conditions / Garantie (reçu)
-                </Label>
-                <Textarea
-                  id="receiptTerms"
-                  value={receiptTerms}
-                  onChange={(e) => setReceiptTerms(e.target.value)}
-                  placeholder={"Garantie de 90 jours sur toutes les pièces.\nLes appareils non récupérés après 30 jours\nne sont plus sous notre responsabilité.\nMerci pour votre confiance !"}
-                  rows={4}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ce texte apparaîtra en bas de vos reçus. Laissez vide pour utiliser le texte par défaut.
-                </p>
+                <Label htmlFor="receiptTerms">Conditions / Garantie (reçu)</Label>
+                <Textarea id="receiptTerms" value={receiptTerms} onChange={(e) => setReceiptTerms(e.target.value)} placeholder="Garantie de 90 jours sur toutes les pièces..." rows={3} />
+                <p className="text-xs text-muted-foreground">Ce texte apparaîtra en bas de vos reçus.</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="receiptMode" className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4" />
-                  Mode reçu par défaut
-                </Label>
-                <Select value={receiptMode} onValueChange={setReceiptMode}>
-                  <SelectTrigger id="receiptMode">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="detailed">Reçu détaillé (pièces + main d'œuvre)</SelectItem>
-                    <SelectItem value="simple">Reçu simple (total seulement)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Le mode simple n'affiche que la description et le total, sans détailler les prix des pièces et main d'œuvre.
-                </p>
-              </div>
-              <Button 
-                className="bg-gradient-primary hover:opacity-90"
-                onClick={handleSaveGeneralSettings}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                {saving ? "Enregistrement..." : "Enregistrer"}
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </GlassCard>
 
-          {/* Tracking Page Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Page de suivi public
-              </CardTitle>
-              <CardDescription>
-                Configuration de la page de suivi accessible par QR Code
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* Tracking Page */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Globe} title="Page de suivi public" description="Configuration de la page de suivi accessible par QR Code" />
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="googleMapsUrl">Lien Google Maps</Label>
-                <Input
-                  id="googleMapsUrl"
-                  value={googleMapsUrl}
-                  onChange={(e) => setGoogleMapsUrl(e.target.value)}
-                  placeholder="https://maps.google.com/..."
-                />
-                <p className="text-xs text-muted-foreground">
-                  Un bouton "Voir le magasin sur Google Maps" apparaîtra sur la page de suivi
-                </p>
+                <Input id="googleMapsUrl" value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="warrantyDays">Garantie réparation (jours)</Label>
-                <Input
-                  id="warrantyDays"
-                  type="number"
-                  min="0"
-                  value={warrantyDays}
-                  onChange={(e) => setWarrantyDays(e.target.value)}
-                  className="max-w-[120px]"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Affiché sur la page de suivi une fois la réparation terminée. Mettre 0 pour désactiver.
-                </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="warrantyDays">Garantie réparation (jours)</Label>
+                  <Input id="warrantyDays" type="number" min="0" value={warrantyDays} onChange={(e) => setWarrantyDays(e.target.value)} className="max-w-[120px]" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="storeHours">Horaires d'ouverture</Label>
+                  <Input id="storeHours" value={storeHours} onChange={(e) => setStoreHours(e.target.value)} placeholder="Lun–Sam 9h–18h" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="storeHours">Horaires d'ouverture</Label>
-                <Input
-                  id="storeHours"
-                  value={storeHours}
-                  onChange={(e) => setStoreHours(e.target.value)}
-                  placeholder="Lun–Sam 9h–18h"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Affiché dans la bannière "Prêt à récupérer"
-                </p>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/30">
                 <div>
                   <p className="font-medium text-sm">Afficher le paiement sur la page de suivi</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Le client pourra voir le total, l'avance payée et le reste dû
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Le client pourra voir le total et le reste dû</p>
                 </div>
-                <Switch
-                  checked={showPaymentOnTracking}
-                  onCheckedChange={setShowPaymentOnTracking}
-                />
+                <Switch checked={showPaymentOnTracking} onCheckedChange={setShowPaymentOnTracking} />
               </div>
-              <Button
-                className="bg-gradient-primary hover:opacity-90"
-                onClick={handleSaveGeneralSettings}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                {saving ? "Enregistrement..." : "Enregistrer"}
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </GlassCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Alertes stock faible</p>
-                  <p className="text-sm text-muted-foreground">
-                    Recevoir une notification quand le stock est bas
-                  </p>
-                </div>
-                <Switch 
-                  checked={notifSettings.lowStockAlerts}
-                  onCheckedChange={(checked) => saveNotifSettings({ lowStockAlerts: checked })}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Rappels paiements</p>
-                  <p className="text-sm text-muted-foreground">
-                    Notification pour les créances clients
-                  </p>
-                </div>
-                <Switch 
-                  checked={notifSettings.paymentReminders}
-                  onCheckedChange={(checked) => saveNotifSettings({ paymentReminders: checked })}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="font-medium">Notifications navigateur</p>
-                  <p className="text-sm text-muted-foreground">
-                    Recevoir les alertes sur votre appareil
-                  </p>
-                  <Badge
-                    variant={
-                      permissionStatus === "granted" ? "default" :
-                      permissionStatus === "denied" ? "destructive" : "secondary"
-                    }
-                    className={
-                      permissionStatus === "granted" ? "bg-success/10 text-success border-success/20" :
-                      permissionStatus === "denied" ? "" : ""
-                    }
-                  >
-                    {permissionStatus === "granted" ? "Autorisé" :
-                     permissionStatus === "denied" ? "Bloqué" :
-                     permissionStatus === "unsupported" ? "Non supporté" : "Non demandé"}
-                  </Badge>
-                  {permissionStatus === "denied" && (
-                    <p className="text-xs text-destructive">
-                      Modifiez l'autorisation dans les paramètres de votre navigateur
-                    </p>
-                  )}
-                </div>
-                <Switch
-                  checked={notifSettings.browserNotifications}
-                  disabled={permissionStatus === "unsupported"}
-                  onCheckedChange={async (checked) => {
-                    if (checked) {
-                      const granted = await requestBrowserPermission();
-                      if (granted) {
-                        saveNotifSettings({ browserNotifications: true });
-                      }
-                    } else {
-                      saveNotifSettings({ browserNotifications: false });
-                    }
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Preferences - Appearance, Logo, Brand Color, Language */}
-        <TabsContent value="preferences" className="space-y-6">
-          {/* Logo Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Image className="h-5 w-5" />
-                {t("settings.shopLogo")}
-              </CardTitle>
-              <CardDescription>{t("settings.logoHint")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* Appearance: Logo + Brand Color + Language */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Palette} title="Apparence & Préférences" description="Logo, couleur et langue" />
+            <div className="space-y-6">
+              {/* Logo */}
               <div className="flex items-center gap-4">
                 {settings.logo_url ? (
                   <img src={settings.logo_url} alt="Logo" className="w-16 h-16 rounded-lg object-cover border" />
@@ -758,196 +521,340 @@ export default function Settings() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/svg+xml"
-                    className="hidden"
-                    onChange={handleLogoUpload}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => logoInputRef.current?.click()}
-                    disabled={uploadingLogo}
-                  >
+                  <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleLogoUpload} />
+                  <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}>
                     {uploadingLogo ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                     {t("settings.uploadLogo")}
                   </Button>
                   {settings.logo_url && (
                     <Button variant="ghost" size="sm" className="text-destructive" onClick={handleRemoveLogo}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {t("settings.removeLogo")}
+                      <Trash2 className="h-4 w-4 mr-2" />{t("settings.removeLogo")}
                     </Button>
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Brand Color */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                {t("settings.brandColor")}
-              </CardTitle>
-              <CardDescription>{t("settings.appearanceDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                {BRAND_COLOR_PRESETS.map((preset) => (
-                  <button
-                    key={preset.name}
-                    onClick={() => handleBrandColorChange(preset.hex)}
-                    className={cn(
-                      "flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all hover:scale-105",
-                      brandColor === preset.hex || brandColor === preset.name.toLowerCase()
-                        ? "border-foreground shadow-soft"
-                        : "border-transparent hover:border-muted-foreground/30"
-                    )}
-                  >
-                    <div
-                      className="w-10 h-10 rounded-full shadow-sm"
-                      style={{ backgroundColor: preset.hex }}
-                    />
-                    <span className="text-[10px] text-muted-foreground text-center leading-tight">{preset.name}</span>
-                  </button>
-                ))}
+              <Separator />
+
+              {/* Brand Color */}
+              <div>
+                <p className="text-sm font-medium mb-3">{t("settings.brandColor")}</p>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                  {BRAND_COLOR_PRESETS.map((preset) => (
+                    <button key={preset.name} onClick={() => handleBrandColorChange(preset.hex)} className={cn("flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all hover:scale-105", brandColor === preset.hex || brandColor === preset.name.toLowerCase() ? "border-foreground shadow-soft" : "border-transparent hover:border-muted-foreground/30")}>
+                      <div className="w-10 h-10 rounded-full shadow-sm" style={{ backgroundColor: preset.hex }} />
+                      <span className="text-[10px] text-muted-foreground text-center leading-tight">{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-3 mt-3">
+                  <Label htmlFor="customHex" className="shrink-0">Code Hex</Label>
+                  <Input id="customHex" placeholder="#1447b3" value={customHex} onChange={(e) => setCustomHex(e.target.value)} className="max-w-[140px] font-mono" />
+                  <Button variant="outline" size="sm" disabled={!customHex.match(/^#[0-9a-fA-F]{6}$/)} onClick={() => { handleBrandColorChange(customHex); setCustomHex(""); }}>Appliquer</Button>
+                  {customHex.match(/^#[0-9a-fA-F]{6}$/) && <div className="w-8 h-8 rounded-full border" style={{ backgroundColor: customHex }} />}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Language */}
+              <div>
+                <p className="text-sm font-medium mb-2">{t("settings.language")}</p>
+                <Select value={language} onValueChange={(val) => setLanguage(val as "fr" | "en")}>
+                  <SelectTrigger className="max-w-[200px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                    <SelectItem value="en">🇬🇧 English</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Notifications */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Bell} title="Notifications" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Alertes stock faible</p>
+                  <p className="text-xs text-muted-foreground">Notification quand le stock est bas</p>
+                </div>
+                <Switch checked={notifSettings.lowStockAlerts} onCheckedChange={(checked) => saveNotifSettings({ lowStockAlerts: checked })} />
               </div>
               <Separator />
-              <div className="flex items-center gap-3">
-                <Label htmlFor="customHex" className="shrink-0">Code Hex</Label>
-                <Input
-                  id="customHex"
-                  placeholder="#1447b3"
-                  value={customHex}
-                  onChange={(e) => setCustomHex(e.target.value)}
-                  className="max-w-[140px] font-mono"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!customHex.match(/^#[0-9a-fA-F]{6}$/)}
-                  onClick={() => {
-                    handleBrandColorChange(customHex);
-                    setCustomHex("");
-                  }}
-                >
-                  Appliquer
-                </Button>
-                {customHex.match(/^#[0-9a-fA-F]{6}$/) && (
-                  <div className="w-8 h-8 rounded-full border" style={{ backgroundColor: customHex }} />
-                )}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Rappels paiements</p>
+                  <p className="text-xs text-muted-foreground">Notification pour les créances clients</p>
+                </div>
+                <Switch checked={notifSettings.paymentReminders} onCheckedChange={(checked) => saveNotifSettings({ paymentReminders: checked })} />
               </div>
-            </CardContent>
-          </Card>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="font-medium text-sm">Notifications navigateur</p>
+                  <p className="text-xs text-muted-foreground">Alertes sur votre appareil</p>
+                  <Badge variant={permissionStatus === "granted" ? "default" : permissionStatus === "denied" ? "destructive" : "secondary"} className={permissionStatus === "granted" ? "bg-success/10 text-success border-success/20" : ""}>
+                    {permissionStatus === "granted" ? "Autorisé" : permissionStatus === "denied" ? "Bloqué" : permissionStatus === "unsupported" ? "Non supporté" : "Non demandé"}
+                  </Badge>
+                  {permissionStatus === "denied" && <p className="text-xs text-destructive">Modifiez l'autorisation dans les paramètres de votre navigateur</p>}
+                </div>
+                <Switch checked={notifSettings.browserNotifications} disabled={permissionStatus === "unsupported"} onCheckedChange={async (checked) => { if (checked) { const granted = await requestBrowserPermission(); if (granted) saveNotifSettings({ browserNotifications: true }); } else { saveNotifSettings({ browserNotifications: false }); } }} />
+              </div>
+            </div>
+          </div>
+        </GlassCard>
 
-          {/* Language */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Languages className="h-5 w-5" />
-                {t("settings.language")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={language} onValueChange={(val) => setLanguage(val as "fr" | "en")}>
-                <SelectTrigger className="max-w-[200px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fr">🇫🇷 Français</SelectItem>
-                  <SelectItem value="en">🇬🇧 English</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={handleSaveGeneralSettings} disabled={saving}>
+          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+          {saving ? "Enregistrement..." : "Enregistrer les paramètres boutique"}
+        </Button>
+      </AnimatedPanel>
 
-        {/* Categories Settings */}
-        <TabsContent value="categories" className="space-y-6">
-          <CategoriesSettings />
-          <ExpenseCategoriesSettings />
-        </TabsContent>
+      {/* ─── TAB: Inventaire (Catégories + Alertes Stock + Protection) ─── */}
+      <AnimatedPanel active={activeTab === "inventaire"}>
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Tag} title="Catégories de produits" />
+            <CategoriesSettings />
+          </div>
+        </GlassCard>
 
-        {/* Backup Settings */}
-        <TabsContent value="backup" className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Local Backup */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <HardDrive className="h-5 w-5" />
-                  Sauvegarde locale
-                </CardTitle>
-                <CardDescription>
-                  Exportez vos données sur votre appareil
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Tag} title="Catégories de dépenses" />
+            <ExpenseCategoriesSettings />
+          </div>
+        </GlassCard>
+
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={AlertTriangle} title="Alertes de stock" description="Seuil d'alerte pour le stock faible" />
+            <div className="space-y-3">
+              <div className="space-y-2 max-w-xs">
+                <Label htmlFor="stockThresholdInv">Seuil alerte stock</Label>
+                <Input id="stockThresholdInv" type="number" value={stockThreshold} onChange={(e) => setStockThreshold(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Vous serez alerté quand un produit passe en dessous de ce seuil.</p>
+              </div>
+              <Button className="bg-gradient-primary hover:opacity-90" onClick={handleSaveGeneralSettings} disabled={saving} size="sm">
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Enregistrer
+              </Button>
+            </div>
+          </div>
+        </GlassCard>
+
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Lock} title="Protection de l'inventaire" description="Empêcher les modifications non autorisées" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Protéger l'inventaire</p>
+                  <p className="text-xs text-muted-foreground">Code temporaire requis pour modifier les produits</p>
+                </div>
+                <Switch checked={inventoryLocked} onCheckedChange={toggleInventoryLock} />
+              </div>
+              {inventoryLocked && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <Button variant="outline" onClick={generateCode} disabled={generating} className="gap-2">
+                      {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+                      Générer un code temporaire
+                    </Button>
+                    {generatedCode && (
+                      <div className="p-4 rounded-lg border bg-muted/50 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl font-mono font-bold tracking-[0.3em]">{generatedCode.code}</span>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { navigator.clipboard.writeText(generatedCode.code); toast.success("Code copié !"); }}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Expire le {new Date(generatedCode.expires_at).toLocaleString("fr-FR")}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </GlassCard>
+      </AnimatedPanel>
+
+      {/* ─── TAB: Accès (Utilisateurs + Sécurité) ─── */}
+      <AnimatedPanel active={activeTab === "acces"}>
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Users} title="Gestion d'équipe" description="Ajoutez et gérez vos employés" />
+            <TeamManagement />
+          </div>
+        </GlassCard>
+
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Users} title="Tâches d'équipe" />
+            <TaskManagement />
+          </div>
+        </GlassCard>
+
+        {/* Password */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Key} title="Mon compte" description="Modifier votre mot de passe" />
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+                  <Input id="newPassword" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                  <Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                </div>
+              </div>
+              <Button onClick={handlePasswordChange} disabled={changingPassword || !newPassword || !confirmPassword}>
+                {changingPassword ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Key className="h-4 w-4 mr-2" />}
+                {changingPassword ? "Modification..." : "Modifier le mot de passe"}
+              </Button>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Phone / WhatsApp */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Phone} title="Coordonnées personnelles" description="Numéro de téléphone, WhatsApp et email" />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="profilePhone">Numéro de téléphone</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="profilePhone" type="tel" placeholder="+216 XX XXX XXX" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} className="pl-10" />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="same-whatsapp-settings" checked={useSameWhatsapp} onCheckedChange={(checked) => setUseSameWhatsapp(!!checked)} />
+                <Label htmlFor="same-whatsapp-settings" className="text-sm cursor-pointer">Utiliser ce numéro pour WhatsApp</Label>
+              </div>
+              {!useSameWhatsapp && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label htmlFor="profileWhatsapp">Numéro WhatsApp</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input id="profileWhatsapp" type="tel" placeholder="+216 XX XXX XXX" value={profileWhatsapp} onChange={(e) => setProfileWhatsapp(e.target.value)} className="pl-10" />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="profileEmail">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="profileEmail" type="email" placeholder="exemple@email.com" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} className="pl-10" />
+                </div>
+              </div>
+              <Button onClick={handleSavePhone} disabled={savingPhone}>
+                {savingPhone ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                {savingPhone ? "Enregistrement..." : "Enregistrer les coordonnées"}
+              </Button>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Security */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Shield} title="Sécurité" description="Chiffrement et journal d'activité" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Chiffrement des sauvegardes</p>
+                  <p className="text-xs text-muted-foreground">Protéger avec un mot de passe</p>
+                </div>
+                <Switch checked={securitySettings.encryptBackups} onCheckedChange={(checked) => saveSecuritySettings({ encryptBackups: checked })} />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Journal d'activité</p>
+                  <p className="text-xs text-muted-foreground">Enregistrer toutes les actions</p>
+                </div>
+                <Switch checked={securitySettings.activityLog} onCheckedChange={(checked) => saveSecuritySettings({ activityLog: checked })} />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">Mode hors ligne</p>
+                  <p className="text-xs text-muted-foreground">Fonctionnement sans internet</p>
+                </div>
+                <Switch checked={securitySettings.offlineMode} onCheckedChange={(checked) => saveSecuritySettings({ offlineMode: checked })} />
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Danger zone */}
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-warning">Zone dangereuse</p>
+              <p className="text-sm text-muted-foreground mt-1">Action irréversible — supprimera toutes vos données.</p>
+              <div className="flex gap-2 mt-3">
+                <ResetDataDialog onConfirm={resetAllData} isResetting={resetting} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </AnimatedPanel>
+
+      {/* ─── TAB: Système (Abonnement + Sauvegarde) ─── */}
+      <AnimatedPanel active={activeTab === "systeme"}>
+        <BillingTab userId={user?.id} />
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Local Backup */}
+          <GlassCard>
+            <div className="p-5 sm:p-6">
+              <SectionHeading icon={HardDrive} title="Sauvegarde locale" description="Exportez vos données sur votre appareil" />
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Sauvegarde automatique</p>
-                    <p className="text-sm text-muted-foreground">
-                      Sauvegarde quotidienne automatique
-                    </p>
+                    <p className="font-medium text-sm">Sauvegarde automatique</p>
+                    <p className="text-xs text-muted-foreground">Sauvegarde quotidienne</p>
                   </div>
-                  <Switch
-                    checked={backupSettings.autoBackup}
-                    onCheckedChange={(checked) => saveBackupSettings({ autoBackup: checked })}
-                  />
+                  <Switch checked={backupSettings.autoBackup} onCheckedChange={(checked) => saveBackupSettings({ autoBackup: checked })} />
                 </div>
                 <Separator />
                 <div className="space-y-3">
-                  <Button variant="outline" className="w-full" onClick={exportJSON}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Télécharger sauvegarde (JSON)
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={exportSQL}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Télécharger sauvegarde (SQL)
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={exportExcel}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Télécharger sauvegarde (Excel)
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={restoreFromFile}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Restaurer depuis fichier
-                  </Button>
+                  <Button variant="outline" className="w-full" onClick={exportJSON}><Download className="h-4 w-4 mr-2" />Télécharger (JSON)</Button>
+                  <Button variant="outline" className="w-full" onClick={exportSQL}><Download className="h-4 w-4 mr-2" />Télécharger (SQL)</Button>
+                  <Button variant="outline" className="w-full" onClick={exportExcel}><Download className="h-4 w-4 mr-2" />Télécharger (Excel)</Button>
+                  <Button variant="outline" className="w-full" onClick={restoreFromFile}><Upload className="h-4 w-4 mr-2" />Restaurer depuis fichier</Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          </GlassCard>
 
-            {/* Cloud Backup */}
-            <Card className="border-primary/30">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Cloud className="h-5 w-5 text-primary" />
-                    Sauvegarde Cloud
-                  </CardTitle>
-                  <Badge className={backupSettings.cloudSync ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground"}>
-                    {backupSettings.cloudSync ? "Activé" : "Désactivé"}
-                  </Badge>
-                </div>
-                <CardDescription>
-                  Synchronisation automatique sécurisée
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          {/* Cloud Backup */}
+          <GlassCard className="border-primary/30">
+            <div className="p-5 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <SectionHeading icon={Cloud} title="Sauvegarde Cloud" description="Synchronisation automatique sécurisée" />
+                <Badge className={backupSettings.cloudSync ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground"}>
+                  {backupSettings.cloudSync ? "Activé" : "Désactivé"}
+                </Badge>
+              </div>
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Synchronisation auto</p>
-                    <p className="text-sm text-muted-foreground">
-                      Sync toutes les 5 minutes
-                    </p>
+                    <p className="font-medium text-sm">Synchronisation auto</p>
+                    <p className="text-xs text-muted-foreground">Sync toutes les 5 minutes</p>
                   </div>
-                  <Switch
-                    checked={backupSettings.cloudSync}
-                    onCheckedChange={(checked) => saveBackupSettings({ cloudSync: checked })}
-                  />
+                  <Switch checked={backupSettings.cloudSync} onCheckedChange={(checked) => saveBackupSettings({ cloudSync: checked })} />
                 </div>
                 <Separator />
                 <div className="p-3 rounded-lg bg-muted/50">
@@ -958,246 +865,20 @@ export default function Settings() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Statut:</span>
                     <span className={`font-medium flex items-center gap-1 ${backupSettings.cloudSync ? "text-success" : "text-muted-foreground"}`}>
-                      {backupSettings.cloudSync && (
-                        <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                      )}
+                      {backupSettings.cloudSync && <span className="w-2 h-2 rounded-full bg-success animate-pulse" />}
                       {backupSettings.cloudSync ? "Auto-sync activé" : "Manuel uniquement"}
                     </span>
                   </div>
                 </div>
-                <Button 
-                  className="w-full bg-gradient-primary hover:opacity-90"
-                  onClick={syncNow}
-                  disabled={syncing}
-                >
-                  {syncing ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
+                <Button className="w-full bg-gradient-primary hover:opacity-90" onClick={syncNow} disabled={syncing}>
+                  {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                   {syncing ? "Synchronisation..." : "Synchroniser maintenant"}
                 </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Users Settings */}
-        <TabsContent value="users" className="space-y-6">
-          <TeamManagement />
-          <TaskManagement />
-        </TabsContent>
-
-        {/* Security Settings */}
-        <TabsContent value="security" className="space-y-6">
-          {/* Password Change Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Mon compte
-              </CardTitle>
-              <CardDescription>
-                Modifier votre mot de passe
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                  <Input
-                    id="newPassword"
-                    type="password"
-                    placeholder="••••••••"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                </div>
               </div>
-              <Button 
-                onClick={handlePasswordChange}
-                disabled={changingPassword || !newPassword || !confirmPassword}
-              >
-                {changingPassword ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Key className="h-4 w-4 mr-2" />
-                )}
-                {changingPassword ? "Modification..." : "Modifier le mot de passe"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Phone / WhatsApp Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5" />
-                Coordonnées
-              </CardTitle>
-              <CardDescription>
-                Numéro de téléphone, WhatsApp et email
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="profilePhone">Numéro de téléphone</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="profilePhone"
-                    type="tel"
-                    placeholder="+216 XX XXX XXX"
-                    value={profilePhone}
-                    onChange={(e) => setProfilePhone(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="same-whatsapp-settings"
-                  checked={useSameWhatsapp}
-                  onCheckedChange={(checked) => setUseSameWhatsapp(!!checked)}
-                />
-                <Label htmlFor="same-whatsapp-settings" className="text-sm cursor-pointer">
-                  Utiliser ce numéro pour WhatsApp
-                </Label>
-              </div>
-
-              {!useSameWhatsapp && (
-                <div className="space-y-2 animate-fade-in">
-                  <Label htmlFor="profileWhatsapp">Numéro WhatsApp</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="profileWhatsapp"
-                      type="tel"
-                      placeholder="+216 XX XXX XXX"
-                      value={profileWhatsapp}
-                      onChange={(e) => setProfileWhatsapp(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Email field */}
-              <div className="space-y-2">
-                <Label htmlFor="profileEmail">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="profileEmail"
-                    type="email"
-                    placeholder="exemple@email.com"
-                    value={profileEmail}
-                    onChange={(e) => setProfileEmail(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <Button
-                onClick={handleSavePhone}
-                disabled={savingPhone}
-              >
-                {savingPhone ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                {savingPhone ? "Enregistrement..." : "Enregistrer les coordonnées"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Sécurité
-              </CardTitle>
-              <CardDescription>
-                Paramètres de sécurité et chiffrement
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Chiffrement des sauvegardes</p>
-                  <p className="text-sm text-muted-foreground">
-                    Protéger les sauvegardes avec un mot de passe
-                  </p>
-                </div>
-                <Switch 
-                  checked={securitySettings.encryptBackups}
-                  onCheckedChange={(checked) => saveSecuritySettings({ encryptBackups: checked })}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Journal d'activité</p>
-                  <p className="text-sm text-muted-foreground">
-                    Enregistrer toutes les actions utilisateurs
-                  </p>
-                </div>
-                <Switch 
-                  checked={securitySettings.activityLog}
-                  onCheckedChange={(checked) => saveSecuritySettings({ activityLog: checked })}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Mode hors ligne</p>
-                  <p className="text-sm text-muted-foreground">
-                    Fonctionnement sans connexion internet
-                  </p>
-                </div>
-                <Switch 
-                  checked={securitySettings.offlineMode}
-                  onCheckedChange={(checked) => saveSecuritySettings({ offlineMode: checked })}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-warning/30 bg-warning/5">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-warning">Zone dangereuse</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Cette action est irréversible et supprimera toutes vos données (produits, clients, réparations, ventes, factures, etc.)
-                  </p>
-                  <div className="flex gap-2 mt-3">
-                    <ResetDataDialog onConfirm={resetAllData} isResetting={resetting} />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Billing Tab */}
-        <TabsContent value="billing" className="space-y-6">
-          <BillingTab userId={user?.id} />
-        </TabsContent>
-      </Tabs>
+            </div>
+          </GlassCard>
+        </div>
+      </AnimatedPanel>
     </div>
   );
 }
@@ -1224,37 +905,30 @@ function BillingTab({ userId }: { userId?: string }) {
     });
   }, [userId]);
 
-  if (loadingBilling) {
-    return <Skeleton className="h-[200px] w-full" />;
-  }
+  if (loadingBilling) return <Skeleton className="h-[200px] w-full" />;
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Mon abonnement
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+    <>
+      <GlassCard>
+        <div className="p-5 sm:p-6">
+          <SectionHeading icon={CreditCard} title="Mon abonnement" />
           {sub ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Plan actuel</span>
+                <span className="text-muted-foreground text-sm">Plan actuel</span>
                 <Badge variant="default">{planName || "—"}</Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Prix</span>
+                <span className="text-muted-foreground text-sm">Prix</span>
                 <span className="font-semibold">{(sub as any).subscription_plans?.price} {(sub as any).subscription_plans?.currency}{(sub as any).subscription_plans?.period}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Statut</span>
+                <span className="text-muted-foreground text-sm">Statut</span>
                 <Badge variant={sub.status === "active" ? "default" : "secondary"}>{sub.status}</Badge>
               </div>
               {sub.expires_at && (
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Expire le</span>
+                  <span className="text-muted-foreground text-sm">Expire le</span>
                   <span>{new Date(sub.expires_at).toLocaleDateString("fr-FR")}</span>
                 </div>
               )}
@@ -1262,34 +936,30 @@ function BillingTab({ userId }: { userId?: string }) {
           ) : (
             <p className="text-muted-foreground text-sm">Aucun abonnement actif.</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {orders.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Historique des commandes</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={CreditCard} title="Historique des commandes" />
             <div className="space-y-3">
               {orders.map((order: any) => (
                 <div key={order.id} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div>
                     <p className="text-sm font-medium">{(order as any).subscription_plans?.name || "Plan"}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString("fr-FR")} · {order.gateway_key}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString("fr-FR")}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold">{order.amount} {order.currency}</p>
-                    <Badge variant={order.status === "approved" ? "default" : order.status === "rejected" ? "destructive" : "secondary"} className="text-[10px]">
-                      {order.status}
-                    </Badge>
+                    <Badge variant={order.status === "approved" ? "default" : order.status === "pending" ? "secondary" : "destructive"} className="text-[10px]">{order.status}</Badge>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       )}
-    </div>
+    </>
   );
 }

@@ -25,7 +25,7 @@ import {
   Lock,
   Copy,
  } from "lucide-react";
-import { Receipt } from "lucide-react";
+import { Receipt, CreditCard } from "lucide-react";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";

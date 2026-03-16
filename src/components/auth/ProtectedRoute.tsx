@@ -19,10 +19,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isImpersonating, isVerifying } = useImpersonation();
   const hasShownToast = useRef(false);
 
+  // Normalize path: treat "/" and "/dashboard" as equivalent
+  const currentPath = location.pathname === "/" ? "/dashboard" : location.pathname;
+
   const isBlocked =
     !pagesLoading &&
     allowedPages !== null &&
-    !allowedPages.includes(location.pathname);
+    !allowedPages.includes(currentPath);
 
   useEffect(() => {
     if (isBlocked && !hasShownToast.current) {

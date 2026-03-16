@@ -40,7 +40,7 @@ function MemberCard({ member }: { member: TeamMember }) {
   const removeMember = useRemoveTeamMember();
 
   const togglePage = (href: string) => {
-    if (href === "/") return;
+    if (href === "/dashboard") return;
     setPages((prev) =>
       prev.includes(href) ? prev.filter((p) => p !== href) : [...prev, href]
     );

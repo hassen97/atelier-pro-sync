@@ -59,7 +59,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (isBlocked) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to first allowed page instead of hardcoded /dashboard
+    const firstAllowed = allowedPages?.[0] || "/dashboard";
+    return <Navigate to={firstAllowed} replace />;
   }
 
   return <>{children}</>;

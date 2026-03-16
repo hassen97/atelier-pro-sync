@@ -739,6 +739,8 @@ serve(async (req) => {
 
       return jsonResp({ error: "Unknown action" }, 400);
     }
+
+    return jsonResp({ error: "Method not allowed" }, 405);
   } catch (err) {
     console.error("Admin action error:", err);
     const message = err instanceof Error ? err.message : "Internal server error";

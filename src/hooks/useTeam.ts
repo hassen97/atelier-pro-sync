@@ -56,11 +56,15 @@ export function useIsOwner() {
     queryKey: ["user-role", user?.id],
     queryFn: async () => {
       if (!user) return false;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
+      if (error) {
+        console.error("useIsOwner error:", error);
+        return false;
+      }
       return data?.role === "super_admin";
     },
     enabled: !!user,

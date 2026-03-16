@@ -8,24 +8,56 @@ export type Customer = Tables<"customers">;
 export type CustomerInsert = TablesInsert<"customers">;
 export type CustomerUpdate = TablesUpdate<"customers">;
 
-export function useCustomers() {
+const CUSTOMERS_PAGE_SIZE = 50;
+
+/** Paginated customers list with targeted columns. */
+export function useCustomers(page = 0) {
+  const effectiveUserId = useEffectiveUserId();
+  const from = page * CUSTOMERS_PAGE_SIZE;
+  const to = from + CUSTOMERS_PAGE_SIZE - 1;
+
+  return useQuery({
+    queryKey: ["customers", effectiveUserId, page],
+    queryFn: async () => {
+      if (!effectiveUserId) return { data: [], count: 0 };
+
+      const { data, error, count } = await supabase
+        .from("customers")
+        .select("id, name, phone, email, address, notes, balance, created_at, updated_at, user_id", {
+          count: "exact",
+        })
+        .eq("user_id", effectiveUserId)
+        .order("name", { ascending: true })
+        .range(from, to);
+
+      if (error) throw error;
+      return { data: data ?? [], count: count ?? 0 };
+    },
+    enabled: !!effectiveUserId,
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** Fetch all customers (no pagination) — used in dropdowns and summary stats. */
+export function useAllCustomers() {
   const effectiveUserId = useEffectiveUserId();
 
   return useQuery({
-    queryKey: ["customers", effectiveUserId],
+    queryKey: ["customers-all", effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return [];
-      
+
       const { data, error } = await supabase
         .from("customers")
-        .select("*")
+        .select("id, name, phone, email, balance, created_at")
         .eq("user_id", effectiveUserId)
         .order("name", { ascending: true });
 
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
     enabled: !!effectiveUserId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -48,6 +80,7 @@ export function useCreateCustomer() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-all"] });
       toast.success("Client créé avec succès");
     },
     onError: (error) => {
@@ -59,6 +92,7 @@ export function useCreateCustomer() {
 
 export function useUpdateCustomer() {
   const queryClient = useQueryClient();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: CustomerUpdate & { id: string }) => {
@@ -72,36 +106,81 @@ export function useUpdateCustomer() {
       if (error) throw error;
       return data;
     },
+    // Optimistic update
+    onMutate: async ({ id, ...updates }) => {
+      await queryClient.cancelQueries({ queryKey: ["customers", effectiveUserId] });
+      const previousData = queryClient.getQueriesData({ queryKey: ["customers", effectiveUserId] });
+
+      queryClient.setQueriesData(
+        { queryKey: ["customers", effectiveUserId] },
+        (old: any) => {
+          if (!old?.data) return old;
+          return {
+            ...old,
+            data: old.data.map((c: any) =>
+              c.id === id ? { ...c, ...updates } : c
+            ),
+          };
+        }
+      );
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, value]) => {
+          queryClient.setQueryData(key, value);
+        });
+      }
+      toast.error("Erreur lors de la mise à jour");
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-all"] });
       toast.success("Client mis à jour");
-    },
-    onError: (error) => {
-      console.error("Error updating customer:", error);
-      toast.error("Erreur lors de la mise à jour");
     },
   });
 }
 
 export function useDeleteCustomer() {
   const queryClient = useQueryClient();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("customers")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await supabase.from("customers").delete().eq("id", id);
       if (error) throw error;
+      return id;
+    },
+    // Optimistic remove
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["customers", effectiveUserId] });
+      const previousData = queryClient.getQueriesData({ queryKey: ["customers", effectiveUserId] });
+
+      queryClient.setQueriesData(
+        { queryKey: ["customers", effectiveUserId] },
+        (old: any) => {
+          if (!old?.data) return old;
+          return {
+            ...old,
+            data: old.data.filter((c: any) => c.id !== id),
+            count: (old.count ?? 1) - 1,
+          };
+        }
+      );
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, value]) => {
+          queryClient.setQueryData(key, value);
+        });
+      }
+      toast.error("Erreur lors de la suppression");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-all"] });
       toast.success("Client supprimé");
-    },
-    onError: (error) => {
-      console.error("Error deleting customer:", error);
-      toast.error("Erreur lors de la suppression");
     },
   });
 }

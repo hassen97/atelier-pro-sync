@@ -1,7 +1,7 @@
 import { createContext, useContext, ReactNode, useEffect, useCallback } from "react";
 import { useNotifications, type Notification as AppNotification } from "@/hooks/useNotifications";
 import { useNotificationSettings } from "@/hooks/useNotificationSettings";
-import { useProducts } from "@/hooks/useProducts";
+import { useAllProducts } from "@/hooks/useProducts";
 import { useRepairs } from "@/hooks/useRepairs";
 
 interface NotificationsContextType {
@@ -34,8 +34,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   } = useNotifications();
   
   const { settings: notifSettings } = useNotificationSettings();
-  const { data: products } = useProducts();
-  const { data: repairs } = useRepairs();
+  const { data: products } = useAllProducts();
+  const { data: repairsResult } = useRepairs();
+  const repairs = repairsResult?.data;
 
   // Helper to send browser notification
   const sendBrowserNotification = useCallback((title: string, body: string) => {

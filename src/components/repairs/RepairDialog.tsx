@@ -35,13 +35,13 @@ import { format as formatDate } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
-import { useCustomers, useCreateCustomer } from "@/hooks/useCustomers";
+import { useAllCustomers, useCreateCustomer } from "@/hooks/useCustomers";
 import { Combobox } from "@/components/ui/combobox";
 import { PHONE_BRANDS, PHONE_MODELS, getBrandLabel, BRANDS_WITH_API } from "@/data/phoneModels";
 import { useAppleDevices } from "@/hooks/useAppleDevices";
 import { useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useProducts } from "@/hooks/useProducts";
+import { useAllProducts } from "@/hooks/useProducts";
 
 export interface SelectedPart {
   product_id: string;
@@ -122,11 +122,11 @@ export function RepairDialog({
 }: RepairDialogProps) {
   const isEditing = !!repair;
   const { format } = useCurrency();
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useAllCustomers();
   const createCustomer = useCreateCustomer();
   const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
   const { data: repairCategories = [] } = useCategories("repair");
-  const { data: products = [] } = useProducts();
+  const { data: products = [] } = useAllProducts();
 
   const categoryOptions = repairCategories.map((c) => ({ value: c.id, label: c.name }));
   

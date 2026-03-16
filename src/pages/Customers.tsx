@@ -21,7 +21,8 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [dossierCustomer, setDossierCustomer] = useState<Customer | null>(null);
 
-  const { data: customers = [], isLoading } = useCustomers();
+  const { data: customersResult, isLoading } = useCustomers();
+  const customers: Customer[] = customersResult?.data ?? [];
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();

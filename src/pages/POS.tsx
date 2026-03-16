@@ -12,11 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useProducts } from "@/hooks/useProducts";
+import { useAllProducts } from "@/hooks/useProducts";
 import { useRepairs } from "@/hooks/useRepairs";
 import { useCreateSale } from "@/hooks/useSales";
-import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers";
-import { useCustomers } from "@/hooks/useCustomers";
+import { useCreateCustomer, useUpdateCustomer, useAllCustomers } from "@/hooks/useCustomers";
 import { useUpdateRepairStatus } from "@/hooks/useRepairs";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
@@ -49,13 +48,14 @@ export default function POS() {
   const scanRef = useRef<HTMLInputElement>(null);
   const beepRef = useRef<AudioContext | null>(null);
 
-  const { data: products = [], isLoading: productsLoading } = useProducts();
-  const { data: rawRepairs = [], isLoading: repairsLoading } = useRepairs();
+  const { data: products = [], isLoading: productsLoading } = useAllProducts();
+  const { data: repairsResult = {data:[], count:0}, isLoading: repairsLoading } = useRepairs();
+  const rawRepairs = repairsResult.data;
   const createSale = useCreateSale();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const updateRepairStatus = useUpdateRepairStatus();
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useAllCustomers();
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
 

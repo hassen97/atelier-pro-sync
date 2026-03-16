@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Shield, Calendar, Wrench, DollarSign, Package } from "lucide-react";
 import { useSearchRepairForWarranty, useCreateWarrantyTicket } from "@/hooks/useWarranty";
-import { useProducts } from "@/hooks/useProducts";
+import { useAllProducts } from "@/hooks/useProducts";
 import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,7 @@ export function WarrantyDialog({ open, onOpenChange }: WarrantyDialogProps) {
 
   const searchRepair = useSearchRepairForWarranty();
   const createWarranty = useCreateWarrantyTicket();
-  const { data: products = [] } = useProducts();
+  const { data: products = [] } = useAllProducts();
   const { format } = useCurrency();
 
   const handleSearch = () => {

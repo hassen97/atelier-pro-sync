@@ -21,7 +21,7 @@ import {
   useUpdateRepairStatus,
   useDeleteRepair,
 } from "@/hooks/useRepairs";
-import { useCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
+import { useCustomers, useAllCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,8 +103,9 @@ export default function Repairs() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const queryClient = useQueryClient();
-  const { data: rawRepairs = [], isLoading } = useRepairs();
-  const { data: customers = [] } = useCustomers();
+  const { data: repairsResult = {data:[], count:0}, isLoading } = useRepairs();
+  const rawRepairs = repairsResult.data;
+  const { data: customers = [] } = useAllCustomers();
   const createRepair = useCreateRepair();
   const updateRepair = useUpdateRepair();
   const updateStatus = useUpdateRepairStatus();

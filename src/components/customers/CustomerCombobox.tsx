@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useCustomers, type Customer } from "@/hooks/useCustomers";
+import { useAllCustomers } from "@/hooks/useCustomers";
 
 interface CustomerComboboxProps {
   value: string;
@@ -34,7 +34,7 @@ export function CustomerCombobox({
 }: CustomerComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useAllCustomers();
 
   const selectedCustomer = customers.find((c) => c.id === value);
 

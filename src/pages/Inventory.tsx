@@ -57,7 +57,8 @@ export default function Inventory() {
   // Pulse animation
   const [pulsedProductId, setPulsedProductId] = useState<string | null>(null);
 
-  const { data: rawProducts = [], isLoading } = useProducts();
+  const { data: productsResult = {data:[], count:0}, isLoading } = useProducts();
+  const rawProducts = productsResult.data;
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();

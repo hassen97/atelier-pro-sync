@@ -11,27 +11,41 @@ export type RepairUpdate = TablesUpdate<"repairs">;
 
 export type RepairStatus = "pending" | "in_progress" | "completed" | "delivered";
 
-export function useRepairs() {
+const REPAIRS_PAGE_SIZE = 50;
+
+/** Paginated repairs — fetches one page at a time from the server. */
+export function useRepairs(page = 0) {
   const effectiveUserId = useEffectiveUserId();
+  const from = page * REPAIRS_PAGE_SIZE;
+  const to = from + REPAIRS_PAGE_SIZE - 1;
 
   return useQuery({
-    queryKey: ["repairs", effectiveUserId],
+    queryKey: ["repairs", effectiveUserId, page],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
-      
-      const { data, error } = await supabase
+      if (!effectiveUserId) return { data: [], count: 0 };
+
+      const { data, error, count } = await supabase
         .from("repairs")
-        .select(`
-          *,
-          customer:customers(id, name, phone, email)
-        `)
+        .select(
+          `id, status, device_model, problem_description, diagnosis,
+           deposit_date, delivery_date, imei, labor_cost, parts_cost,
+           total_cost, amount_paid, notes, tracking_token,
+           estimated_ready_date, technician_note, customer_id,
+           is_warranty, received_by, repaired_by, device_condition,
+           warranty_ticket_id, created_at, updated_at,
+           customer:customers(id, name, phone, email)`,
+          { count: "exact" }
+        )
         .eq("user_id", effectiveUserId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      return data;
+      return { data: data ?? [], count: count ?? 0 };
     },
     enabled: !!effectiveUserId,
+    // Keep previous page data while loading next page (no flicker)
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -42,14 +56,13 @@ export function useRepair(id: string | undefined) {
     queryKey: ["repair", id],
     queryFn: async () => {
       if (!user || !id) return null;
-      
+
       const { data, error } = await supabase
         .from("repairs")
-        .select(`
-          *,
-          customer:customers(id, name, phone, email),
-          repair_parts(id, product_id, quantity, unit_price)
-        `)
+        .select(
+          `*, customer:customers(id, name, phone, email),
+           repair_parts(id, product_id, quantity, unit_price)`
+        )
         .eq("id", id)
         .maybeSingle();
 
@@ -93,6 +106,7 @@ export function useCreateRepair() {
 
 export function useUpdateRepair() {
   const queryClient = useQueryClient();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: RepairUpdate & { id: string }) => {
@@ -106,6 +120,33 @@ export function useUpdateRepair() {
       if (error) throw error;
       return data;
     },
+    // Optimistic update: instantly reflect changes in the cache
+    onMutate: async ({ id, ...updates }) => {
+      await queryClient.cancelQueries({ queryKey: ["repairs", effectiveUserId] });
+      const previousData = queryClient.getQueriesData({ queryKey: ["repairs", effectiveUserId] });
+
+      queryClient.setQueriesData(
+        { queryKey: ["repairs", effectiveUserId] },
+        (old: any) => {
+          if (!old?.data) return old;
+          return {
+            ...old,
+            data: old.data.map((r: any) =>
+              r.id === id ? { ...r, ...updates } : r
+            ),
+          };
+        }
+      );
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, value]) => {
+          queryClient.setQueryData(key, value);
+        });
+      }
+      toast.error("Erreur lors de la mise à jour");
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["repairs"] });
       queryClient.invalidateQueries({ queryKey: ["repair", data.id] });
@@ -114,15 +155,12 @@ export function useUpdateRepair() {
       queryClient.invalidateQueries({ queryKey: ["profit"] });
       toast.success("Réparation mise à jour");
     },
-    onError: (error) => {
-      console.error("Error updating repair:", error);
-      toast.error("Erreur lors de la mise à jour");
-    },
   });
 }
 
 export function useUpdateRepairStatus() {
   const queryClient = useQueryClient();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: RepairStatus }) => {
@@ -130,8 +168,6 @@ export function useUpdateRepairStatus() {
         status,
         updated_at: new Date().toISOString(),
       };
-
-      // Set delivery date if status is delivered
       if (status === "delivered") {
         updates.delivery_date = new Date().toISOString();
       }
@@ -146,30 +182,77 @@ export function useUpdateRepairStatus() {
       if (error) throw error;
       return data;
     },
+    // Optimistic update for instant status badge change
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["repairs", effectiveUserId] });
+      const previousData = queryClient.getQueriesData({ queryKey: ["repairs", effectiveUserId] });
+
+      queryClient.setQueriesData(
+        { queryKey: ["repairs", effectiveUserId] },
+        (old: any) => {
+          if (!old?.data) return old;
+          return {
+            ...old,
+            data: old.data.map((r: any) =>
+              r.id === id ? { ...r, status } : r
+            ),
+          };
+        }
+      );
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, value]) => {
+          queryClient.setQueryData(key, value);
+        });
+      }
+      toast.error("Erreur lors du changement de statut");
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["repairs"] });
       queryClient.invalidateQueries({ queryKey: ["recent-repairs"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["profit"] });
     },
-    onError: (error) => {
-      console.error("Error updating repair status:", error);
-      toast.error("Erreur lors du changement de statut");
-    },
   });
 }
 
 export function useDeleteRepair() {
   const queryClient = useQueryClient();
+  const effectiveUserId = useEffectiveUserId();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("repairs")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await supabase.from("repairs").delete().eq("id", id);
       if (error) throw error;
+      return id;
+    },
+    // Optimistic: remove from list immediately
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["repairs", effectiveUserId] });
+      const previousData = queryClient.getQueriesData({ queryKey: ["repairs", effectiveUserId] });
+
+      queryClient.setQueriesData(
+        { queryKey: ["repairs", effectiveUserId] },
+        (old: any) => {
+          if (!old?.data) return old;
+          return {
+            ...old,
+            data: old.data.filter((r: any) => r.id !== id),
+            count: (old.count ?? 1) - 1,
+          };
+        }
+      );
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, value]) => {
+          queryClient.setQueryData(key, value);
+        });
+      }
+      toast.error("Erreur lors de la suppression");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["repairs"] });
@@ -177,10 +260,6 @@ export function useDeleteRepair() {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["profit"] });
       toast.success("Réparation supprimée");
-    },
-    onError: (error) => {
-      console.error("Error deleting repair:", error);
-      toast.error("Erreur lors de la suppression");
     },
   });
 }

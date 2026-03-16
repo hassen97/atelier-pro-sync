@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useCustomers, useUpdateCustomer, Customer } from "@/hooks/useCustomers";
+import { useAllCustomers, useUpdateCustomer, Customer } from "@/hooks/useCustomers";
 import { useRepairs, useUpdateRepair } from "@/hooks/useRepairs";
 import { useSales, useUpdateSale } from "@/hooks/useSales";
 import { toast } from "sonner";
@@ -31,8 +31,9 @@ export default function CustomerDebts() {
   const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
 
-  const { data: customers = [] } = useCustomers();
-  const { data: repairs = [] } = useRepairs();
+  const { data: customers = [] } = useAllCustomers();
+  const { data: repairsResult = {data:[], count:0} } = useRepairs();
+  const repairs = repairsResult.data;
   const { data: sales = [] } = useSales();
   const updateCustomer = useUpdateCustomer();
   const updateRepair = useUpdateRepair();

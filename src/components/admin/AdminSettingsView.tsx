@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, MessageCircle, UserCheck, Globe } from "lucide-react";
+import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -12,10 +12,12 @@ export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [publicDomain, setPublicDomain] = useState("");
+  const [safeMode, setSafeMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);
   const [savingDomain, setSavingDomain] = useState(false);
+  const [savingSafeMode, setSavingSafeMode] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -32,6 +34,7 @@ export function AdminSettingsView() {
         if (row.key === "admin_whatsapp") setAdminWhatsapp(row.value || "");
         if (row.key === "auto_confirm_signups") setAutoConfirm(row.value === "true");
         if (row.key === "public_site_domain") setPublicDomain(row.value || "");
+        if (row.key === "safe_mode_enabled") setSafeMode(row.value === "true");
       });
     }
     setLoading(false);
@@ -125,6 +128,38 @@ export function AdminSettingsView() {
             {savingDomain ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Enregistrer
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="admin-glass-card border-amber-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <ShieldAlert className="h-5 w-5 text-amber-400" />
+            Mode Sécurisé : Suppression Automatique
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Lorsque activé, le minuteur de suppression automatique de 48h est globalement pausé pour tous les utilisateurs. C'est votre "Frein d'urgence".
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-white">Mode Sécurisé (Frein d'urgence)</p>
+              <p className="text-sm text-slate-400">
+                {safeMode
+                  ? "⏸️ Suppression automatique PAUSÉE — aucun compte ne sera suspendu"
+                  : "⚠️ Suppression automatique ACTIVE — les comptes expirés seront suspendus"}
+              </p>
+            </div>
+            <Switch
+              checked={safeMode}
+              onCheckedChange={(checked) => {
+                setSafeMode(checked);
+                saveSetting("safe_mode_enabled", checked ? "true" : "false", setSavingSafeMode);
+              }}
+              disabled={savingSafeMode}
+            />
+          </div>
         </CardContent>
       </Card>
 

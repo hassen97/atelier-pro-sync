@@ -1,69 +1,81 @@
 
 
-# Implement Platform Enhancements with Zero-Data Guardrail
+# Modernize Login Page with Role Selection
 
-## Critical Guardrail
-The "Zero Data" bug was caused by adding verification/plan-status filters to dashboard data queries. **Current code is safe** — all data hooks (`useProducts`, `useSales`, etc.) filter only by `user_id` with no verification or plan filters. The plan below preserves this.
+## Overview
 
-## What's Already Implemented
-Most of the listed features already exist in the current codebase:
-- Glassmorphism auth redesign, Remember Me, no math captcha
-- 48-hour verification system with countdown banner (non-blocking)
-- Employee context inheritance via `useEffectiveUserId`
-- POS discounts (per-item + global)
-- Auto repair ticket numbers (`assign_repair_ticket_number` trigger)
-- Form draft persistence (`useFormDraft`)
-- Verified badge system
-- Kill switch (lock/unlock accounts)
-- Feature flags matrix
-- Data backup (JSON/SQL/Excel export)
-- Team/employee management with role-based access
-- Subscription plans management
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-## What Needs to Be Added
+## Visual Design
 
-### 1. Global Safe Mode Toggle (Admin Settings)
-- Add a `safe_mode_enabled` key to `platform_settings` table (migration to insert default row)
-- Add a toggle card in `AdminSettingsView.tsx` labeled "Mode Sécurisé : Suppression Automatique"
-- When ON, the 48-hour auto-deletion timer is globally paused
-- Update `auto-suspend` edge function to check this setting before suspending
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
 
-### 2. Admin Role Switcher
-- Add a `change-role` action in the `admin-manage-users` edge function
-- Allow switching a user between `super_admin` and `employee` roles in `user_roles` table
-- Add a role change option in the shop/user dropdown menu in `AdminShopsView.tsx`
+```text
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
+```
 
-### 3. Data Transfer Tool (Admin)
-- Add a `transfer-data` action in `admin-manage-users` edge function
-- Clones products, customers, categories from one shop to another using service role
-- Add a dialog in `AdminShopsView.tsx` with source/target shop selection
+## How the Role Selector Works
 
-### 4. Admin Data Export per Shop
-- Add a "Sauvegarde" button in the shop dropdown or `ShopDetailSheet`
-- Invokes an edge function action that fetches all data for a given `user_id` and returns JSON
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
-### 5. Owner Billing Tab (already partially exists in Settings)
-- Verify the "Abonnement" tab exists in `Settings.tsx` with plan info, renewal date, payment history
-- If missing, add a tab fetching from `shop_subscriptions` and `subscription_orders`
+## Changes
 
-### 6. Confetti on First Verification
-- Add `canvas-confetti` package
-- Trigger confetti in the verification banner component when status changes to `verified`
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-## Files to Modify
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
 
-| File | Change |
-|------|--------|
-| `AdminSettingsView.tsx` | Add Safe Mode toggle card |
-| `admin-manage-users/index.ts` | Add `change-role`, `transfer-data`, `export-shop-data` actions |
-| `AdminShopsView.tsx` | Add role switcher + data transfer dialog + export button in dropdown |
-| `auto-suspend/index.ts` | Check `safe_mode_enabled` setting before suspending |
-| `Settings.tsx` | Verify/add Billing tab |
-| Migration | Insert `safe_mode_enabled` default row |
-
-## Database Changes
-- Insert one row into `platform_settings`: `key='safe_mode_enabled', value='false'`
-
-## Safety Principle
-No data query in any hook will be modified. No `WHERE verification_status = ...` or `WHERE plan_status = ...` will be added to any existing dashboard/data query.
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

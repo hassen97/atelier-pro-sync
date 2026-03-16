@@ -25,7 +25,7 @@ import {
   Lock,
   Copy,
  } from "lucide-react";
-import { Receipt } from "lucide-react";
+import { Receipt, CreditCard } from "lucide-react";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -295,7 +295,7 @@ export default function Settings() {
       />
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
           <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
           <TabsTrigger value="preferences">
             <Palette className="h-3.5 w-3.5 mr-1" />
@@ -304,6 +304,10 @@ export default function Settings() {
           <TabsTrigger value="categories">
             <Tag className="h-3.5 w-3.5 mr-1" />
             {t("settings.categories")}
+          </TabsTrigger>
+          <TabsTrigger value="billing">
+            <CreditCard className="h-3.5 w-3.5 mr-1" />
+            Abonnement
           </TabsTrigger>
           <TabsTrigger value="backup">Sauvegarde</TabsTrigger>
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>
@@ -1188,7 +1192,104 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Billing Tab */}
+        <TabsContent value="billing" className="space-y-6">
+          <BillingTab userId={user?.id} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function BillingTab({ userId }: { userId?: string }) {
+  const [sub, setSub] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [planName, setPlanName] = useState("");
+  const [loadingBilling, setLoadingBilling] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    setLoadingBilling(true);
+    Promise.all([
+      supabase.from("shop_subscriptions").select("*, subscription_plans(name, price, currency, period)").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("subscription_orders").select("*, subscription_plans(name)").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+    ]).then(([subRes, ordersRes]) => {
+      if (subRes.data) {
+        setSub(subRes.data);
+        setPlanName((subRes.data as any).subscription_plans?.name || "");
+      }
+      setOrders((ordersRes.data as any[]) || []);
+      setLoadingBilling(false);
+    });
+  }, [userId]);
+
+  if (loadingBilling) {
+    return <Skeleton className="h-[200px] w-full" />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Mon abonnement
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sub ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Plan actuel</span>
+                <Badge variant="default">{planName || "—"}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Prix</span>
+                <span className="font-semibold">{(sub as any).subscription_plans?.price} {(sub as any).subscription_plans?.currency}{(sub as any).subscription_plans?.period}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Statut</span>
+                <Badge variant={sub.status === "active" ? "default" : "secondary"}>{sub.status}</Badge>
+              </div>
+              {sub.expires_at && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Expire le</span>
+                  <span>{new Date(sub.expires_at).toLocaleDateString("fr-FR")}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">Aucun abonnement actif.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {orders.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Historique des commandes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {orders.map((order: any) => (
+                <div key={order.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div>
+                    <p className="text-sm font-medium">{(order as any).subscription_plans?.name || "Plan"}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString("fr-FR")} · {order.gateway_key}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold">{order.amount} {order.currency}</p>
+                    <Badge variant={order.status === "approved" ? "default" : order.status === "rejected" ? "destructive" : "secondary"} className="text-[10px]">
+                      {order.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

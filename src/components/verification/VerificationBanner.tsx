@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { AlertTriangle, ShieldCheck, Clock, Loader2, MessageCircle, CheckCircle } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { AlertTriangle, ShieldCheck, Clock, Loader2, MessageCircle, CheckCircle, PartyPopper } from "lucide-react";
+import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ export function VerificationBanner() {
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(false);
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
+  const confettiFired = useRef(false);
 
   // Form fields
   const [shopName, setShopName] = useState("");
@@ -178,6 +180,18 @@ export function VerificationBanner() {
       setLoading(false);
     }
   };
+
+  // Confetti on first verification
+  useEffect(() => {
+    if (profile?.verification_status === "verified" && !confettiFired.current) {
+      confettiFired.current = true;
+      const hasSeenConfetti = localStorage.getItem("verification_confetti_seen");
+      if (!hasSeenConfetti) {
+        localStorage.setItem("verification_confetti_seen", "true");
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 } });
+      }
+    }
+  }, [profile?.verification_status]);
 
   if (!isOwner || !profile || profile.verification_status === "verified") return null;
 

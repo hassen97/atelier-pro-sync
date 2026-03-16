@@ -16,6 +16,21 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+    // Check if Safe Mode is enabled - if so, skip all suspensions
+    const { data: safeModeRow } = await adminClient
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "safe_mode_enabled")
+      .single();
+
+    if (safeModeRow?.value === "true") {
+      console.log("auto-suspend: Safe Mode is ON — skipping all suspensions");
+      return new Response(
+        JSON.stringify({ success: true, suspended: 0, safe_mode: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Find all owners past their verification deadline that are still pending
     const now = new Date().toISOString();
     const { data: expiredProfiles, error: fetchError } = await adminClient

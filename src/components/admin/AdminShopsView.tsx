@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAdminData, useDeleteOwner, useLockOwner } from "@/hooks/useAdmin";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useCreateAnnouncement } from "@/hooks/useAnnouncements";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
@@ -12,7 +14,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn, ShieldCheck } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn, ShieldCheck, Download, ArrowRightLeft, UserCog } from "lucide-react";
 import { VerifiedBadge } from "@/components/verification/VerifiedBadge";
 import { ShopDetailSheet } from "./ShopDetailSheet";
 import { Input } from "@/components/ui/input";
@@ -143,6 +145,7 @@ export function AdminShopsView() {
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
   const [announcementTarget, setAnnouncementTarget] = useState<{ userId: string; shopName: string } | null>(null);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
+  const [transferSource, setTransferSource] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);
@@ -359,7 +362,7 @@ export function AdminShopsView() {
                     <span className="text-sm text-white font-mono-numbers">{owner.repair_count}</span>
                     <span className="text-xs text-slate-500 ml-1">({owner.team_count} membres)</span>
                   </TableCell>
-                  <TableCell className="text-right">
+                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
@@ -386,6 +389,30 @@ export function AdminShopsView() {
                           shopName: owner.shop_name,
                         })}>
                           <Megaphone className="h-4 w-4 mr-2" /> Envoyer une annonce
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          const newRole = prompt("Nouveau rôle (super_admin ou employee) :", "employee");
+                          if (!newRole || !["super_admin", "employee"].includes(newRole)) return;
+                          const { error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "change-role", userId: owner.user_id, newRole } });
+                          if (error) { toast.error("Erreur changement de rôle"); } else { toast.success("Rôle modifié"); }
+                        }}>
+                          <UserCog className="h-4 w-4 mr-2" /> Changer le rôle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTransferSource(owner.user_id)}>
+                          <ArrowRightLeft className="h-4 w-4 mr-2" /> Transférer les données
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          toast.info("Export en cours...");
+                          const { data, error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "export-shop-data", userId: owner.user_id } });
+                          if (error) { toast.error("Erreur d'export"); return; }
+                          const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url; a.download = `backup-${owner.shop_name}-${new Date().toISOString().slice(0,10)}.json`; a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success("Export téléchargé");
+                        }}>
+                          <Download className="h-4 w-4 mr-2" /> Sauvegarder (JSON)
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => {
                           const viewUrl = `/?impersonate=${owner.user_id}&mode=readonly`;
@@ -466,6 +493,55 @@ export function AdminShopsView() {
         />
       )}
       <ShopDetailSheet userId={selectedShopId} onClose={() => setSelectedShopId(null)} />
+      {transferSource && (
+        <Dialog open={!!transferSource} onOpenChange={() => setTransferSource(null)}>
+          <DialogContent className="bg-slate-900 border-white/10 text-white">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ArrowRightLeft className="h-4 w-4 text-[#00D4FF]" />
+                Transférer les données
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400">
+                Cloner les produits, clients et catégories de cette boutique vers une autre.
+              </p>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Boutique cible</Label>
+                <select
+                  className="w-full rounded-md bg-white/5 border border-white/10 text-white px-3 py-2 text-sm"
+                  id="transfer-target"
+                >
+                  {owners.filter(o => o.user_id !== transferSource).map(o => (
+                    <option key={o.user_id} value={o.user_id} className="bg-slate-900">
+                      {o.shop_name} (@{o.username})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setTransferSource(null)} className="text-slate-400">Annuler</Button>
+              <Button
+                className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30"
+                onClick={async () => {
+                  const target = (document.getElementById("transfer-target") as HTMLSelectElement)?.value;
+                  if (!target) return;
+                  toast.info("Transfert en cours...");
+                  const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+                    body: { action: "transfer-data", userId: transferSource, targetUserId: target }
+                  });
+                  if (error) { toast.error("Erreur de transfert"); }
+                  else { toast.success(`Transféré : ${data?.cloned?.products || 0} produits, ${data?.cloned?.customers || 0} clients, ${data?.cloned?.categories || 0} catégories`); }
+                  setTransferSource(null);
+                }}
+              >
+                <ArrowRightLeft className="h-4 w-4 mr-2" /> Transférer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
         </TabsContent>
         <TabsContent value="verification" className="mt-0">
           <AdminVerificationView />

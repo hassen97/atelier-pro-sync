@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -244,9 +244,11 @@ export function AdminEmployeesView() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [now, setNow] = useState(() => Date.now());
   const [credentialsTarget, setCredentialsTarget] = useState<EmployeeRecord | null>(null);
   const [reassignTarget, setReassignTarget] = useState<EmployeeRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EmployeeRecord | null>(null);
+  const [roleToggleTarget, setRoleToggleTarget] = useState<EmployeeRecord | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-employees"],
@@ -258,7 +260,15 @@ export function AdminEmployeesView() {
       return data as { employees: EmployeeRecord[] };
     },
     enabled: !!user,
+    // Auto-refresh every 60 seconds
+    refetchInterval: 60_000,
   });
+
+  // Tick `now` every 30 s so "last seen" labels update without full refetch
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Fetch all shops for re-assignment
   const { data: shopsData } = useQuery({
@@ -453,10 +463,10 @@ export function AdminEmployeesView() {
                 </TableCell>
               </TableRow>
             ) : paginated.map((emp) => {
-              const rc = roleConfig[emp.role] || roleConfig.employee;
+               const rc = roleConfig[emp.role] || roleConfig.employee;
               const isLocked = emp.is_locked;
               const isVerified = emp.verification_status === "verified";
-              const isOnline = emp.last_online_at && new Date(emp.last_online_at) > new Date(Date.now() - 10 * 60 * 1000);
+              const isOnline = emp.last_online_at && new Date(emp.last_online_at) > new Date(now - 10 * 60 * 1000);
 
               return (
                 <TableRow key={emp.id} className="border-white/5 hover:bg-white/[0.025] transition-colors group">
@@ -557,12 +567,7 @@ export function AdminEmployeesView() {
                           <Store className="h-4 w-4 mr-2 text-violet-400" />
                           Réassigner à une boutique
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => changeRole.mutate({
-                            userId: emp.member_user_id,
-                            newRole: emp.role === "employee" ? "super_admin" : "employee",
-                          })}
-                        >
+                        <DropdownMenuItem onClick={() => setRoleToggleTarget(emp)}>
                           <UserCog className="h-4 w-4 mr-2 text-amber-400" />
                           {emp.role === "employee" ? "Promouvoir → Propriétaire" : "Rétrograder → Employé"}
                         </DropdownMenuItem>
@@ -687,6 +692,54 @@ export function AdminEmployeesView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Role Toggle confirmation */}
+      <AlertDialog open={!!roleToggleTarget} onOpenChange={(o) => !o && setRoleToggleTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5 text-amber-400" />
+              {roleToggleTarget?.role === "employee" ? "Promouvoir en Propriétaire ?" : "Rétrograder en Employé ?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 pt-1">
+              {roleToggleTarget?.role === "employee" ? (
+                <span>
+                  Vous êtes sur le point de promouvoir{" "}
+                  <strong>{roleToggleTarget?.full_name || roleToggleTarget?.username}</strong> au rôle de{" "}
+                  <strong>Propriétaire</strong>.{" "}
+                  Ce compte aura accès complet à la gestion d'une boutique (équipe, paramètres, données).
+                </span>
+              ) : (
+                <span>
+                  Vous êtes sur le point de rétrograder{" "}
+                  <strong>{roleToggleTarget?.full_name || roleToggleTarget?.username}</strong> au rôle d'<strong>Employé</strong>.{" "}
+                  Ses permissions seront limitées aux pages autorisées par son propriétaire.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className={roleToggleTarget?.role === "employee"
+                ? "bg-amber-500 text-white hover:bg-amber-600"
+                : "bg-orange-500 text-white hover:bg-orange-600"}
+              onClick={() => {
+                if (roleToggleTarget) {
+                  changeRole.mutate({
+                    userId: roleToggleTarget.member_user_id,
+                    newRole: roleToggleTarget.role === "employee" ? "super_admin" : "employee",
+                  });
+                  setRoleToggleTarget(null);
+                }
+              }}
+            >
+              {roleToggleTarget?.role === "employee" ? "Confirmer la promotion" : "Confirmer la rétrogradation"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+

@@ -192,7 +192,10 @@ export function useCreateEmployee() {
         });
       }
 
-      queryClient.invalidateQueries({ queryKey: ["team-members", user?.id] });
+      // Delay invalidation so optimistic data with profile persists
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["team-members", user?.id] });
+      }, 3000);
       toast.success("Compte employé créé et ajouté à l'équipe");
     },
     onError: (err: any) => {

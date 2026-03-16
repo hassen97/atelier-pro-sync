@@ -64,7 +64,7 @@ function MemberCard({ member }: { member: TeamMember }) {
   const handleSave = () => {
     updatePermissions.mutate({
       memberId: member.id,
-      allowedPages: pages.includes("/") ? pages : ["/", ...pages],
+      allowedPages: pages.includes("/dashboard") ? pages : ["/dashboard", ...pages],
       role: role as any,
     });
   };

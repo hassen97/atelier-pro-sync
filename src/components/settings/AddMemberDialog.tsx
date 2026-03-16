@@ -132,7 +132,7 @@ export function AddMemberDialog() {
     setPassword("");
     setConfirmPassword("");
     setRole("employee");
-    setSelectedPages(["/", "/pos"]);
+    setSelectedPages(["/dashboard", "/pos"]);
     setShowPassword(false);
     setUsernameStatus("idle");
     setCheckedUsername("");

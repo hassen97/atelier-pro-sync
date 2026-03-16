@@ -131,6 +131,38 @@ export function AdminSettingsView() {
         </CardContent>
       </Card>
 
+      <Card className="admin-glass-card border-amber-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <ShieldAlert className="h-5 w-5 text-amber-400" />
+            Mode Sécurisé : Suppression Automatique
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Lorsque activé, le minuteur de suppression automatique de 48h est globalement pausé pour tous les utilisateurs. C'est votre "Frein d'urgence".
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-white">Mode Sécurisé (Frein d'urgence)</p>
+              <p className="text-sm text-slate-400">
+                {safeMode
+                  ? "⏸️ Suppression automatique PAUSÉE — aucun compte ne sera suspendu"
+                  : "⚠️ Suppression automatique ACTIVE — les comptes expirés seront suspendus"}
+              </p>
+            </div>
+            <Switch
+              checked={safeMode}
+              onCheckedChange={(checked) => {
+                setSafeMode(checked);
+                saveSetting("safe_mode_enabled", checked ? "true" : "false", setSavingSafeMode);
+              }}
+              disabled={savingSafeMode}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="admin-glass-card border-white/10">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">

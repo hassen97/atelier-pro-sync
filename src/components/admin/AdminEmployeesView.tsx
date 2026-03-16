@@ -463,10 +463,10 @@ export function AdminEmployeesView() {
                 </TableCell>
               </TableRow>
             ) : paginated.map((emp) => {
-              const rc = roleConfig[emp.role] || roleConfig.employee;
+               const rc = roleConfig[emp.role] || roleConfig.employee;
               const isLocked = emp.is_locked;
               const isVerified = emp.verification_status === "verified";
-              const isOnline = emp.last_online_at && new Date(emp.last_online_at) > new Date(Date.now() - 10 * 60 * 1000);
+              const isOnline = emp.last_online_at && new Date(emp.last_online_at) > new Date(now - 10 * 60 * 1000);
 
               return (
                 <TableRow key={emp.id} className="border-white/5 hover:bg-white/[0.025] transition-colors group">

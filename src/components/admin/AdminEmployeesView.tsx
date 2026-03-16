@@ -567,12 +567,7 @@ export function AdminEmployeesView() {
                           <Store className="h-4 w-4 mr-2 text-violet-400" />
                           Réassigner à une boutique
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => changeRole.mutate({
-                            userId: emp.member_user_id,
-                            newRole: emp.role === "employee" ? "super_admin" : "employee",
-                          })}
-                        >
+                        <DropdownMenuItem onClick={() => setRoleToggleTarget(emp)}>
                           <UserCog className="h-4 w-4 mr-2 text-amber-400" />
                           {emp.role === "employee" ? "Promouvoir → Propriétaire" : "Rétrograder → Employé"}
                         </DropdownMenuItem>

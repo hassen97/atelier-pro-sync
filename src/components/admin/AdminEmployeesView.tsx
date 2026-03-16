@@ -10,13 +10,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, KeyRound, Trash2, Users, Search, Phone } from "lucide-react";
+import { MoreHorizontal, KeyRound, Trash2, Users, Search, Phone, Lock, Unlock, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -64,6 +64,36 @@ export function AdminEmployeesView() {
       setDeleteTarget(null);
     },
     onError: (err: any) => toast.error(err.message || "Erreur lors de la suppression"),
+  });
+
+  const lockUnlockEmployee = useMutation({
+    mutationFn: async ({ userId, lock }: { userId: string; lock: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: lock ? "lock" : "unlock", userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-employees"] });
+      toast.success(variables.lock ? "Compte verrouillé" : "Compte déverrouillé");
+    },
+    onError: (err: any) => toast.error(err.message || "Erreur"),
+  });
+
+  const verifyEmployee = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "verify-owner", userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-employees"] });
+      toast.success("Compte vérifié avec succès");
+    },
+    onError: (err: any) => toast.error(err.message || "Erreur lors de la vérification"),
   });
 
   const employees = data?.employees || [];
@@ -118,7 +148,7 @@ export function AdminEmployeesView() {
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Boutique</TableHead>
               <TableHead className="text-slate-400 text-xs hidden md:table-cell">Propriétaire</TableHead>
               <TableHead className="text-slate-400 text-xs hidden lg:table-cell">Rôle</TableHead>
-              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">Pages</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">Statut</TableHead>
               <TableHead className="text-slate-400 text-xs hidden md:table-cell">Ajouté le</TableHead>
               <TableHead className="text-slate-400 text-xs text-right">Actions</TableHead>
             </TableRow>
@@ -136,6 +166,8 @@ export function AdminEmployeesView() {
               </TableRow>
             ) : filtered.map((emp) => {
               const rc = roleConfig[emp.role] || roleConfig.employee;
+              const isLocked = emp.is_locked;
+              const isVerified = emp.verification_status === "verified";
               return (
                 <TableRow key={emp.id} className="border-white/5">
                   <TableCell>
@@ -165,9 +197,22 @@ export function AdminEmployeesView() {
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-500/30 text-slate-400 bg-slate-500/10">
-                      {emp.allowed_pages.length} page{emp.allowed_pages.length !== 1 ? "s" : ""}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                      {isLocked && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-red-500/30 text-red-400 bg-red-500/10">
+                          <Lock className="h-2.5 w-2.5 mr-1" /> Verrouillé
+                        </Badge>
+                      )}
+                      {isVerified ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
+                          <ShieldCheck className="h-2.5 w-2.5 mr-1" /> Vérifié
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-yellow-500/30 text-yellow-400 bg-yellow-500/10">
+                          Non vérifié
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     <span className="text-xs text-slate-500">
@@ -182,12 +227,27 @@ export function AdminEmployeesView() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {!isVerified && (
+                          <DropdownMenuItem onClick={() => verifyEmployee.mutate(emp.member_user_id)}>
+                            <ShieldCheck className="h-4 w-4 mr-2 text-emerald-500" /> Vérifier le compte
+                          </DropdownMenuItem>
+                        )}
+                        {isLocked ? (
+                          <DropdownMenuItem onClick={() => lockUnlockEmployee.mutate({ userId: emp.member_user_id, lock: false })}>
+                            <Unlock className="h-4 w-4 mr-2 text-green-500" /> Déverrouiller
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => lockUnlockEmployee.mutate({ userId: emp.member_user_id, lock: true })}>
+                            <Lock className="h-4 w-4 mr-2 text-orange-500" /> Verrouiller
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => setResetTarget({
                           userId: emp.member_user_id,
                           name: emp.full_name || emp.username || "Employé",
                         })}>
                           <KeyRound className="h-4 w-4 mr-2" /> Réinitialiser mot de passe
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-red-400 focus:text-red-400 focus:bg-red-500/10"
                           onClick={() => setDeleteTarget(emp)}

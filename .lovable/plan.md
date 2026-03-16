@@ -1,34 +1,81 @@
 
 
-# Fix Employee Issues: Dashboard Access, Username Display, and Management Actions
+# Modernize Login Page with Role Selection
 
-## Issues Identified
+## Overview
 
-### 1. Dashboard "Access Denied" for Employees
-**Root cause**: `ALL_PAGES` defines the dashboard as `href: "/"`, but the actual route is `/dashboard`. When `ProtectedRoute` checks `location.pathname` (`/dashboard`) against `allowedPages` (`["/", "/pos"]`), it doesn't match — so employees are blocked.
+Redesign the login/registration page with a futuristic repair shop aesthetic and add a role selector so shop owners and employees use the same login screen but with a clear identity choice.
 
-**Fix**: Update `useAllowedPages` in `useTeam.ts` to map `"/"` entries to `"/dashboard"` so both paths are recognized. Also update `ALL_PAGES` to use `/dashboard` going forward. In `ProtectedRoute`, redirect blocked employees to their first allowed page instead of always `/dashboard`.
+## Visual Design
 
-### 2. Username Not Showing in Employee List
-**Root cause**: The `list-employees` action in the edge function fetches profiles correctly, but the `create-employee` function creates the user with `user_metadata.username`. The trigger does set the username. However, the admin **users list** (shops view `list` action) only shows `super_admin` users — employees are excluded by design. The user likely means the **employees tab** is missing `verification_status` and `is_locked` data, and possibly the profile isn't created fast enough.
+The new design will feature:
+- **Dark gradient background** with subtle animated grid/circuit pattern using CSS
+- **Glassmorphism card** with backdrop-blur and glowing border accents
+- **Animated wrench/gear icon** with a neon glow effect
+- **Role selector** as two large clickable cards before the login form (Shop Owner / Employee)
+- **Sleek input fields** with glass styling and subtle focus glow
+- **Gradient accent button** with hover glow effect
 
-**Fix**: Add `verification_status` and `is_locked` to the `list-employees` profile fetch in the edge function. Also verify the profiles query includes these fields.
+```text
+  ┌──────────────────────────────────────┐
+  │     (background: dark gradient       │
+  │      with subtle grid pattern)       │
+  │                                      │
+  │         [Wrench Icon + Glow]         │
+  │        RepairPro Tunisie             │
+  │     "Gestion d'atelier moderne"      │
+  │                                      │
+  │   ┌──────────┐  ┌──────────────┐     │
+  │   │  Owner   │  │   Employee   │     │
+  │   │ (Store)  │  │  (UserCog)   │     │
+  │   │ selected │  │              │     │
+  │   └──────────┘  └──────────────┘     │
+  │                                      │
+  │  ┌────────────────────────────────┐  │
+  │  │  [Connexion] [Inscription]    │  │
+  │  │                                │  │
+  │  │  @ Username ________________  │  │
+  │  │  * Password ________________  │  │
+  │  │                                │  │
+  │  │  [====  Se connecter  ====]   │  │
+  │  │  Mot de passe oublie?         │  │
+  │  └────────────────────────────────┘  │
+  │                                      │
+  │   WhatsApp contact button            │
+  │   (c) 2024 RepairPro Tunisie         │
+  └──────────────────────────────────────┘
+```
 
-### 3. Employee Management Actions (Unlock, Verify)
-**Missing feature**: The admin employees dropdown only has "Reset password" and "Delete". Need to add Unlock, Lock, and Verify actions.
+## How the Role Selector Works
 
-**Fix**: Add UI buttons in `AdminEmployeesView.tsx` dropdown menu using existing edge function actions (`unlock`, `lock`, `verify-owner`). Show status badges for locked/verified state.
+- **Shop Owner** ("Proprietaire"): Shows both Connexion and Inscription tabs (current behavior)
+- **Employee** ("Employe"): Shows only the Connexion tab (employees cannot self-register -- they are created by the owner)
+- The selected role is purely visual/UX -- both roles use the same `signIn()` function. The backend already determines the user's actual role after login
+- Default selection: Shop Owner
 
-## Files to Modify
+## Changes
 
-| File | Change |
-|------|--------|
-| `src/hooks/useTeam.ts` | Change `ALL_PAGES` dashboard href from `"/"` to `"/dashboard"`. Map old `"/"` entries in `useAllowedPages`. |
-| `src/components/auth/ProtectedRoute.tsx` | Fix blocked redirect to first allowed page. Handle `"/"` ↔ `/dashboard` equivalence. |
-| `supabase/functions/admin-manage-users/index.ts` | Add `verification_status`, `is_locked` to `list-employees` profile fetch. Fix TS error (missing return). |
-| `src/components/admin/AdminEmployeesView.tsx` | Add Lock, Unlock, Verify dropdown actions + status badges. |
-| `src/hooks/useAdmin.ts` | Add `verification_status` and `is_locked` to `EmployeeRecord` interface. |
+### File: `src/pages/Auth.tsx`
+- Add `loginRole` state: `"owner" | "employee"` (default `"owner"`)
+- Add role selector UI: two styled cards with icons (`Store` and `UserCog` from lucide)
+- When "Employee" is selected, hide the "Inscription" tab and show login only
+- Restyle the entire page:
+  - Background: dark gradient (`from-slate-950 via-slate-900 to-slate-950`) with a CSS grid overlay
+  - Card: glassmorphism (`backdrop-blur-xl bg-white/5 border border-white/10`)
+  - Inputs: dark glass style with glow on focus
+  - Button: gradient with subtle glow shadow
+  - Wrench icon: animated pulse glow
 
-## Build Error Fix
-The `admin-manage-users` edge function has a TS error: `serve()` handler can return `undefined`. Add a final `return jsonResp(...)` at the end of the handler to ensure all paths return a Response.
+### File: `src/index.css`
+- Add CSS classes for the login page effects:
+  - `.auth-grid-bg`: subtle animated grid background pattern
+  - `.auth-glow`: neon glow effect for the icon
+  - `.auth-card`: glassmorphism card specific to auth page
+
+## What Stays the Same
+- All form logic, validation, signUp/signIn calls remain identical
+- The admin WhatsApp contact link stays
+- The forgot password link stays
+- Registration form fields unchanged
+- No backend changes needed
 

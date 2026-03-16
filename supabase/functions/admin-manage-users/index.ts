@@ -318,7 +318,7 @@ serve(async (req) => {
         const ownerIds = [...new Set(members.map((m: any) => m.owner_id))];
 
         const [{ data: memberProfiles }, { data: ownerProfiles }, { data: shopSettings }] = await Promise.all([
-          adminClient.from("profiles").select("user_id, full_name, username, phone, last_online_at").in("user_id", memberUserIds),
+          adminClient.from("profiles").select("user_id, full_name, username, phone, last_online_at, verification_status, is_locked").in("user_id", memberUserIds),
           adminClient.from("profiles").select("user_id, username, full_name").in("user_id", ownerIds as string[]),
           adminClient.from("shop_settings").select("user_id, shop_name").in("user_id", ownerIds as string[]),
         ]);
@@ -333,6 +333,8 @@ serve(async (req) => {
           username: memberProfileMap.get(m.member_user_id)?.username || null,
           phone: memberProfileMap.get(m.member_user_id)?.phone || null,
           last_online_at: memberProfileMap.get(m.member_user_id)?.last_online_at || null,
+          verification_status: memberProfileMap.get(m.member_user_id)?.verification_status || null,
+          is_locked: memberProfileMap.get(m.member_user_id)?.is_locked || false,
           owner_username: ownerProfileMap.get(m.owner_id)?.username || null,
           owner_full_name: ownerProfileMap.get(m.owner_id)?.full_name || null,
           shop_name: shopMap.get(m.owner_id) || "Mon Atelier",
@@ -737,6 +739,8 @@ serve(async (req) => {
 
       return jsonResp({ error: "Unknown action" }, 400);
     }
+
+    return jsonResp({ error: "Method not allowed" }, 405);
   } catch (err) {
     console.error("Admin action error:", err);
     const message = err instanceof Error ? err.message : "Internal server error";

@@ -19,10 +19,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isImpersonating, isVerifying } = useImpersonation();
   const hasShownToast = useRef(false);
 
+  // Normalize path: treat "/" and "/dashboard" as equivalent
+  const currentPath = location.pathname === "/" ? "/dashboard" : location.pathname;
+
   const isBlocked =
     !pagesLoading &&
     allowedPages !== null &&
-    !allowedPages.includes(location.pathname);
+    !allowedPages.includes(currentPath);
 
   useEffect(() => {
     if (isBlocked && !hasShownToast.current) {
@@ -56,7 +59,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (isBlocked) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to first allowed page instead of hardcoded /dashboard
+    const firstAllowed = allowedPages?.[0] || "/dashboard";
+    return <Navigate to={firstAllowed} replace />;
   }
 
   return <>{children}</>;

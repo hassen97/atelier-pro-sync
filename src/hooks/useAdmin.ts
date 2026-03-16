@@ -44,6 +44,8 @@ export interface EmployeeRecord {
   owner_username: string | null;
   owner_full_name: string | null;
   shop_name: string;
+  verification_status: string | null;
+  is_locked: boolean;
 }
 
 export interface AdminRevenue {

@@ -35,7 +35,7 @@ export interface TeamTask {
 
 // All available pages for permission assignment
 export const ALL_PAGES = [
-  { href: "/", label: "Tableau de bord" },
+  { href: "/dashboard", label: "Tableau de bord" },
   { href: "/pos", label: "Point de Vente" },
   { href: "/repairs", label: "Réparations" },
   { href: "/inventory", label: "Stock" },
@@ -396,8 +396,10 @@ export function useAllowedPages() {
     return { allowedPages: null, isLoading: false, isTeamMember: false };
   }
 
-  // Team member: filtered pages (always include "/") dashboard
-  const pages = teamInfo.allowed_pages || [];
-  const allPages = pages.includes("/") ? pages : ["/", ...pages];
+  // Team member: filtered pages
+  // Map legacy "/" entries to "/dashboard" for compatibility
+  const pages = (teamInfo.allowed_pages || []).map((p: string) => p === "/" ? "/dashboard" : p);
+  // Always include dashboard access
+  const allPages = pages.includes("/dashboard") ? pages : ["/dashboard", ...pages];
   return { allowedPages: allPages, isLoading: false, isTeamMember: true };
 }

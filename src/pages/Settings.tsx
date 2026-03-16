@@ -295,7 +295,7 @@ export default function Settings() {
       />
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
           <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
           <TabsTrigger value="preferences">
             <Palette className="h-3.5 w-3.5 mr-1" />
@@ -304,6 +304,10 @@ export default function Settings() {
           <TabsTrigger value="categories">
             <Tag className="h-3.5 w-3.5 mr-1" />
             {t("settings.categories")}
+          </TabsTrigger>
+          <TabsTrigger value="billing">
+            <CreditCard className="h-3.5 w-3.5 mr-1" />
+            Abonnement
           </TabsTrigger>
           <TabsTrigger value="backup">Sauvegarde</TabsTrigger>
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>

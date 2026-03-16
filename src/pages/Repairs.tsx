@@ -103,8 +103,9 @@ export default function Repairs() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const queryClient = useQueryClient();
-  const { data: rawRepairs = [], isLoading } = useRepairs();
-  const { data: customers = [] } = useCustomers();
+  const { data: repairsResult = {data:[], count:0}, isLoading } = useRepairs();
+  const rawRepairs = repairsResult.data;
+  const { data: customers = [] } = useAllCustomers();
   const createRepair = useCreateRepair();
   const updateRepair = useUpdateRepair();
   const updateStatus = useUpdateRepairStatus();

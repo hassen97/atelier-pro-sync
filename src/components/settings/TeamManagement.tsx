@@ -93,7 +93,7 @@ function MemberCard({ member }: { member: TeamMember }) {
               <Checkbox
                 checked={pages.includes(page.href)}
                 onCheckedChange={() => togglePage(page.href)}
-                disabled={page.href === "/"}
+                disabled={page.href === "/dashboard"}
               />
               {page.label}
             </label>

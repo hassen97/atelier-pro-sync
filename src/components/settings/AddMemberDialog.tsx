@@ -134,7 +134,7 @@ export function AddMemberDialog() {
               <Checkbox
                 checked={selectedPages.includes(page.href)}
                 onCheckedChange={() => togglePage(page.href)}
-                disabled={page.href === "/"}
+                disabled={page.href === "/dashboard"}
               />
               {page.label}
             </label>

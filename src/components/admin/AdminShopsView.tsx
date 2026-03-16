@@ -493,6 +493,55 @@ export function AdminShopsView() {
         />
       )}
       <ShopDetailSheet userId={selectedShopId} onClose={() => setSelectedShopId(null)} />
+      {transferSource && (
+        <Dialog open={!!transferSource} onOpenChange={() => setTransferSource(null)}>
+          <DialogContent className="bg-slate-900 border-white/10 text-white">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ArrowRightLeft className="h-4 w-4 text-[#00D4FF]" />
+                Transférer les données
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400">
+                Cloner les produits, clients et catégories de cette boutique vers une autre.
+              </p>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Boutique cible</Label>
+                <select
+                  className="w-full rounded-md bg-white/5 border border-white/10 text-white px-3 py-2 text-sm"
+                  id="transfer-target"
+                >
+                  {owners.filter(o => o.user_id !== transferSource).map(o => (
+                    <option key={o.user_id} value={o.user_id} className="bg-slate-900">
+                      {o.shop_name} (@{o.username})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setTransferSource(null)} className="text-slate-400">Annuler</Button>
+              <Button
+                className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30"
+                onClick={async () => {
+                  const target = (document.getElementById("transfer-target") as HTMLSelectElement)?.value;
+                  if (!target) return;
+                  toast.info("Transfert en cours...");
+                  const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+                    body: { action: "transfer-data", userId: transferSource, targetUserId: target }
+                  });
+                  if (error) { toast.error("Erreur de transfert"); }
+                  else { toast.success(`Transféré : ${data?.cloned?.products || 0} produits, ${data?.cloned?.customers || 0} clients, ${data?.cloned?.categories || 0} catégories`); }
+                  setTransferSource(null);
+                }}
+              >
+                <ArrowRightLeft className="h-4 w-4 mr-2" /> Transférer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
         </TabsContent>
         <TabsContent value="verification" className="mt-0">
           <AdminVerificationView />

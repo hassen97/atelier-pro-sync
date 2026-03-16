@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { AlertTriangle, ShieldCheck, Clock, Loader2, MessageCircle, CheckCircle } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { AlertTriangle, ShieldCheck, Clock, Loader2, MessageCircle, CheckCircle, PartyPopper } from "lucide-react";
+import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

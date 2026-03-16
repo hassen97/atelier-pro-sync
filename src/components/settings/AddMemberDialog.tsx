@@ -118,7 +118,7 @@ export function AddMemberDialog() {
   const passwordValid = password.length >= 8;
   const passwordsMatch = password === confirmPassword;
   const createFormValid =
-    fullName.trim().length > 0 && usernameValid && passwordValid && passwordsMatch;
+    fullName.trim().length > 0 && usernameValid && passwordValid && passwordsMatch && usernameAvailable === true;
 
   const handleCreate = async () => {
     if (!createFormValid) return;

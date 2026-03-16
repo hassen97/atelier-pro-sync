@@ -51,12 +51,11 @@ const Checkout = lazyWithRetry(() => import("./pages/Checkout"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Prevent refetch on window focus / reconnect to avoid data loss
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
-      // Keep data fresh for 5 minutes
-      staleTime: 5 * 60 * 1000,
-      // Retry once on failure
+      // Stale-while-revalidate: serve from cache instantly, refresh in background
+      staleTime: 5 * 60 * 1000,   // 5 min — data served instantly on nav
+      gcTime: 15 * 60 * 1000,     // 15 min — keep in memory across routes
       retry: 1,
     },
   },

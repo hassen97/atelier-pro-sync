@@ -122,11 +122,11 @@ export function RepairDialog({
 }: RepairDialogProps) {
   const isEditing = !!repair;
   const { format } = useCurrency();
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [] } = useAllCustomers();
   const createCustomer = useCreateCustomer();
   const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
   const { data: repairCategories = [] } = useCategories("repair");
-  const { data: products = [] } = useProducts();
+  const { data: products = [] } = useAllProducts();
 
   const categoryOptions = repairCategories.map((c) => ({ value: c.id, label: c.name }));
   

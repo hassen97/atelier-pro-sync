@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useAllCustomers, type Customer } from "@/hooks/useCustomers";
+import { useAllCustomers } from "@/hooks/useCustomers";
 
   const selectedCustomer = customers.find((c) => c.id === value);
 

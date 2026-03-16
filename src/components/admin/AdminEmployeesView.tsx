@@ -260,7 +260,15 @@ export function AdminEmployeesView() {
       return data as { employees: EmployeeRecord[] };
     },
     enabled: !!user,
+    // Auto-refresh every 60 seconds
+    refetchInterval: 60_000,
   });
+
+  // Tick `now` every 30 s so "last seen" labels update without full refetch
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Fetch all shops for re-assignment
   const { data: shopsData } = useQuery({

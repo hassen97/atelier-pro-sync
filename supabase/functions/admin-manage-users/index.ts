@@ -23,6 +23,7 @@ const ActionSchema = z.object({
     "bulk-verify", "bulk-suspend", "bulk-delete", "bulk-revert-to-pending",
     "list-subscription-orders", "update-subscription-order",
     "change-role", "transfer-data", "export-shop-data",
+    "reassign-employee",
   ]).optional(),
   userId: z.string().uuid().optional(),
   newPassword: z.string().min(8).max(128).optional(),
@@ -48,6 +49,7 @@ const ActionSchema = z.object({
   adminNote: z.string().optional(),
   newRole: z.string().optional(),
   targetUserId: z.string().uuid().optional(),
+  newOwnerId: z.string().uuid().optional(),
 });
 
 function jsonResp(data: unknown, status = 200) {
@@ -401,6 +403,17 @@ serve(async (req) => {
         if (!body.memberId || !body.employeeUserId) return jsonResp({ error: "memberId and employeeUserId required" }, 400);
         await adminClient.from("team_members").delete().eq("id", body.memberId);
         const { error } = await adminClient.auth.admin.deleteUser(body.employeeUserId);
+        if (error) throw error;
+        return jsonResp({ success: true });
+      }
+
+      // ─── REASSIGN EMPLOYEE ───
+      if (action === "reassign-employee") {
+        if (!body.memberId || !body.newOwnerId) return jsonResp({ error: "memberId and newOwnerId required" }, 400);
+        const { error } = await adminClient
+          .from("team_members")
+          .update({ owner_id: body.newOwnerId })
+          .eq("id", body.memberId);
         if (error) throw error;
         return jsonResp({ success: true });
       }

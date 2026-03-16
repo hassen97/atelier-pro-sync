@@ -318,7 +318,7 @@ serve(async (req) => {
         const ownerIds = [...new Set(members.map((m: any) => m.owner_id))];
 
         const [{ data: memberProfiles }, { data: ownerProfiles }, { data: shopSettings }] = await Promise.all([
-          adminClient.from("profiles").select("user_id, full_name, username, phone, last_online_at").in("user_id", memberUserIds),
+          adminClient.from("profiles").select("user_id, full_name, username, phone, last_online_at, verification_status, is_locked").in("user_id", memberUserIds),
           adminClient.from("profiles").select("user_id, username, full_name").in("user_id", ownerIds as string[]),
           adminClient.from("shop_settings").select("user_id, shop_name").in("user_id", ownerIds as string[]),
         ]);

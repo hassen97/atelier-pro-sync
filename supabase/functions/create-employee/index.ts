@@ -129,13 +129,15 @@ Deno.serve(async (req) => {
       .update({ role })
       .eq("user_id", newUserId);
 
-    // Exempt employees from verification (trigger sets pending_verification for all)
+    // Exempt employees from verification + ensure username/full_name are set
     await adminClient
       .from("profiles")
       .update({
         verification_status: "verified",
         verification_deadline: null,
         is_locked: false,
+        username: username.toLowerCase(),
+        full_name: fullName.trim(),
       })
       .eq("user_id", newUserId);
 

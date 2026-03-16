@@ -89,6 +89,8 @@ export function AddMemberDialog() {
     setRole("employee");
     setSelectedPages(["/", "/pos"]);
     setShowPassword(false);
+    setUsernameAvailable(null);
+    setCheckingUsername(false);
   };
 
   const handleSearch = () => {

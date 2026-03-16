@@ -34,6 +34,7 @@ export function AdminSettingsView() {
         if (row.key === "admin_whatsapp") setAdminWhatsapp(row.value || "");
         if (row.key === "auto_confirm_signups") setAutoConfirm(row.value === "true");
         if (row.key === "public_site_domain") setPublicDomain(row.value || "");
+        if (row.key === "safe_mode_enabled") setSafeMode(row.value === "true");
       });
     }
     setLoading(false);

@@ -15,11 +15,12 @@ import { AdminFeatureFlagsView } from "@/components/admin/AdminFeatureFlagsView"
 import { AdminWaitlistView } from "@/components/admin/AdminWaitlistView";
 import { AdminSignupAttemptsView } from "@/components/admin/AdminSignupAttemptsView";
 import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
+import { AdminOrdersView } from "@/components/admin/AdminOrdersView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "orders";
 
 const viewLabels: Record<AdminView, string> = {
   overview: "Dashboard",
@@ -28,6 +29,7 @@ const viewLabels: Record<AdminView, string> = {
   waitlist: "Liste d'attente",
   plans: "Tarifs & Plans",
   gateways: "Paiements",
+  orders: "Commandes",
   reset_requests: "Demandes",
   announcements: "Annonces",
   feedback: "Feedback",

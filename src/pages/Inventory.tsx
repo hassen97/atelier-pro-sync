@@ -257,7 +257,7 @@ export default function Inventory() {
 
         <TabsContent value="stock" className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <StatCard title="Total produits" value={totalItems} icon={Package} variant="default" />
+            <StatCard title="Total produits" value={totalCount} icon={Package} variant="default" />
             <StatCard title="Unités en stock" value={totalStockUnits} icon={Package} variant="success" />
             <StatCard title="Valeur du stock" value={format(totalValue)} icon={Package} variant="accent" />
             <StatCard title="Stock faible" value={lowStockItems} subtitle="Sous le seuil d'alerte" icon={AlertTriangle} variant="warning" />
@@ -270,7 +270,7 @@ export default function Inventory() {
               <Input
                 placeholder="Rechercher par nom, SKU ou code-barres..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9"
               />
             </div>
@@ -285,9 +285,14 @@ export default function Inventory() {
               onStockIncrement={handleStockIncrement}
             />
 
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
               <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>
-              <SelectContent>{categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                <SelectItem value="__all__">Toutes les catégories</SelectItem>
+                {categoryOptions.filter((c) => c !== "__all__").map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
 
@@ -307,16 +312,16 @@ export default function Inventory() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInventory.length === 0 ? (
+                  {displayedInventory.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={isEmployee ? 5 : 8} className="text-center py-12 text-muted-foreground">
-                        {products.length === 0
+                        {totalCount === 0
                           ? "Aucun produit enregistré. Cliquez sur 'Nouveau produit' pour commencer."
-                          : "Aucun produit trouvé"}
+                          : "Aucun produit trouvé pour cette recherche"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredInventory.map((item) => {
+                    displayedInventory.map((item) => {
                       const margin = item.cost > 0 && isFinite(item.cost) && isFinite(item.price) ? ((item.price - item.cost) / item.cost) * 100 : 0;
                       const isLowStock = item.stock <= item.threshold;
                       const isOutOfStock = item.stock === 0;
@@ -383,6 +388,39 @@ export default function Inventory() {
                 </TableBody>
               </Table>
             </CardContent>
+            {totalCount > PRODUCTS_PAGE_SIZE && (
+              <CardFooter className="flex items-center justify-between px-4 py-3 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Affichage de <span className="font-medium text-foreground">{pageStart}–{pageEnd}</span> sur{" "}
+                  <span className="font-medium text-foreground">{totalCount}</span> produits
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="gap-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Précédent
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage + 1} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                    className="gap-1"
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardFooter>
+            )}
           </Card>
         </TabsContent>
 

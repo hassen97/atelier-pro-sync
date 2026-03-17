@@ -176,6 +176,7 @@ const AdminDashboard = () => {
                 {activeView === "feature_flags" && <AdminFeatureFlagsView />}
                 {activeView === "waitlist" && <AdminWaitlistView />}
                 {activeView === "signup_attempts" && <AdminSignupAttemptsView />}
+                {activeView === "orders" && <AdminOrdersView />}
               </motion.div>
             </AnimatePresence>
           </div>

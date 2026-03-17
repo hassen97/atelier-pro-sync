@@ -33,6 +33,13 @@ export function AdminOrdersView() {
 
   const handleReview = (status: "approved" | "rejected") => {
     if (!reviewTarget) return;
+
+    // Safety net: block if critical IDs are missing
+    if (!reviewTarget.plan_id || !reviewTarget.user_id) {
+      toast.error("Erreur : Données de plan manquantes pour cette commande.");
+      return;
+    }
+
     reviewOrder.mutate(
       {
         orderId: reviewTarget.id,

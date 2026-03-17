@@ -33,6 +33,7 @@ const navSections = [
     items: [
       { id: "plans" as const, label: "Tarifs & Plans", icon: Tags },
       { id: "gateways" as const, label: "Paiements", icon: CreditCard },
+      { id: "orders" as const, label: "Commandes", icon: ClipboardList },
     ],
   },
   {

@@ -36,8 +36,11 @@ interface ProductWithCategory {
 
 export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Tous");
+  const [selectedCategory, setSelectedCategory] = useState("__all__");
+  const [currentPage, setCurrentPage] = useState(0);
   
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   // Edit dialog (existing products)
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductWithCategory | null>(null);
@@ -58,8 +61,25 @@ export default function Inventory() {
   // Pulse animation
   const [pulsedProductId, setPulsedProductId] = useState<string | null>(null);
 
-  const { data: productsResult = {data:[], count:0}, isLoading } = useProducts();
+  // Fetch categories for the filter dropdown
+  const { data: categoriesData = [] } = useCategories("product");
+
+  // Reset to page 0 when search or category changes
+  const handleSearchChange = (val: string) => { setSearchQuery(val); setCurrentPage(0); };
+  const handleCategoryChange = (val: string) => { setSelectedCategory(val); setCurrentPage(0); };
+
+  const selectedCategoryId = selectedCategory === "__all__" 
+    ? null 
+    : (categoriesData.find((c) => c.name === selectedCategory)?.id ?? null);
+
+  const { data: productsResult = { data: [], count: 0 }, isLoading } = useProducts({
+    page: currentPage,
+    search: debouncedSearch,
+    categoryId: selectedCategoryId,
+  });
   const rawProducts = productsResult.data;
+  const totalCount = productsResult.count;
+
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
@@ -85,19 +105,12 @@ export default function Inventory() {
     _original: p,
   }));
 
-  const categories = ["Tous", ...new Set(products.map((p) => p.category))];
+  // Categories for the filter — derived from fetched categories
+  const categoryOptions = ["__all__", ...categoriesData.map((c) => c.name)];
 
-  const filteredInventory = (() => {
-    let list = products.filter((item) => {
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.barcodes.some((b) => b.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCategory = selectedCategory === "Tous" || item.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
-
-    // Pulsed product always first
+  // Client-side: only apply pulsed-product ordering (search/filter is now server-side)
+  const displayedInventory = (() => {
+    let list = [...products];
     if (pulsedProductId) {
       const idx = list.findIndex((p) => p.id === pulsedProductId);
       if (idx > 0) {
@@ -108,7 +121,11 @@ export default function Inventory() {
     return list;
   })();
 
-  const totalItems = products.length;
+  const totalPages = Math.ceil(totalCount / PRODUCTS_PAGE_SIZE);
+  const pageStart = currentPage * PRODUCTS_PAGE_SIZE + 1;
+  const pageEnd = Math.min((currentPage + 1) * PRODUCTS_PAGE_SIZE, totalCount);
+
+  // Stats are computed from total count (server) for header cards  
   const totalStockUnits = products.reduce((sum, item) => sum + item.stock, 0);
   const totalValue = products.reduce((sum, item) => sum + item.cost * item.stock, 0);
   const lowStockItems = products.filter((item) => item.stock <= item.threshold).length;

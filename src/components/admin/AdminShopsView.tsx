@@ -363,6 +363,19 @@ export function AdminShopsView() {
                       </span>
                     </div>
                   </TableCell>
+                  <TableCell className="hidden xl:table-cell">
+                    {(() => {
+                      const sub = shopSubs?.find((s: any) => s.user_id === owner.user_id);
+                      return sub ? (
+                        <Badge className="text-[10px] bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20">
+                          <CreditCard className="h-3 w-3 mr-1" />
+                          {sub.plan?.name ?? "—"}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-slate-600">Gratuit</span>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <span className="text-sm text-white font-mono-numbers">{owner.repair_count}</span>
                     <span className="text-xs text-slate-500 ml-1">({owner.team_count} membres)</span>
@@ -375,6 +388,13 @@ export function AdminShopsView() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="text-[#00D4FF]"
+                          onClick={(e) => { e.stopPropagation(); setGodModeTarget({ userId: owner.user_id, shopName: owner.shop_name }); }}
+                        >
+                          <Zap className="h-4 w-4 mr-2" /> God Mode — Abonnement
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => setEditTarget({
                           userId: owner.user_id,
                           name: owner.full_name || owner.username || "",

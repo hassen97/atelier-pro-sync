@@ -34,6 +34,7 @@ import { RepairDialog } from "@/components/repairs/RepairDialog";
 
 import { MyTasks } from "@/components/dashboard/MyTasks";
 import { useMyTeamInfo } from "@/hooks/useTeam";
+import { SubscriptionBadge } from "@/components/dashboard/SubscriptionBadge";
 
 const statusConfig = {
   pending: { label: "En attente", icon: Clock, className: "bg-warning/10 text-warning border-warning/20" },

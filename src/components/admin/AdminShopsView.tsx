@@ -6,6 +6,7 @@ import { useCreateAnnouncement } from "@/hooks/useAnnouncements";
 import { CreateOwnerDialog } from "./CreateOwnerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { EditOwnerSettingsDialog } from "./EditOwnerSettingsDialog";
+import { GodModeSubscriptionDialog } from "./GodModeSubscriptionDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,7 +15,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn, ShieldCheck, Download, ArrowRightLeft, UserCog } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn, ShieldCheck, Download, ArrowRightLeft, UserCog, Zap, CreditCard } from "lucide-react";
 import { VerifiedBadge } from "@/components/verification/VerifiedBadge";
 import { ShopDetailSheet } from "./ShopDetailSheet";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ import { AdminVerificationView } from "./AdminVerificationView";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
+import { useAdminShopSubscriptions } from "@/hooks/useSubscription";
 import {
   Dialog,
   DialogContent,
@@ -140,12 +142,14 @@ export function AdminShopsView() {
   const { data } = useAdminData();
   const deleteOwner = useDeleteOwner();
   const lockOwner = useLockOwner();
+  const { data: shopSubs } = useAdminShopSubscriptions();
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ userId: string; name: string; country: string; currency: string } | null>(null);
   const [announcementTarget, setAnnouncementTarget] = useState<{ userId: string; shopName: string } | null>(null);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
   const [transferSource, setTransferSource] = useState<string | null>(null);
+  const [godModeTarget, setGodModeTarget] = useState<{ userId: string; shopName: string } | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);
@@ -283,6 +287,7 @@ export function AdminShopsView() {
               <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("status")}>
                 Statut <SortIcon col="status" />
               </TableHead>
+              <TableHead className="text-slate-400 text-xs hidden xl:table-cell">Plan</TableHead>
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Réparations</TableHead>
               <TableHead className="text-slate-400 text-xs text-right">Actions</TableHead>
             </TableRow>
@@ -358,6 +363,19 @@ export function AdminShopsView() {
                       </span>
                     </div>
                   </TableCell>
+                  <TableCell className="hidden xl:table-cell">
+                    {(() => {
+                      const sub = shopSubs?.find((s: any) => s.user_id === owner.user_id);
+                      return sub ? (
+                        <Badge className="text-[10px] bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20">
+                          <CreditCard className="h-3 w-3 mr-1" />
+                          {sub.plan?.name ?? "—"}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-slate-600">Gratuit</span>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <span className="text-sm text-white font-mono-numbers">{owner.repair_count}</span>
                     <span className="text-xs text-slate-500 ml-1">({owner.team_count} membres)</span>
@@ -370,6 +388,13 @@ export function AdminShopsView() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="text-[#00D4FF]"
+                          onClick={(e) => { e.stopPropagation(); setGodModeTarget({ userId: owner.user_id, shopName: owner.shop_name }); }}
+                        >
+                          <Zap className="h-4 w-4 mr-2" /> God Mode — Abonnement
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => setEditTarget({
                           userId: owner.user_id,
                           name: owner.full_name || owner.username || "",
@@ -493,6 +518,14 @@ export function AdminShopsView() {
         />
       )}
       <ShopDetailSheet userId={selectedShopId} onClose={() => setSelectedShopId(null)} />
+      {godModeTarget && (
+        <GodModeSubscriptionDialog
+          open={!!godModeTarget}
+          onOpenChange={(v) => !v && setGodModeTarget(null)}
+          userId={godModeTarget.userId}
+          shopName={godModeTarget.shopName}
+        />
+      )}
       {transferSource && (
         <Dialog open={!!transferSource} onOpenChange={() => setTransferSource(null)}>
           <DialogContent className="bg-slate-900 border-white/10 text-white">

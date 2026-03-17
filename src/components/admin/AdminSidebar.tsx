@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "orders";
 
 interface AdminSidebarProps {
   active: AdminView;
@@ -33,6 +33,7 @@ const navSections = [
     items: [
       { id: "plans" as const, label: "Tarifs & Plans", icon: Tags },
       { id: "gateways" as const, label: "Paiements", icon: CreditCard },
+      { id: "orders" as const, label: "Commandes", icon: ClipboardList },
     ],
   },
   {

@@ -26,8 +26,9 @@ import {
   Copy,
   Package,
   Settings2,
+  CreditCard,
  } from "lucide-react";
-import { Receipt, CreditCard } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +53,7 @@ import { CategoriesSettings } from "@/components/settings/CategoriesSettings";
 import { ExpenseCategoriesSettings } from "@/components/settings/ExpenseCategoriesSettings";
 import { TeamManagement } from "@/components/settings/TeamManagement";
 import { TaskManagement } from "@/components/settings/TaskManagement";
+import { BillingDashboard } from "@/components/billing/BillingDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
@@ -63,6 +65,7 @@ const TABS = [
   { value: "boutique", label: "Boutique", icon: Store },
   { value: "inventaire", label: "Inventaire", icon: Package },
   { value: "acces", label: "Accès", icon: Users },
+  { value: "abonnement", label: "Abonnement", icon: CreditCard },
   { value: "systeme", label: "Système", icon: Settings2 },
 ] as const;
 
@@ -811,9 +814,18 @@ export default function Settings() {
         </div>
       </AnimatedPanel>
 
-      {/* ─── TAB: Système (Abonnement + Sauvegarde) ─── */}
+      {/* ─── TAB: Abonnement ─── */}
+      <AnimatedPanel active={activeTab === "abonnement"}>
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={CreditCard} title="Abonnement & Facturation" description="Gérez votre plan et consultez vos paiements" />
+            <BillingDashboard />
+          </div>
+        </GlassCard>
+      </AnimatedPanel>
+
+      {/* ─── TAB: Système (Sauvegarde) ─── */}
       <AnimatedPanel active={activeTab === "systeme"}>
-        <BillingTab userId={user?.id} />
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Local Backup */}
@@ -883,83 +895,4 @@ export default function Settings() {
   );
 }
 
-function BillingTab({ userId }: { userId?: string }) {
-  const [sub, setSub] = useState<any>(null);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [planName, setPlanName] = useState("");
-  const [loadingBilling, setLoadingBilling] = useState(true);
 
-  useEffect(() => {
-    if (!userId) return;
-    setLoadingBilling(true);
-    Promise.all([
-      supabase.from("shop_subscriptions").select("*, subscription_plans(name, price, currency, period)").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-      supabase.from("subscription_orders").select("*, subscription_plans(name)").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
-    ]).then(([subRes, ordersRes]) => {
-      if (subRes.data) {
-        setSub(subRes.data);
-        setPlanName((subRes.data as any).subscription_plans?.name || "");
-      }
-      setOrders((ordersRes.data as any[]) || []);
-      setLoadingBilling(false);
-    });
-  }, [userId]);
-
-  if (loadingBilling) return <Skeleton className="h-[200px] w-full" />;
-
-  return (
-    <>
-      <GlassCard>
-        <div className="p-5 sm:p-6">
-          <SectionHeading icon={CreditCard} title="Mon abonnement" />
-          {sub ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Plan actuel</span>
-                <Badge variant="default">{planName || "—"}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Prix</span>
-                <span className="font-semibold">{(sub as any).subscription_plans?.price} {(sub as any).subscription_plans?.currency}{(sub as any).subscription_plans?.period}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Statut</span>
-                <Badge variant={sub.status === "active" ? "default" : "secondary"}>{sub.status}</Badge>
-              </div>
-              {sub.expires_at && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">Expire le</span>
-                  <span>{new Date(sub.expires_at).toLocaleDateString("fr-FR")}</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">Aucun abonnement actif.</p>
-          )}
-        </div>
-      </GlassCard>
-
-      {orders.length > 0 && (
-        <GlassCard>
-          <div className="p-5 sm:p-6">
-            <SectionHeading icon={CreditCard} title="Historique des commandes" />
-            <div className="space-y-3">
-              {orders.map((order: any) => (
-                <div key={order.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">{(order as any).subscription_plans?.name || "Plan"}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString("fr-FR")}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">{order.amount} {order.currency}</p>
-                    <Badge variant={order.status === "approved" ? "default" : order.status === "pending" ? "secondary" : "destructive"} className="text-[10px]">{order.status}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </GlassCard>
-      )}
-    </>
-  );
-}

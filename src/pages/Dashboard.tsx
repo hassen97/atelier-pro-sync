@@ -117,6 +117,7 @@ export default function Dashboard() {
         title="Tableau de bord"
         description="Vue d'ensemble de votre activité"
       >
+        <SubscriptionBadge />
         <Button variant="outline" size="sm" onClick={handleExport}>
           <Download className="h-4 w-4 mr-2" />
           Exporter

@@ -814,9 +814,18 @@ export default function Settings() {
         </div>
       </AnimatedPanel>
 
-      {/* ─── TAB: Système (Abonnement + Sauvegarde) ─── */}
+      {/* ─── TAB: Abonnement ─── */}
+      <AnimatedPanel active={activeTab === "abonnement"}>
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={CreditCard} title="Abonnement & Facturation" description="Gérez votre plan et consultez vos paiements" />
+            <BillingDashboard />
+          </div>
+        </GlassCard>
+      </AnimatedPanel>
+
+      {/* ─── TAB: Système (Sauvegarde) ─── */}
       <AnimatedPanel active={activeTab === "systeme"}>
-        <BillingTab userId={user?.id} />
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Local Backup */}

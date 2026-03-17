@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from "react";
-import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap, FileSpreadsheet } from "lucide-react";
+import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { cn, useDebounce } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useUpdateProductStock } from "@/hooks/useProducts";
+import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useUpdateProductStock, PRODUCTS_PAGE_SIZE } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ProductSheet, ProductSheetRef } from "@/components/inventory/ProductSheet";

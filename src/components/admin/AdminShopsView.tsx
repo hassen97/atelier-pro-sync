@@ -518,6 +518,14 @@ export function AdminShopsView() {
         />
       )}
       <ShopDetailSheet userId={selectedShopId} onClose={() => setSelectedShopId(null)} />
+      {godModeTarget && (
+        <GodModeSubscriptionDialog
+          open={!!godModeTarget}
+          onOpenChange={(v) => !v && setGodModeTarget(null)}
+          userId={godModeTarget.userId}
+          shopName={godModeTarget.shopName}
+        />
+      )}
       {transferSource && (
         <Dialog open={!!transferSource} onOpenChange={() => setTransferSource(null)}>
           <DialogContent className="bg-slate-900 border-white/10 text-white">

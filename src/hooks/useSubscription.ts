@@ -87,7 +87,7 @@ export function useAdminOrders() {
       const { data, error } = await supabase
         .from("subscription_orders" as any)
         .select(`
-          id, user_id, amount, currency, status, gateway_key, proof_url,
+          id, user_id, plan_id, amount, currency, status, gateway_key, proof_url,
           created_at, reviewed_at, admin_note,
           plan:subscription_plans(name)
         `)

@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from "react";
-import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap, FileSpreadsheet } from "lucide-react";
+import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { cn, useDebounce } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useUpdateProductStock } from "@/hooks/useProducts";
+import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useUpdateProductStock, PRODUCTS_PAGE_SIZE } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { ProductDialog } from "@/components/inventory/ProductDialog";
 import { ProductSheet, ProductSheetRef } from "@/components/inventory/ProductSheet";
@@ -35,8 +36,11 @@ interface ProductWithCategory {
 
 export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Tous");
+  const [selectedCategory, setSelectedCategory] = useState("__all__");
+  const [currentPage, setCurrentPage] = useState(0);
   
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   // Edit dialog (existing products)
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductWithCategory | null>(null);
@@ -57,8 +61,25 @@ export default function Inventory() {
   // Pulse animation
   const [pulsedProductId, setPulsedProductId] = useState<string | null>(null);
 
-  const { data: productsResult = {data:[], count:0}, isLoading } = useProducts();
+  // Fetch categories for the filter dropdown
+  const { data: categoriesData = [] } = useCategories("product");
+
+  // Reset to page 0 when search or category changes
+  const handleSearchChange = (val: string) => { setSearchQuery(val); setCurrentPage(0); };
+  const handleCategoryChange = (val: string) => { setSelectedCategory(val); setCurrentPage(0); };
+
+  const selectedCategoryId = selectedCategory === "__all__" 
+    ? null 
+    : (categoriesData.find((c) => c.name === selectedCategory)?.id ?? null);
+
+  const { data: productsResult = { data: [], count: 0 }, isLoading } = useProducts({
+    page: currentPage,
+    search: debouncedSearch,
+    categoryId: selectedCategoryId,
+  });
   const rawProducts = productsResult.data;
+  const totalCount = productsResult.count;
+
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
@@ -84,19 +105,12 @@ export default function Inventory() {
     _original: p,
   }));
 
-  const categories = ["Tous", ...new Set(products.map((p) => p.category))];
+  // Categories for the filter — derived from fetched categories
+  const categoryOptions = ["__all__", ...categoriesData.map((c) => c.name)];
 
-  const filteredInventory = (() => {
-    let list = products.filter((item) => {
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.barcodes.some((b) => b.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCategory = selectedCategory === "Tous" || item.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
-
-    // Pulsed product always first
+  // Client-side: only apply pulsed-product ordering (search/filter is now server-side)
+  const displayedInventory = (() => {
+    let list = [...products];
     if (pulsedProductId) {
       const idx = list.findIndex((p) => p.id === pulsedProductId);
       if (idx > 0) {
@@ -107,7 +121,11 @@ export default function Inventory() {
     return list;
   })();
 
-  const totalItems = products.length;
+  const totalPages = Math.ceil(totalCount / PRODUCTS_PAGE_SIZE);
+  const pageStart = currentPage * PRODUCTS_PAGE_SIZE + 1;
+  const pageEnd = Math.min((currentPage + 1) * PRODUCTS_PAGE_SIZE, totalCount);
+
+  // Stats are computed from total count (server) for header cards  
   const totalStockUnits = products.reduce((sum, item) => sum + item.stock, 0);
   const totalValue = products.reduce((sum, item) => sum + item.cost * item.stock, 0);
   const lowStockItems = products.filter((item) => item.stock <= item.threshold).length;
@@ -239,7 +257,7 @@ export default function Inventory() {
 
         <TabsContent value="stock" className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <StatCard title="Total produits" value={totalItems} icon={Package} variant="default" />
+            <StatCard title="Total produits" value={totalCount} icon={Package} variant="default" />
             <StatCard title="Unités en stock" value={totalStockUnits} icon={Package} variant="success" />
             <StatCard title="Valeur du stock" value={format(totalValue)} icon={Package} variant="accent" />
             <StatCard title="Stock faible" value={lowStockItems} subtitle="Sous le seuil d'alerte" icon={AlertTriangle} variant="warning" />
@@ -252,7 +270,7 @@ export default function Inventory() {
               <Input
                 placeholder="Rechercher par nom, SKU ou code-barres..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9"
               />
             </div>
@@ -267,9 +285,14 @@ export default function Inventory() {
               onStockIncrement={handleStockIncrement}
             />
 
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
               <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>
-              <SelectContent>{categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                <SelectItem value="__all__">Toutes les catégories</SelectItem>
+                {categoryOptions.filter((c) => c !== "__all__").map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
 
@@ -289,16 +312,16 @@ export default function Inventory() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInventory.length === 0 ? (
+                  {displayedInventory.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={isEmployee ? 5 : 8} className="text-center py-12 text-muted-foreground">
-                        {products.length === 0
+                        {totalCount === 0
                           ? "Aucun produit enregistré. Cliquez sur 'Nouveau produit' pour commencer."
-                          : "Aucun produit trouvé"}
+                          : "Aucun produit trouvé pour cette recherche"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredInventory.map((item) => {
+                    displayedInventory.map((item) => {
                       const margin = item.cost > 0 && isFinite(item.cost) && isFinite(item.price) ? ((item.price - item.cost) / item.cost) * 100 : 0;
                       const isLowStock = item.stock <= item.threshold;
                       const isOutOfStock = item.stock === 0;
@@ -365,6 +388,39 @@ export default function Inventory() {
                 </TableBody>
               </Table>
             </CardContent>
+            {totalCount > PRODUCTS_PAGE_SIZE && (
+              <CardFooter className="flex items-center justify-between px-4 py-3 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Affichage de <span className="font-medium text-foreground">{pageStart}–{pageEnd}</span> sur{" "}
+                  <span className="font-medium text-foreground">{totalCount}</span> produits
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="gap-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Précédent
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage + 1} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                    className="gap-1"
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardFooter>
+            )}
           </Card>
         </TabsContent>
 

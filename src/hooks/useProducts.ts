@@ -9,20 +9,26 @@ export type Product = Tables<"products"> & { barcodes: string[] };
 export type ProductInsert = TablesInsert<"products"> & { barcodes?: string[] };
 export type ProductUpdate = TablesUpdate<"products"> & { barcodes?: string[] };
 
-const PRODUCTS_PAGE_SIZE = 50;
+export const PRODUCTS_PAGE_SIZE = 50;
 
-/** Paginated product list with targeted column selection. */
-export function useProducts(page = 0) {
+interface UseProductsOptions {
+  page?: number;
+  search?: string;
+  categoryId?: string | null;
+}
+
+/** Paginated product list with server-side search/filter and exact count. */
+export function useProducts({ page = 0, search = "", categoryId }: UseProductsOptions = {}) {
   const effectiveUserId = useEffectiveUserId();
   const from = page * PRODUCTS_PAGE_SIZE;
   const to = from + PRODUCTS_PAGE_SIZE - 1;
 
   return useQuery({
-    queryKey: ["products", effectiveUserId, page],
+    queryKey: ["products", effectiveUserId, page, search, categoryId],
     queryFn: async () => {
       if (!effectiveUserId) return { data: [], count: 0 };
 
-      const { data, error, count } = await supabase
+      let query = supabase
         .from("products")
         .select(
           `id, name, sku, barcodes, description, cost_price, sell_price,
@@ -31,8 +37,21 @@ export function useProducts(page = 0) {
           { count: "exact" }
         )
         .eq("user_id", effectiveUserId)
-        .order("name")
-        .range(from, to);
+        .order("name");
+
+      // Server-side search across name, sku, and barcodes
+      if (search.trim()) {
+        query = query.or(
+          `name.ilike.%${search.trim()}%,sku.ilike.%${search.trim()}%`
+        );
+      }
+
+      // Server-side category filter
+      if (categoryId) {
+        query = query.eq("category_id", categoryId);
+      }
+
+      const { data, error, count } = await query.range(from, to);
 
       if (error) throw error;
       return { data: (data ?? []) as (typeof data[0] & { barcodes: string[] })[], count: count ?? 0 };

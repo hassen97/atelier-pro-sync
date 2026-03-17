@@ -26,8 +26,9 @@ import {
   Copy,
   Package,
   Settings2,
+  CreditCard,
  } from "lucide-react";
-import { Receipt, CreditCard } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +53,7 @@ import { CategoriesSettings } from "@/components/settings/CategoriesSettings";
 import { ExpenseCategoriesSettings } from "@/components/settings/ExpenseCategoriesSettings";
 import { TeamManagement } from "@/components/settings/TeamManagement";
 import { TaskManagement } from "@/components/settings/TaskManagement";
+import { BillingDashboard } from "@/components/billing/BillingDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { countries, currencies, getCurrencyForCountry } from "@/data/countries";
@@ -63,6 +65,7 @@ const TABS = [
   { value: "boutique", label: "Boutique", icon: Store },
   { value: "inventaire", label: "Inventaire", icon: Package },
   { value: "acces", label: "Accès", icon: Users },
+  { value: "abonnement", label: "Abonnement", icon: CreditCard },
   { value: "systeme", label: "Système", icon: Settings2 },
 ] as const;
 

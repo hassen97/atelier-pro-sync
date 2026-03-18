@@ -326,3 +326,46 @@ export function useLowStockProducts() {
     enabled: !!effectiveUserId,
   });
 }
+
+/** Lightweight global stats across ALL products — not limited by pagination. */
+export function useInventoryStats() {
+  const effectiveUserId = useEffectiveUserId();
+
+  return useQuery({
+    queryKey: ["inventory-stats", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId) return { totalUnits: 0, totalValue: 0, lowStock: 0, outOfStock: 0 };
+
+      const PAGE = 1000;
+      let all: { quantity: number; min_quantity: number; cost_price: number }[] = [];
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("quantity, min_quantity, cost_price")
+          .eq("user_id", effectiveUserId)
+          .range(from, from + PAGE - 1);
+
+        if (error) throw error;
+        all = all.concat(data ?? []);
+        hasMore = (data?.length ?? 0) === PAGE;
+        from += PAGE;
+      }
+
+      let totalUnits = 0, totalValue = 0, lowStock = 0, outOfStock = 0;
+      for (const p of all) {
+        const qty = p.quantity ?? 0;
+        totalUnits += qty;
+        totalValue += (p.cost_price ?? 0) * qty;
+        if (qty === 0) outOfStock++;
+        else if (qty <= (p.min_quantity ?? 5)) lowStock++;
+      }
+
+      return { totalUnits, totalValue, lowStock, outOfStock };
+    },
+    enabled: !!effectiveUserId,
+    staleTime: 60_000, // 1 min cache
+  });
+}

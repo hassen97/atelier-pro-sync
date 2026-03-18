@@ -42,6 +42,7 @@ import { useAppleDevices } from "@/hooks/useAppleDevices";
 import { useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useAllProducts } from "@/hooks/useProducts";
+import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 
 export interface SelectedPart {
   product_id: string;

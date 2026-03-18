@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Repair } from "./RepairCard";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";

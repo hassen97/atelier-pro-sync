@@ -46,7 +46,10 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
       const remaining = repair.total - repair.paid;
       let items: { name: string; qty: number; unitPrice: number; total: number }[] = [];
 
-      if (receiptMode === "detailed") {
+      // Employees see only total (simple mode) — parts/labor costs are confidential
+      const effectiveMode = isEmployee ? "simple" : receiptMode;
+
+      if (effectiveMode === "detailed") {
         items = repair.parts.map((p) => ({ name: p.name, qty: 1, unitPrice: p.cost, total: p.cost }));
         items.push({ name: "Main d'œuvre", qty: 1, unitPrice: repair.labor, total: repair.labor });
       }

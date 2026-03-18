@@ -9,6 +9,7 @@ import type { Repair } from "./RepairCard";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { generateThermalReceipt, generatePhoneLabel } from "@/lib/receiptPdf";
 import { supabase } from "@/integrations/supabase/client";
+import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 
 interface RepairReceiptDialogProps {
   repair: Repair | null;
@@ -19,6 +20,7 @@ interface RepairReceiptDialogProps {
 export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceiptDialogProps) {
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
+  const { isEmployee } = useInventoryAccess();
   const [receiptMode, setReceiptMode] = useState<string>(settings.receipt_mode || "detailed");
   const [printerWidth, setPrinterWidth] = useState<"80mm" | "58mm">("80mm");
   const [publicDomain, setPublicDomain] = useState<string>("");

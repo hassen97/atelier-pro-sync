@@ -126,11 +126,11 @@ export default function Inventory() {
   const pageStart = currentPage * PRODUCTS_PAGE_SIZE + 1;
   const pageEnd = Math.min((currentPage + 1) * PRODUCTS_PAGE_SIZE, totalCount);
 
-  // Stats are computed from total count (server) for header cards  
-  const totalStockUnits = products.reduce((sum, item) => sum + item.stock, 0);
-  const totalValue = products.reduce((sum, item) => sum + item.cost * item.stock, 0);
-  const lowStockItems = products.filter((item) => item.stock <= item.threshold).length;
-  const outOfStockItems = products.filter((item) => item.stock === 0).length;
+  // Stats from global aggregation hook (not limited to current page)
+  const totalStockUnits = inventoryStats?.totalUnits ?? 0;
+  const totalValue = inventoryStats?.totalValue ?? 0;
+  const lowStockItems = inventoryStats?.lowStock ?? 0;
+  const outOfStockItems = inventoryStats?.outOfStock ?? 0;
 
   const returnFocusToScanBar = useCallback(() => {
     setTimeout(() => scanBarRef.current?.focus(), 50);

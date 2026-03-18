@@ -86,6 +86,7 @@ export default function Inventory() {
   const updateStock = useUpdateProductStock();
   const { format } = useCurrency();
   const { isLocked, isEmployee, inventoryLocked, verifyCode, verifying, unlocked } = useInventoryAccess();
+  const { data: inventoryStats } = useInventoryStats();
 
   const scanBarRef = useRef<SmartScanBarRef>(null);
   const sheetRef = useRef<ProductSheetRef>(null);

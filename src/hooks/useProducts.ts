@@ -62,7 +62,8 @@ export function useProducts({ page = 0, search = "", categoryId }: UseProductsOp
   });
 }
 
-/** Fetch ALL products (no pagination) — used for dropdowns/comboboxes */
+/** Fetch ALL products (no pagination) — used for dropdowns/comboboxes/POS.
+ *  Fetches in batches of 1000 to bypass Supabase default row limit. */
 export function useAllProducts() {
   const effectiveUserId = useEffectiveUserId();
 
@@ -71,17 +72,29 @@ export function useAllProducts() {
     queryFn: async () => {
       if (!effectiveUserId) return [];
 
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name, sku, barcodes, sell_price, cost_price, quantity, min_quantity, category_id, category:categories(id, name)")
-        .eq("user_id", effectiveUserId)
-        .order("name");
+      const PAGE = 1000;
+      let all: any[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (error) throw error;
-      return (data ?? []) as (typeof data[0] & { barcodes: string[] })[];
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("id, name, sku, barcodes, sell_price, cost_price, quantity, min_quantity, category_id, category:categories(id, name)")
+          .eq("user_id", effectiveUserId)
+          .order("name")
+          .range(from, from + PAGE - 1);
+
+        if (error) throw error;
+        all = all.concat(data ?? []);
+        hasMore = (data?.length ?? 0) === PAGE;
+        from += PAGE;
+      }
+
+      return all as (Omit<any, 'barcodes'> & { barcodes: string[] })[];
     },
     enabled: !!effectiveUserId,
-    staleTime: 2 * 60 * 1000, // 2 min for dropdowns
+    staleTime: 2 * 60 * 1000,
   });
 }
 

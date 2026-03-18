@@ -128,6 +128,7 @@ export function RepairDialog({
   const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
   const { data: repairCategories = [] } = useCategories("repair");
   const { data: products = [] } = useAllProducts();
+  const { isEmployee } = useInventoryAccess();
 
   const categoryOptions = repairCategories.map((c) => ({ value: c.id, label: c.name }));
   

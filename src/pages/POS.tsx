@@ -20,6 +20,7 @@ import { useUpdateRepairStatus } from "@/hooks/useRepairs";
 import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { toast } from "sonner";
 
 interface CartItem {

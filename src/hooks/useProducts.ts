@@ -41,8 +41,9 @@ export function useProducts({ page = 0, search = "", categoryId }: UseProductsOp
 
       // Server-side search across name, sku, and barcodes
       if (search.trim()) {
+        const s = search.trim();
         query = query.or(
-          `name.ilike.%${search.trim()}%,sku.ilike.%${search.trim()}%`
+          `name.ilike.%${s}%,sku.ilike.%${s}%,barcodes.cs.{"${s}"}`
         );
       }
 

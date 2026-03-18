@@ -140,19 +140,21 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
           </div>
 
           {/* Options */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Mode reçu</Label>
-              <Select value={receiptMode} onValueChange={setReceiptMode}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="detailed">Détaillé (pièces)</SelectItem>
-                  <SelectItem value="simple">Simple (total)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className={cn("grid gap-2", isEmployee ? "grid-cols-1" : "grid-cols-2")}>
+            {!isEmployee && (
+              <div className="space-y-1">
+                <Label className="text-xs">Mode reçu</Label>
+                <Select value={receiptMode} onValueChange={setReceiptMode}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="detailed">Détaillé (pièces)</SelectItem>
+                    <SelectItem value="simple">Simple (total)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1">
               <Label className="text-xs">Format imprimante</Label>
               <Select value={printerWidth} onValueChange={(v) => setPrinterWidth(v as "80mm" | "58mm")}>

@@ -41,8 +41,9 @@ export function useProducts({ page = 0, search = "", categoryId }: UseProductsOp
 
       // Server-side search across name, sku, and barcodes
       if (search.trim()) {
+        const s = search.trim();
         query = query.or(
-          `name.ilike.%${search.trim()}%,sku.ilike.%${search.trim()}%`
+          `name.ilike.%${s}%,sku.ilike.%${s}%,barcodes.cs.{"${s}"}`
         );
       }
 
@@ -61,7 +62,8 @@ export function useProducts({ page = 0, search = "", categoryId }: UseProductsOp
   });
 }
 
-/** Fetch ALL products (no pagination) — used for dropdowns/comboboxes */
+/** Fetch ALL products (no pagination) — used for dropdowns/comboboxes/POS.
+ *  Fetches in batches of 1000 to bypass Supabase default row limit. */
 export function useAllProducts() {
   const effectiveUserId = useEffectiveUserId();
 
@@ -70,17 +72,29 @@ export function useAllProducts() {
     queryFn: async () => {
       if (!effectiveUserId) return [];
 
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name, sku, barcodes, sell_price, cost_price, quantity, min_quantity, category_id, category:categories(id, name)")
-        .eq("user_id", effectiveUserId)
-        .order("name");
+      const PAGE = 1000;
+      let all: any[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (error) throw error;
-      return (data ?? []) as (typeof data[0] & { barcodes: string[] })[];
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("id, name, sku, barcodes, sell_price, cost_price, quantity, min_quantity, category_id, category:categories(id, name)")
+          .eq("user_id", effectiveUserId)
+          .order("name")
+          .range(from, from + PAGE - 1);
+
+        if (error) throw error;
+        all = all.concat(data ?? []);
+        hasMore = (data?.length ?? 0) === PAGE;
+        from += PAGE;
+      }
+
+      return all as (Omit<any, 'barcodes'> & { barcodes: string[] })[];
     },
     enabled: !!effectiveUserId,
-    staleTime: 2 * 60 * 1000, // 2 min for dropdowns
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -310,5 +324,48 @@ export function useLowStockProducts() {
       );
     },
     enabled: !!effectiveUserId,
+  });
+}
+
+/** Lightweight global stats across ALL products — not limited by pagination. */
+export function useInventoryStats() {
+  const effectiveUserId = useEffectiveUserId();
+
+  return useQuery({
+    queryKey: ["inventory-stats", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId) return { totalUnits: 0, totalValue: 0, lowStock: 0, outOfStock: 0 };
+
+      const PAGE = 1000;
+      let all: { quantity: number; min_quantity: number; cost_price: number }[] = [];
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("quantity, min_quantity, cost_price")
+          .eq("user_id", effectiveUserId)
+          .range(from, from + PAGE - 1);
+
+        if (error) throw error;
+        all = all.concat(data ?? []);
+        hasMore = (data?.length ?? 0) === PAGE;
+        from += PAGE;
+      }
+
+      let totalUnits = 0, totalValue = 0, lowStock = 0, outOfStock = 0;
+      for (const p of all) {
+        const qty = p.quantity ?? 0;
+        totalUnits += qty;
+        totalValue += (p.cost_price ?? 0) * qty;
+        if (qty === 0) outOfStock++;
+        else if (qty <= (p.min_quantity ?? 5)) lowStock++;
+      }
+
+      return { totalUnits, totalValue, lowStock, outOfStock };
+    },
+    enabled: !!effectiveUserId,
+    staleTime: 60_000, // 1 min cache
   });
 }

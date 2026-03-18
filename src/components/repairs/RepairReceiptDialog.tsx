@@ -4,11 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Repair } from "./RepairCard";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { generateThermalReceipt, generatePhoneLabel } from "@/lib/receiptPdf";
 import { supabase } from "@/integrations/supabase/client";
+import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 
 interface RepairReceiptDialogProps {
   repair: Repair | null;
@@ -19,6 +21,7 @@ interface RepairReceiptDialogProps {
 export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceiptDialogProps) {
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
+  const { isEmployee } = useInventoryAccess();
   const [receiptMode, setReceiptMode] = useState<string>(settings.receipt_mode || "detailed");
   const [printerWidth, setPrinterWidth] = useState<"80mm" | "58mm">("80mm");
   const [publicDomain, setPublicDomain] = useState<string>("");
@@ -44,7 +47,10 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
       const remaining = repair.total - repair.paid;
       let items: { name: string; qty: number; unitPrice: number; total: number }[] = [];
 
-      if (receiptMode === "detailed") {
+      // Employees see only total (simple mode) — parts/labor costs are confidential
+      const effectiveMode = isEmployee ? "simple" : receiptMode;
+
+      if (effectiveMode === "detailed") {
         items = repair.parts.map((p) => ({ name: p.name, qty: 1, unitPrice: p.cost, total: p.cost }));
         items.push({ name: "Main d'œuvre", qty: 1, unitPrice: repair.labor, total: repair.labor });
       }
@@ -135,19 +141,21 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
           </div>
 
           {/* Options */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Mode reçu</Label>
-              <Select value={receiptMode} onValueChange={setReceiptMode}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="detailed">Détaillé (pièces)</SelectItem>
-                  <SelectItem value="simple">Simple (total)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className={cn("grid gap-2", isEmployee ? "grid-cols-1" : "grid-cols-2")}>
+            {!isEmployee && (
+              <div className="space-y-1">
+                <Label className="text-xs">Mode reçu</Label>
+                <Select value={receiptMode} onValueChange={setReceiptMode}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="detailed">Détaillé (pièces)</SelectItem>
+                    <SelectItem value="simple">Simple (total)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1">
               <Label className="text-xs">Format imprimante</Label>
               <Select value={printerWidth} onValueChange={(v) => setPrinterWidth(v as "80mm" | "58mm")}>

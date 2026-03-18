@@ -42,6 +42,7 @@ import { useAppleDevices } from "@/hooks/useAppleDevices";
 import { useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useAllProducts } from "@/hooks/useProducts";
+import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 
 export interface SelectedPart {
   product_id: string;
@@ -127,6 +128,7 @@ export function RepairDialog({
   const { data: appleDevices = [], isLoading: isLoadingApple } = useAppleDevices();
   const { data: repairCategories = [] } = useCategories("repair");
   const { data: products = [] } = useAllProducts();
+  const { isEmployee } = useInventoryAccess();
 
   const categoryOptions = repairCategories.map((c) => ({ value: c.id, label: c.name }));
   
@@ -587,7 +589,8 @@ export function RepairDialog({
               )}
             />
 
-            {/* Replacement Parts from Inventory (optional) */}
+            {/* Replacement Parts from Inventory — hidden for employees */}
+            {!isEmployee && (
             <div className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Package className="h-4 w-4" />
@@ -644,8 +647,11 @@ export function RepairDialog({
                 </div>
               )}
             </div>
+            )}
 
-            {/* Costs */}
+            {/* Costs — hidden for employees (confidential) */}
+            {!isEmployee && (
+            <>
             <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -715,6 +721,8 @@ export function RepairDialog({
                 {format(totalCost)}
               </span>
             </div>
+            </>
+            )}
 
             {/* Notes */}
             <FormField

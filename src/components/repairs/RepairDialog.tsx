@@ -589,7 +589,8 @@ export function RepairDialog({
               )}
             />
 
-            {/* Replacement Parts from Inventory (optional) */}
+            {/* Replacement Parts from Inventory — hidden for employees */}
+            {!isEmployee && (
             <div className="space-y-2">
               <FormLabel className="flex items-center gap-2">
                 <Package className="h-4 w-4" />
@@ -646,8 +647,11 @@ export function RepairDialog({
                 </div>
               )}
             </div>
+            )}
 
-            {/* Costs */}
+            {/* Costs — hidden for employees (confidential) */}
+            {!isEmployee && (
+            <>
             <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -717,6 +721,8 @@ export function RepairDialog({
                 {format(totalCost)}
               </span>
             </div>
+            </>
+            )}
 
             {/* Notes */}
             <FormField

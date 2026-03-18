@@ -58,6 +58,7 @@ export default function POS() {
   const updateRepairStatus = useUpdateRepairStatus();
   const { data: customers = [] } = useAllCustomers();
   const { settings } = useShopSettingsContext();
+  const { isEmployee } = useInventoryAccess();
   const { format } = useCurrency();
 
   // Completed repairs only

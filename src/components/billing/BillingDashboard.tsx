@@ -123,6 +123,30 @@ export function BillingDashboard() {
             ))}
           </div>
         )}
+
+        {/* Usage Limits */}
+        {usageBars.length > 0 && (
+          <div className="relative mt-4 pt-4 border-t border-border/30 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground">Utilisation</p>
+            {usageBars.map(({ label, current, max, icon: Icon }) => {
+              const pct = Math.min(100, Math.round((current / max) * 100));
+              const isNear = pct >= 80;
+              return (
+                <div key={label} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Icon className="h-3 w-3" /> {label}
+                    </span>
+                    <span className={isNear ? "text-warning font-medium" : "text-muted-foreground"}>
+                      {current}/{max}
+                    </span>
+                  </div>
+                  <Progress value={pct} className={`h-1.5 ${isNear ? "[&>div]:bg-warning" : ""}`} />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </motion.div>
 
       {/* Pricing Grid */}

@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { parsePlanFeatures } from "@/hooks/usePlanPermissions";
+
+export interface PlanFeatureRaw {
+  display?: string[];
+  modules?: Record<string, boolean>;
+  limits?: Record<string, number>;
+}
 
 export interface SubscriptionPlan {
   id: string;
@@ -9,10 +16,18 @@ export interface SubscriptionPlan {
   currency: string;
   period: string;
   description: string | null;
-  features: string[];
+  features: string[] | PlanFeatureRaw;
   highlight: boolean;
   sort_order: number;
   is_active: boolean;
+}
+
+/** Parse a plan's features to a display-friendly string array */
+export function getPlanDisplayFeatures(plan: SubscriptionPlan): string[] {
+  const raw = plan.features;
+  if (Array.isArray(raw)) return raw;
+  const parsed = parsePlanFeatures(raw);
+  return parsed.display;
 }
 
 export function usePublicPlans() {
@@ -24,10 +39,13 @@ export function usePublicPlans() {
         .select("*")
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data as any[]).map((p: any) => ({
-        ...p,
-        features: Array.isArray(p.features) ? p.features : JSON.parse(p.features || "[]"),
-      })) as SubscriptionPlan[];
+      return (data as any[]).map((p: any) => {
+        let features = p.features;
+        if (typeof features === "string") {
+          try { features = JSON.parse(features); } catch { features = []; }
+        }
+        return { ...p, features } as SubscriptionPlan;
+      });
     },
   });
 }

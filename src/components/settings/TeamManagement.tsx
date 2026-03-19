@@ -32,6 +32,8 @@ import {
   type TeamMember,
 } from "@/hooks/useTeam";
 import { AddMemberDialog } from "./AddMemberDialog";
+import { usePlanPermissions } from "@/hooks/usePlanPermissions";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function normalizePagesArray(pages: string[]): string[] {
   const mapped = pages.map((p) => (p === "/" ? "/dashboard" : p));
@@ -161,6 +163,9 @@ function MemberCard({ member }: { member: TeamMember }) {
 
 export function TeamManagement() {
   const { data: members = [], isLoading } = useTeamMembers();
+  const { hasReachedLimit, getLimit, isLoading: planLoading } = usePlanPermissions();
+  const atLimit = hasReachedLimit("max_employees", members.length);
+  const maxEmp = getLimit("max_employees");
 
   return (
     <Card>
@@ -175,7 +180,7 @@ export function TeamManagement() {
               Invitez vos employés et gérez leurs accès
             </CardDescription>
           </div>
-          <AddMemberDialog />
+          <AddMemberDialog disabled={atLimit} disabledReason={atLimit ? `Limite de ${maxEmp} employé${maxEmp > 1 ? "s" : ""} atteinte` : undefined} />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

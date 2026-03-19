@@ -350,7 +350,7 @@ export default function LandingPage() {
                   </div>
 
                   <ul className="flex-1 space-y-3 mb-8">
-                    {plan.features.map((feat, i) => (
+                    {(Array.isArray(plan.features) ? plan.features : ((plan.features as any)?.display ?? [])).map((feat: string, i: number) => (
                       <li key={i} className="flex items-start gap-2.5 text-sm" style={{ color: "hsl(240 5% 60%)" }}>
                         <Check className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "hsl(217 91% 60%)" }} />
                         {feat}

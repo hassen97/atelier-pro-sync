@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useSubscription, useMyOrders } from "@/hooks/useSubscription";
-import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
+import { usePublicPlans, getPlanDisplayFeatures } from "@/hooks/useSubscriptionPlans";
+import { usePlanPermissions } from "@/hooks/usePlanPermissions";
+import { useTeamMembers } from "@/hooks/useTeam";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   CreditCard, Zap, Star, Check, ArrowRight, Calendar, Clock,
-  CheckCircle, XCircle, AlertCircle, Loader2, ExternalLink,
+  CheckCircle, XCircle, AlertCircle, Loader2, ExternalLink, Users, Package, Wrench,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -27,6 +30,8 @@ export function BillingDashboard() {
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: orders, isLoading: ordersLoading } = useMyOrders();
   const { data: plans, isLoading: plansLoading } = usePublicPlans();
+  const { features, getLimit } = usePlanPermissions();
+  const { data: members = [] } = useTeamMembers();
   const navigate = useNavigate();
 
   const currentPlan = subscription?.plan;
@@ -36,6 +41,14 @@ export function BillingDashboard() {
 
   const paidPlans = plans?.filter((p) => p.price > 0 && p.is_active) ?? [];
   const freePlan = plans?.find((p) => p.price === 0);
+
+  const limitEmployees = getLimit("max_employees");
+  const limitProducts = getLimit("max_products");
+  const limitRepairs = getLimit("max_monthly_repairs");
+
+  const usageBars = [
+    ...(limitEmployees > 0 ? [{ label: "Employés", current: members.length, max: limitEmployees, icon: Users }] : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -101,13 +114,37 @@ export function BillingDashboard() {
         </div>
 
         {/* Features */}
-        {currentPlan?.features && currentPlan.features.length > 0 && (
+        {currentPlan && getPlanDisplayFeatures(currentPlan as any).length > 0 && (
           <div className="relative mt-4 pt-4 border-t border-border/30 flex flex-wrap gap-x-6 gap-y-1.5">
-            {currentPlan.features.map((f, i) => (
+            {getPlanDisplayFeatures(currentPlan as any).map((f, i) => (
               <span key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Check className="h-3 w-3 text-primary" /> {f}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* Usage Limits */}
+        {usageBars.length > 0 && (
+          <div className="relative mt-4 pt-4 border-t border-border/30 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground">Utilisation</p>
+            {usageBars.map(({ label, current, max, icon: Icon }) => {
+              const pct = Math.min(100, Math.round((current / max) * 100));
+              const isNear = pct >= 80;
+              return (
+                <div key={label} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Icon className="h-3 w-3" /> {label}
+                    </span>
+                    <span className={isNear ? "text-warning font-medium" : "text-muted-foreground"}>
+                      {current}/{max}
+                    </span>
+                  </div>
+                  <Progress value={pct} className={`h-1.5 ${isNear ? "[&>div]:bg-warning" : ""}`} />
+                </div>
+              );
+            })}
           </div>
         )}
       </motion.div>
@@ -154,7 +191,7 @@ export function BillingDashboard() {
                     )}
                   </div>
                   <ul className="space-y-1 mb-4">
-                    {plan.features.slice(0, 4).map((f, i) => (
+                    {getPlanDisplayFeatures(plan).slice(0, 4).map((f, i) => (
                       <li key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Check className="h-3 w-3 text-primary shrink-0" /> {f}
                       </li>

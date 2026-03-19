@@ -24,6 +24,7 @@ import { InventoryUnlockDialog } from "@/components/inventory/InventoryUnlockDia
 import { ExcelImportDialog } from "@/components/inventory/ExcelImportDialog";
 import { ActivityLogTab } from "@/components/inventory/ActivityLogTab";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
+import { PremiumFeature } from "@/components/billing/PremiumFeature";
 import { Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
 
@@ -221,15 +222,17 @@ export default function Inventory() {
           </Badge>
         )}
         <Button variant="outline"><Download className="h-4 w-4 mr-2" />Exporter</Button>
-        <Button
-          variant="outline"
-          onClick={() => setImportOpen(true)}
-          disabled={isLocked}
-          className="gap-2 border-success/30 text-success hover:bg-success/10"
-        >
-          <FileSpreadsheet className="h-4 w-4" />
-          Import Excel
-        </Button>
+        <PremiumFeature featureKey="inventory_export" featureName="Export Inventaire" mode="locked">
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            disabled={isLocked}
+            className="gap-2 border-success/30 text-success hover:bg-success/10"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Import Excel
+          </Button>
+        </PremiumFeature>
         <Button
           variant="outline"
           onClick={() => setMatrixOpen(true)}

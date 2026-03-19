@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
+import { usePublicPlans, getPlanDisplayFeatures } from "@/hooks/useSubscriptionPlans";
 import { Zap, Star, Check, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -80,7 +80,7 @@ export function UpgradeModal({ open, onOpenChange, featureName }: UpgradeModalPr
                     {plan.period && <span className="text-muted-foreground text-xs ml-1">{plan.period}</span>}
                   </div>
                   <ul className="space-y-1.5 mb-5">
-                    {plan.features.slice(0, 5).map((f, i) => (
+                    {getPlanDisplayFeatures(plan).slice(0, 5).map((f, i) => (
                       <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Check className="h-3 w-3 text-primary shrink-0" />
                         {f}

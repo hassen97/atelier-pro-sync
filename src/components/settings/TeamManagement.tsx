@@ -180,7 +180,7 @@ export function TeamManagement() {
               Invitez vos employés et gérez leurs accès
             </CardDescription>
           </div>
-          <AddMemberDialog />
+          <AddMemberDialog disabled={atLimit} disabledReason={atLimit ? `Limite de ${maxEmp} employé${maxEmp > 1 ? "s" : ""} atteinte` : undefined} />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

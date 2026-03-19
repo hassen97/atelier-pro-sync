@@ -35,7 +35,7 @@ function formatHandle(username: string | null | undefined) {
   return username ? `@${username}` : "Username indisponible";
 }
 
-export function AddMemberDialog() {
+export function AddMemberDialog({ disabled, disabledReason }: { disabled?: boolean; disabledReason?: string }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"search" | "create">("create");
 

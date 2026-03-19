@@ -220,9 +220,14 @@ export function AddMemberDialog({ disabled, disabledReason }: { disabled?: boole
       }}
     >
       <DialogTrigger asChild>
-        <Button className="bg-gradient-primary hover:opacity-90">
+        <Button
+          className="bg-gradient-primary hover:opacity-90"
+          disabled={disabled}
+          title={disabledReason}
+        >
           <UserPlus className="h-4 w-4 mr-2" />
           Ajouter un employé
+          {disabled && <span className="ml-1 text-xs opacity-70">({disabledReason})</span>}
         </Button>
       </DialogTrigger>
 

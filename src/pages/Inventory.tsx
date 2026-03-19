@@ -24,6 +24,7 @@ import { InventoryUnlockDialog } from "@/components/inventory/InventoryUnlockDia
 import { ExcelImportDialog } from "@/components/inventory/ExcelImportDialog";
 import { ActivityLogTab } from "@/components/inventory/ActivityLogTab";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
+import { PremiumFeature } from "@/components/billing/PremiumFeature";
 import { Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
 

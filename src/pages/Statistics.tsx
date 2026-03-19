@@ -116,10 +116,12 @@ Généré le ${new Date().toLocaleString("fr-TN")}
             <SelectItem value="year">Cette année</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" onClick={handleExportPDF}>
-          <Download className="h-4 w-4 mr-2" />
-          Exporter PDF
-        </Button>
+        <PremiumFeature featureKey="advanced_analytics" featureName="Statistiques Avancées" mode="locked">
+          <Button variant="outline" onClick={handleExportPDF}>
+            <Download className="h-4 w-4 mr-2" />
+            Exporter PDF
+          </Button>
+        </PremiumFeature>
       </PageHeader>
 
       {/* Sales Chart */}

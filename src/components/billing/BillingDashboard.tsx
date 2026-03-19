@@ -104,9 +104,9 @@ export function BillingDashboard() {
         </div>
 
         {/* Features */}
-        {currentPlan?.features && currentPlan.features.length > 0 && (
+        {currentPlan && getPlanDisplayFeatures(currentPlan as any).length > 0 && (
           <div className="relative mt-4 pt-4 border-t border-border/30 flex flex-wrap gap-x-6 gap-y-1.5">
-            {currentPlan.features.map((f, i) => (
+            {getPlanDisplayFeatures(currentPlan as any).map((f, i) => (
               <span key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Check className="h-3 w-3 text-primary" /> {f}
               </span>

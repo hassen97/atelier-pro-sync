@@ -157,7 +157,7 @@ export function BillingDashboard() {
                     )}
                   </div>
                   <ul className="space-y-1 mb-4">
-                    {plan.features.slice(0, 4).map((f, i) => (
+                    {getPlanDisplayFeatures(plan).slice(0, 4).map((f, i) => (
                       <li key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Check className="h-3 w-3 text-primary shrink-0" /> {f}
                       </li>

@@ -121,7 +121,7 @@ export default function Checkout() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {plan.features.slice(0, 4).map((f, i) => (
+            {(Array.isArray(plan.features) ? plan.features : ((plan.features as any)?.display ?? [])).slice(0, 4).map((f: string, i: number) => (
               <Badge key={i} variant="secondary" className="text-xs" style={{ background: "hsla(217, 91%, 60%, 0.1)", color: "hsl(217 91% 70%)", border: "none" }}>
                 <Check className="h-3 w-3 mr-1" /> {f}
               </Badge>

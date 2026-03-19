@@ -163,6 +163,9 @@ function MemberCard({ member }: { member: TeamMember }) {
 
 export function TeamManagement() {
   const { data: members = [], isLoading } = useTeamMembers();
+  const { hasReachedLimit, getLimit, isLoading: planLoading } = usePlanPermissions();
+  const atLimit = hasReachedLimit("max_employees", members.length);
+  const maxEmp = getLimit("max_employees");
 
   return (
     <Card>

@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useSubscription, useMyOrders } from "@/hooks/useSubscription";
-import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
+import { usePublicPlans, getPlanDisplayFeatures } from "@/hooks/useSubscriptionPlans";
+import { usePlanPermissions } from "@/hooks/usePlanPermissions";
+import { useTeamMembers } from "@/hooks/useTeam";
+import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

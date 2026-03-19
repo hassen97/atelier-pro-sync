@@ -4,17 +4,17 @@ import { useSubscription, useMyOrders } from "@/hooks/useSubscription";
 import { usePublicPlans, getPlanDisplayFeatures } from "@/hooks/useSubscriptionPlans";
 import { usePlanPermissions } from "@/hooks/usePlanPermissions";
 import { useTeamMembers } from "@/hooks/useTeam";
-import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   CreditCard, Zap, Star, Check, ArrowRight, Calendar, Clock,
-  CheckCircle, XCircle, AlertCircle, Loader2, ExternalLink,
+  CheckCircle, XCircle, AlertCircle, Loader2, ExternalLink, Users, Package, Wrench,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";

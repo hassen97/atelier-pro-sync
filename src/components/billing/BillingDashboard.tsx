@@ -30,6 +30,8 @@ export function BillingDashboard() {
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: orders, isLoading: ordersLoading } = useMyOrders();
   const { data: plans, isLoading: plansLoading } = usePublicPlans();
+  const { features, getLimit } = usePlanPermissions();
+  const { data: members = [] } = useTeamMembers();
   const navigate = useNavigate();
 
   const currentPlan = subscription?.plan;
@@ -39,6 +41,14 @@ export function BillingDashboard() {
 
   const paidPlans = plans?.filter((p) => p.price > 0 && p.is_active) ?? [];
   const freePlan = plans?.find((p) => p.price === 0);
+
+  const limitEmployees = getLimit("max_employees");
+  const limitProducts = getLimit("max_products");
+  const limitRepairs = getLimit("max_monthly_repairs");
+
+  const usageBars = [
+    ...(limitEmployees > 0 ? [{ label: "Employés", current: members.length, max: limitEmployees, icon: Users }] : []),
+  ];
 
   return (
     <div className="space-y-6">

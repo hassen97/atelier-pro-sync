@@ -34,6 +34,7 @@ import {
 import { useStatistics } from "@/hooks/useStatistics";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { toast } from "sonner";
+import { PremiumFeature } from "@/components/billing/PremiumFeature";
 
 export default function Statistics() {
   const [period, setPeriod] = useState("month");

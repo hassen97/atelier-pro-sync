@@ -32,6 +32,8 @@ import {
   type TeamMember,
 } from "@/hooks/useTeam";
 import { AddMemberDialog } from "./AddMemberDialog";
+import { usePlanPermissions } from "@/hooks/usePlanPermissions";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function normalizePagesArray(pages: string[]): string[] {
   const mapped = pages.map((p) => (p === "/" ? "/dashboard" : p));

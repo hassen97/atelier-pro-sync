@@ -32,8 +32,7 @@ export default function CustomerDebts() {
   const [paymentAmount, setPaymentAmount] = useState("");
 
   const { data: customers = [] } = useAllCustomers();
-  const { data: repairsResult = {data:[], count:0} } = useRepairs();
-  const repairs = repairsResult.data;
+  const { data: repairs = [] } = useAllUnpaidRepairs();
   const { data: sales = [] } = useSales();
   const updateCustomer = useUpdateCustomer();
   const updateRepair = useUpdateRepair();

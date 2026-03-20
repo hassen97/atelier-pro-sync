@@ -33,10 +33,11 @@ export default function Customers() {
   const deleteCustomer = useDeleteCustomer();
   const { format } = useCurrency();
 
+  // For stat cards: use all customers (lightweight, cached) for accurate totals
+  const { data: allCustomers = [] } = useAllCustomers();
   const filteredCustomers = customers.filter((customer) => customer.name.toLowerCase().includes(searchQuery.toLowerCase()) || (customer.phone?.includes(searchQuery) ?? false));
-  const totalCustomers = customers.length;
-  const totalDebts = customers.reduce((sum, c) => sum + Math.abs(Math.min(0, Number(c.balance) || 0)), 0);
-  const customersWithDebts = customers.filter((c) => Number(c.balance) < 0).length;
+  const totalDebts = allCustomers.reduce((sum, c) => sum + Math.max(0, Number(c.balance) || 0), 0);
+  const customersWithDebts = allCustomers.filter((c) => Number(c.balance) > 0).length;
 
   const getInitials = (name: string) => name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   const handleCreate = () => { setEditingCustomer(null); setDialogOpen(true); };

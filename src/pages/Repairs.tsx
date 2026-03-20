@@ -544,7 +544,6 @@ export default function Repairs() {
       <StatusAssignDialog
         open={assignDialogOpen}
         onOpenChange={setAssignDialogOpen}
-        repair={assignRepair}
         onConfirm={handleAssignConfirm}
         isLoading={updateRepair.isPending}
       />

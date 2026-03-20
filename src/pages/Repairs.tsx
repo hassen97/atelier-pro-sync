@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, Plus, Filter } from "lucide-react";
+import { Search, Plus, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +20,9 @@ import {
   useUpdateRepair,
   useUpdateRepairStatus,
   useDeleteRepair,
+  REPAIRS_PAGE_SIZE,
 } from "@/hooks/useRepairs";
-import { useCustomers, useAllCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
+import { useAllCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,6 +85,7 @@ function transformRepair(dbRepair: RepairWithCustomer) {
 }
 
 export default function Repairs() {
+  const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -103,8 +105,11 @@ export default function Repairs() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const queryClient = useQueryClient();
-  const { data: repairsResult = {data:[], count:0}, isLoading } = useRepairs();
+  const { data: repairsResult = { data: [], count: 0 }, isLoading } = useRepairs(page);
   const rawRepairs = repairsResult.data;
+  const totalCount = repairsResult.count;
+  const totalPages = Math.ceil(totalCount / REPAIRS_PAGE_SIZE);
+
   const { data: customers = [] } = useAllCustomers();
   const createRepair = useCreateRepair();
   const updateRepair = useUpdateRepair();
@@ -342,7 +347,6 @@ export default function Repairs() {
 
     // Insert repair_parts and deduct stock
     if (selectedParts.length > 0) {
-      // Insert parts into repair_parts table
       const partsToInsert = selectedParts.map((p) => ({
         repair_id: repairId,
         product_id: p.product_id,
@@ -379,7 +383,6 @@ export default function Repairs() {
           }
         }
       }
-      // Invalidate products to refresh stock counts
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["low-stock-alerts"] });
     }
@@ -408,7 +411,11 @@ export default function Repairs() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Gestion des Réparations"
-        description="Suivi et gestion des fiches de réparation"
+        description={
+          totalCount > 0
+            ? `Affichage de ${(page * REPAIRS_PAGE_SIZE) + 1}–${Math.min((page + 1) * REPAIRS_PAGE_SIZE, totalCount)} sur ${totalCount} réparation${totalCount > 1 ? "s" : ""} (incluant les dettes)`
+            : "Suivi et gestion des fiches de réparation"
+        }
       >
         <Button
           className="bg-gradient-primary hover:opacity-90"
@@ -472,6 +479,35 @@ export default function Repairs() {
                 : "Aucune réparation trouvée"}
             </div>
           )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+              <span className="text-sm text-muted-foreground">
+                Page {page + 1} / {totalPages} — {totalCount} réparation{totalCount > 1 ? "s" : ""} au total
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -508,6 +544,7 @@ export default function Repairs() {
       <StatusAssignDialog
         open={assignDialogOpen}
         onOpenChange={setAssignDialogOpen}
+        repair={assignRepair}
         onConfirm={handleAssignConfirm}
         isLoading={updateRepair.isPending}
       />

@@ -22,12 +22,23 @@ export function ActivityLogTab() {
   const [actionFilter, setActionFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(0);
 
-  const { data: activities = [], isLoading } = useActivityLog({
+  const { data: result = { data: [], count: 0 }, isLoading } = useActivityLog({
     action: actionFilter,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+    page,
   });
+
+  const activities = result.data;
+  const totalCount = result.count;
+  const totalPages = Math.ceil(totalCount / ACTIVITY_LOG_PAGE_SIZE);
+
+  const handleFilterChange = (setter: (v: string) => void) => (val: string) => {
+    setter(val);
+    setPage(0);
+  };
 
   const renderDetails = (action: string, details: Record<string, any> | null) => {
     if (!details) return null;
@@ -56,7 +67,7 @@ export function ActivityLogTab() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={actionFilter} onValueChange={setActionFilter}>
+          <Select value={actionFilter} onValueChange={handleFilterChange(setActionFilter)}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Type d'action" />
             </SelectTrigger>
@@ -71,9 +82,14 @@ export function ActivityLogTab() {
           </Select>
         </div>
         <div className="flex gap-2">
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-40" />
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40" />
+          <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(0); }} className="w-40" />
+          <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(0); }} className="w-40" />
         </div>
+        {totalCount > 0 && (
+          <span className="text-sm text-muted-foreground self-center">
+            {totalCount} entrée{totalCount > 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
       {activities.length === 0 ? (
@@ -110,6 +126,22 @@ export function ActivityLogTab() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-sm text-muted-foreground">
+            Page {page + 1} / {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -113,6 +113,23 @@ export default function Customers() {
 
       {filteredCustomers.length === 0 && !isLoading && <div className="text-center py-12 text-muted-foreground">{customers.length === 0 ? "Aucun client enregistré. Cliquez sur 'Nouveau client' pour commencer." : "Aucun client trouvé"}</div>}
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <span className="text-sm text-muted-foreground">
+            Page {page + 1} / {totalPages} — {totalCount} client{totalCount > 1 ? "s" : ""} au total
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
+              <ChevronLeft className="h-4 w-4 mr-1" />Précédent
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>
+              Suivant<ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <CustomerDialog open={dialogOpen} onOpenChange={setDialogOpen} customer={editingCustomer} onSubmit={handleSubmit} isLoading={createCustomer.isPending || updateCustomer.isPending} />
       <CustomerDossierDialog customer={dossierCustomer} open={!!dossierCustomer} onOpenChange={(open) => !open && setDossierCustomer(null)} />
     </div>

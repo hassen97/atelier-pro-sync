@@ -43,10 +43,11 @@ export function useActivityLog(filters?: { action?: string; dateFrom?: string; d
         query = query.lte("created_at", filters.dateTo + "T23:59:59");
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) throw error;
-      return (data || []) as unknown as ActivityLogEntry[];
+      return { data: (data || []) as unknown as ActivityLogEntry[], count: count ?? 0 };
     },
     enabled: !!user,
+    placeholderData: (prev) => prev,
   });
 }

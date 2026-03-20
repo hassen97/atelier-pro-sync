@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Package, ShoppingCart, Pencil, Trash2, BarChart3, Filter } from "lucide-react";
+import { Package, ShoppingCart, Pencil, Trash2, BarChart3, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useActivityLog } from "@/hooks/useActivityLog";
+import { useActivityLog, ACTIVITY_LOG_PAGE_SIZE } from "@/hooks/useActivityLog";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 

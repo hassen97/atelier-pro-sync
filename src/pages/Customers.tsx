@@ -67,7 +67,7 @@ export default function Customers() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Total clients" value={totalCustomers} icon={User} variant="default" />
+        <StatCard title="Total clients" value={totalCount} icon={User} variant="default" />
         <StatCard title="Clients avec crédit" value={customersWithDebts} icon={CreditCard} variant="warning" />
         <StatCard title="Total créances" value={format(totalDebts)} icon={CreditCard} variant="destructive" />
       </div>

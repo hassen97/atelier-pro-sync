@@ -14,19 +14,24 @@ export interface ActivityLogEntry {
   actor_name?: string;
 }
 
-export function useActivityLog(filters?: { action?: string; dateFrom?: string; dateTo?: string }) {
+export const ACTIVITY_LOG_PAGE_SIZE = 100;
+
+export function useActivityLog(filters?: { action?: string; dateFrom?: string; dateTo?: string; page?: number }) {
   const { user } = useAuth();
+  const page = filters?.page ?? 0;
+  const from = page * ACTIVITY_LOG_PAGE_SIZE;
+  const to = from + ACTIVITY_LOG_PAGE_SIZE - 1;
 
   return useQuery({
     queryKey: ["activity-log", user?.id, filters],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) return { data: [] as ActivityLogEntry[], count: 0 };
 
       let query = supabase
         .from("activity_log" as any)
-        .select("*")
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
-        .limit(200);
+        .range(from, to);
 
       if (filters?.action && filters.action !== "all") {
         query = query.eq("action", filters.action);

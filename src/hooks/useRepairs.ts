@@ -11,7 +11,7 @@ export type RepairUpdate = TablesUpdate<"repairs">;
 
 export type RepairStatus = "pending" | "in_progress" | "completed" | "delivered";
 
-const REPAIRS_PAGE_SIZE = 50;
+export const REPAIRS_PAGE_SIZE = 100;
 
 /** Paginated repairs — fetches one page at a time from the server. */
 export function useRepairs(page = 0) {

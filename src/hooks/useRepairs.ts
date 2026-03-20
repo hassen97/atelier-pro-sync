@@ -49,6 +49,52 @@ export function useRepairs(page = 0) {
   });
 }
 
+/**
+ * Fetches ALL unpaid repairs across the entire dataset for accurate debt aggregation.
+ * Uses a lightweight select (only financial fields) to stay fast even with thousands of rows.
+ */
+export function useAllUnpaidRepairs() {
+  const effectiveUserId = useEffectiveUserId();
+
+  return useQuery({
+    queryKey: ["repairs-unpaid-all", effectiveUserId],
+    queryFn: async () => {
+      if (!effectiveUserId) return [];
+
+      // Batch-fetch all unpaid repairs (amount_paid < total_cost) using Supabase filter
+      // We fetch in batches of 1000 to respect the API limit
+      const PAGE = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("repairs")
+          .select(
+            `id, status, customer_id, total_cost, amount_paid, created_at,
+             device_model, tracking_token,
+             customer:customers(id, name, phone)`
+          )
+          .eq("user_id", effectiveUserId)
+          .gt("total_cost", 0) // only repairs with a cost
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) { hasMore = false; break; }
+        allData = allData.concat(data);
+        if (data.length < PAGE) { hasMore = false; } else { from += PAGE; }
+      }
+
+      // Filter client-side to get only those with remaining balance
+      return allData.filter((r) => Number(r.total_cost) - Number(r.amount_paid) > 0.001);
+    },
+    enabled: !!effectiveUserId,
+    staleTime: 60 * 1000, // 1 min cache for debt page
+  });
+}
+
 export function useRepair(id: string | undefined) {
   const { user } = useAuth();
 

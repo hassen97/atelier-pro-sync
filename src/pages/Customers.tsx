@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, Phone, Mail, User, CreditCard, MoreHorizontal, Eye } from "lucide-react";
+import { Search, Plus, Phone, Mail, User, CreditCard, MoreHorizontal, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,18 +11,23 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, type Customer } from "@/hooks/useCustomers";
+import { useCustomers, useAllCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, type Customer } from "@/hooks/useCustomers";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { CustomerDossierDialog } from "@/components/customers/CustomerDossierDialog";
 
+const CUSTOMERS_PAGE_SIZE = 50;
+
 export default function Customers() {
+  const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [dossierCustomer, setDossierCustomer] = useState<Customer | null>(null);
 
-  const { data: customersResult, isLoading } = useCustomers();
+  const { data: customersResult, isLoading } = useCustomers(page);
   const customers: Customer[] = customersResult?.data ?? [];
+  const totalCount = customersResult?.count ?? 0;
+  const totalPages = Math.ceil(totalCount / CUSTOMERS_PAGE_SIZE);
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();

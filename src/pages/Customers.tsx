@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, Phone, Mail, User, CreditCard, MoreHorizontal, Eye } from "lucide-react";
+import { Search, Plus, Phone, Mail, User, CreditCard, MoreHorizontal, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,27 +11,33 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, type Customer } from "@/hooks/useCustomers";
+import { useCustomers, useAllCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, type Customer } from "@/hooks/useCustomers";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { CustomerDossierDialog } from "@/components/customers/CustomerDossierDialog";
 
+const CUSTOMERS_PAGE_SIZE = 50;
+
 export default function Customers() {
+  const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [dossierCustomer, setDossierCustomer] = useState<Customer | null>(null);
 
-  const { data: customersResult, isLoading } = useCustomers();
+  const { data: customersResult, isLoading } = useCustomers(page);
   const customers: Customer[] = customersResult?.data ?? [];
+  const totalCount = customersResult?.count ?? 0;
+  const totalPages = Math.ceil(totalCount / CUSTOMERS_PAGE_SIZE);
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
   const { format } = useCurrency();
 
+  // For stat cards: use all customers (lightweight, cached) for accurate totals
+  const { data: allCustomers = [] } = useAllCustomers();
   const filteredCustomers = customers.filter((customer) => customer.name.toLowerCase().includes(searchQuery.toLowerCase()) || (customer.phone?.includes(searchQuery) ?? false));
-  const totalCustomers = customers.length;
-  const totalDebts = customers.reduce((sum, c) => sum + Math.abs(Math.min(0, Number(c.balance) || 0)), 0);
-  const customersWithDebts = customers.filter((c) => Number(c.balance) < 0).length;
+  const totalDebts = allCustomers.reduce((sum, c) => sum + Math.max(0, Number(c.balance) || 0), 0);
+  const customersWithDebts = allCustomers.filter((c) => Number(c.balance) > 0).length;
 
   const getInitials = (name: string) => name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   const handleCreate = () => { setEditingCustomer(null); setDialogOpen(true); };
@@ -61,7 +67,7 @@ export default function Customers() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Total clients" value={totalCustomers} icon={User} variant="default" />
+        <StatCard title="Total clients" value={totalCount} icon={User} variant="default" />
         <StatCard title="Clients avec crédit" value={customersWithDebts} icon={CreditCard} variant="warning" />
         <StatCard title="Total créances" value={format(totalDebts)} icon={CreditCard} variant="destructive" />
       </div>
@@ -107,6 +113,23 @@ export default function Customers() {
       </div>
 
       {filteredCustomers.length === 0 && !isLoading && <div className="text-center py-12 text-muted-foreground">{customers.length === 0 ? "Aucun client enregistré. Cliquez sur 'Nouveau client' pour commencer." : "Aucun client trouvé"}</div>}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <span className="text-sm text-muted-foreground">
+            Page {page + 1} / {totalPages} — {totalCount} client{totalCount > 1 ? "s" : ""} au total
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
+              <ChevronLeft className="h-4 w-4 mr-1" />Précédent
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>
+              Suivant<ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <CustomerDialog open={dialogOpen} onOpenChange={setDialogOpen} customer={editingCustomer} onSubmit={handleSubmit} isLoading={createCustomer.isPending || updateCustomer.isPending} />
       <CustomerDossierDialog customer={dossierCustomer} open={!!dossierCustomer} onOpenChange={(open) => !open && setDossierCustomer(null)} />

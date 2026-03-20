@@ -14,19 +14,24 @@ export interface ActivityLogEntry {
   actor_name?: string;
 }
 
-export function useActivityLog(filters?: { action?: string; dateFrom?: string; dateTo?: string }) {
+export const ACTIVITY_LOG_PAGE_SIZE = 100;
+
+export function useActivityLog(filters?: { action?: string; dateFrom?: string; dateTo?: string; page?: number }) {
   const { user } = useAuth();
+  const page = filters?.page ?? 0;
+  const from = page * ACTIVITY_LOG_PAGE_SIZE;
+  const to = from + ACTIVITY_LOG_PAGE_SIZE - 1;
 
   return useQuery({
     queryKey: ["activity-log", user?.id, filters],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) return { data: [] as ActivityLogEntry[], count: 0 };
 
       let query = supabase
         .from("activity_log" as any)
-        .select("*")
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
-        .limit(200);
+        .range(from, to);
 
       if (filters?.action && filters.action !== "all") {
         query = query.eq("action", filters.action);
@@ -38,10 +43,11 @@ export function useActivityLog(filters?: { action?: string; dateFrom?: string; d
         query = query.lte("created_at", filters.dateTo + "T23:59:59");
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) throw error;
-      return (data || []) as unknown as ActivityLogEntry[];
+      return { data: (data || []) as unknown as ActivityLogEntry[], count: count ?? 0 };
     },
     enabled: !!user,
+    placeholderData: (prev) => prev,
   });
 }

@@ -1,123 +1,125 @@
 
-# Subscription Configuration System + Inventory Visibility Fix
+## Mutual Aid & Chat Hub ("Entraide + Messagerie")
 
-## Investigation: `aousjagsm` (AOUSJA GSM)
-
-Database confirms this user has **0 products** — not a visibility bug but a genuinely empty inventory. Their account exists correctly, they simply haven't imported products yet. The pagination/visibility code from the previous fix is working correctly (verified: walid78 with 2635 products, tymostore with 270).
-
----
-
-## Part A — Inventory Bug: Root Cause Clarified
-
-The existing `useProducts` hook uses `.range(from, to)` correctly, and `useInventoryStats` batch-fetches all products. No additional code fix is needed. The "aousjagsm" case is a fresh account with no data.
-
-**No file change needed for the inventory bug.**
+### What's being built
+A community feature spanning 4 new DB tables, 2 new pages (`/communaute`, `/messages`), 2 new hooks, and updates to the sidebar + notifications.
 
 ---
 
-## Part B — Subscription Configuration System
+### Database Migration (3 tables)
 
-### 1. Database Migration: Extend `subscription_plans.features` schema
-
-The current `features` column stores plain display strings: `["Réparations illimitées", ...]`. We need to evolve this JSONB to include machine-readable keys and limits alongside display labels, without breaking the existing pricing UI.
-
-New `features` structure per plan (stored in the existing `features` JSONB column):
-
-```json
-{
-  "display": ["Réparations illimitées", "Inventaire de base"],
-  "modules": {
-    "pos": true,
-    "repairs": true,
-    "inventory_export": false,
-    "advanced_analytics": false,
-    "bulk_sms": false,
-    "supplier_management": false
-  },
-  "limits": {
-    "max_employees": 1,
-    "max_products": 100,
-    "max_monthly_repairs": 50
-  }
-}
+**`community_posts`** — The social feed board:
+```sql
+id, user_id (poster's shop owner id), shop_id (shop_settings.id),
+type (enum: 'looking_for_part' | 'surplus_stock' | 'technical_advice'),
+title text, body text,
+city text (from shop_settings),
+is_reported boolean default false,
+created_at, updated_at
 ```
+RLS: Any authenticated user can SELECT. Only owner (user_id = auth.uid()) can INSERT/UPDATE/DELETE. Platform admin can see all.
 
-This is backward compatible — the pricing grid already parses `features` as an array; we update it to read `features.display` if it's an object.
+**`conversations`** — Tracks 1-on-1 threads between two shop owners:
+```sql
+id, participant_a uuid (user_id), participant_b uuid (user_id),
+post_id uuid (optional ref — which post started the convo), created_at
+```
+RLS: SELECT/INSERT only if auth.uid() = participant_a OR participant_b.
 
-**Migration**: `ALTER` nothing — only UPDATE existing rows' `features` JSONB values and update the TypeScript interfaces. No schema change needed.
+**`messages`** — Chat messages inside a conversation:
+```sql
+id, conversation_id uuid FK → conversations.id,
+sender_id uuid, body text, is_read boolean default false, created_at
+```
+RLS: SELECT/INSERT only if auth.uid() is a participant in the linked conversation (via `EXISTS` subquery on conversations table).
 
-### 2. New Files
+Enable Realtime on `messages` table.
 
-**`src/hooks/usePlanPermissions.ts`**
-- `usePlanPermissions()` hook that fetches the active subscription and extracts `modules` + `limits` from the JSONB
-- `isFeatureEnabled(key: string): boolean` — checks `plan.features.modules[key]`, defaults to `true` for free tier features
-- `hasReachedLimit(key: string, currentCount: number): boolean` — checks against `plan.features.limits[key]`
-- Returns `isLoading`, `planName`, `isPaidPlan`
-
-**`src/components/billing/PremiumFeature.tsx`**
-- Guard component: `<PremiumFeature featureKey="inventory_export" limitKey="max_employees" currentCount={teamMembers.length}>`
-- Modes: `hidden` (renders nothing), `locked` (renders children with lock overlay + click → UpgradeModal)
-- Accepts optional `children` and `fallback` prop
-
-### 3. Modify `AdminPlansView.tsx` — Plan Builder UI
-
-Replace the simple textarea `PlanForm` with a structured **3-tab editor**:
-
-- **Tab 1: Identity** — Name, price, currency, period, description, sort order, highlight toggle, active toggle (existing fields)
-- **Tab 2: Modules** — 6 toggle switches for each feature key with friendly labels:
-  - Point de Vente (POS), Gestion Réparations, Export Inventaire (CSV/Excel), Statistiques Avancées, Bulk SMS, Gestion Fournisseurs
-- **Tab 3: Limites** — 3 numeric inputs: Max Employés, Max Produits, Max Réparations/mois (0 = illimité)
-
-Saving serializes to the unified JSONB format above and updates `display` labels from the module/limit config automatically.
-
-### 4. Update `SubscriptionPlan` TypeScript interface
-
-In `src/hooks/useSubscriptionPlans.ts`: extend `SubscriptionPlan.features` type to accept `string[]` (legacy) OR the new `PlanFeatures` object. Add a `parsePlanFeatures(raw)` utility.
-
-### 5. Update `useSubscription.ts`
-
-Pass the full features JSONB through to the subscription response so `usePlanPermissions` has it available.
-
-### 6. Enforcement: 3 concrete gating examples
-
-**a. Employee Limit** — In `src/components/settings/TeamManagement.tsx`:
-- Wrap "Ajouter Employé" button with `hasReachedLimit('max_employees', teamMembers.length)` check
-- Show a disabled button with a tooltip if at limit
-
-**b. Inventory Export** — In `src/pages/Inventory.tsx`:
-- Wrap the "Export CSV" / `FileSpreadsheet` button with `<PremiumFeature featureKey="inventory_export">`
-
-**c. Advanced Analytics** — In `src/pages/Statistics.tsx`:
-- Wrap the statistics page cards with `<PremiumFeature featureKey="advanced_analytics">`
-
-### 7. Update `BillingDashboard.tsx`
-
-- Read `features.display` if the new format is detected, else fall back to the raw array
-- Show the **limits** section: "Employés: 1/5" progress bars using `useTeamMembers` count vs plan limit
-- Ensure the pricing grid reads `features.display` for feature bullets
-
-### 8. `UpgradeModal.tsx` — Contextual Nudge
-
-Already exists. Update it to:
-- Accept a `featureKey` prop so the modal headline references the specific feature: *"Débloquez l'Export Inventaire avec le plan Pro"*
-- Show a 2-column comparison of current plan vs next tier
-- CTA navigates to `/checkout?plan=<next_tier_id>`
+No subscription gate — these tables are completely open to all authenticated users.
 
 ---
 
-## Files to Modify/Create
+### New Files
 
-```text
-NEW   src/hooks/usePlanPermissions.ts
-NEW   src/components/billing/PremiumFeature.tsx
-MOD   src/hooks/useSubscriptionPlans.ts        (interface + parsePlanFeatures)
-MOD   src/hooks/useSubscription.ts             (pass full features JSONB)
-MOD   src/components/admin/AdminPlansView.tsx  (3-tab structured Plan Builder)
-MOD   src/components/billing/BillingDashboard.tsx (limits progress bars, display compat)
-MOD   src/components/billing/UpgradeModal.tsx  (contextual featureKey prop)
-MOD   src/components/settings/TeamManagement.tsx (employee limit gate)
-MOD   src/pages/Inventory.tsx                  (export lock gate)
-MOD   src/pages/Statistics.tsx                 (analytics gate)
-```
+**`src/hooks/useCommunity.ts`**
+- `useCommunityPosts(filter?)` — paginated feed (20/page), sorted by `created_at DESC`
+- `useCreatePost()` mutation
+- `useReportPost()` mutation (sets `is_reported = true`)
+- `useConversations()` — lists all convos for current user, with latest message preview + unread count
+- `useMessages(conversationId)` — fetches messages with realtime subscription on `messages` channel
+- `useSendMessage()` mutation
+- `useStartConversation(postId, recipientId)` — finds or creates a conversation, returns its id
+- `useUnreadMessageCount()` — sum of unread messages across all conversations (for the badge)
 
-No database migration required — the `features` JSONB column already accepts any structure. Existing plan rows will be updated via the new admin UI.
+**`src/pages/Communaute.tsx`**
+- Page header: "🤝 Entraide & Communauté" with "Nouvelle demande" button
+- Filter bar: 3 pill buttons (Tout / Recherche Pièce / Surplus Stock / Conseil Technique)
+- Feed: Masonry-style or stacked cards — each card shows:
+  - Post type badge (color-coded pill)
+  - Title + truncated body
+  - Shop name + City + "il y a X" relative time
+  - "Contacter la boutique" button → calls `useStartConversation` → navigates to `/messages?id=<convId>`
+  - "Signaler" button (small, subtle)
+- Empty state with CTA to create first post
+- `CreatePostDialog` — modal with type selector, title, body fields
+
+**`src/pages/Messages.tsx`**
+- Split-pane layout: left = conversation list, right = active chat
+- Conversation list: avatar (initials), shop name, last message preview, unread count badge, "il y a X" timestamp
+- Chat pane: scrollable message bubbles (own messages right/blue, theirs left/gray), input + send button at bottom
+- Realtime: new messages appear instantly via Supabase channel subscription
+- If `?id=` query param present, auto-opens that conversation
+
+---
+
+### Modified Files
+
+**`src/App.tsx`**
+- Add lazy routes: `/communaute` and `/messages` inside the protected `<MainLayout>` wrapper
+
+**`src/components/layout/AppSidebar.tsx`**
+- Add two new nav items to the `navigation` array:
+  - `{ nameKey: "nav.community", href: "/communaute", icon: Users2 }`
+  - `{ nameKey: "nav.messages", href: "/messages", icon: MessageCircle }` with unread badge overlay
+- The messages icon gets a red dot if `unreadCount > 0` (from `useUnreadMessageCount`)
+
+**`src/components/layout/MainLayout.tsx`**
+- Add a chat/messages icon button in the top header bar (next to Bell), with unread badge
+- Clicking it navigates to `/messages`
+
+**`src/contexts/I18nContext.tsx`**
+- Add translation keys: `"nav.community": "Entraide"` and `"nav.messages": "Messages"`
+
+**`src/hooks/useTeam.ts` — `ALL_PAGES`**
+- Add `/communaute` and `/messages` to `ALL_PAGES` so employees can be granted access
+
+**Ultra Admin — `src/components/admin/AdminShopsView.tsx` or a new `AdminCommunityView.tsx`**
+- A simple "Posts signalés" tab listing `community_posts` where `is_reported = true`, with a delete/dismiss action
+- Added as a new `activeView === "community"` panel in `AdminDashboard.tsx`
+- New sidebar item in Admin panel: "Communauté" under the "Engagement" group
+
+---
+
+### Technical Details
+
+**Realtime**: Subscribe to the `messages` table filtered by `conversation_id` inside `useMessages`. Use `supabase.channel('messages-<convId>').on('postgres_changes', ...)`. Mark messages as read when the chat pane is open.
+
+**Unread Count**: Query `SELECT COUNT(*) FROM messages WHERE is_read = false AND sender_id != auth.uid() AND conversation_id IN (SELECT id FROM conversations WHERE participant_a = auth.uid() OR participant_b = auth.uid())`.
+
+**City field**: Read from `shop_settings.address` (parsed) or add a `city` column read from profile metadata. Simpler: display `shop_settings.shop_name` + country as location fallback.
+
+**No subscription gate**: Community pages bypass `PremiumFeature` entirely. The routes are added unconditionally.
+
+**Post identity**: Posts join with `shop_settings` on `user_id` to show shop name and city. Uses the same `effectiveUserId` pattern so employees posting on behalf of their shop show the shop's identity.
+
+---
+
+### Implementation Order
+1. DB Migration (3 tables + RLS + realtime)
+2. `useCommunity.ts` hook
+3. `Communaute.tsx` page + `CreatePostDialog` component
+4. `Messages.tsx` page (split-pane chat)
+5. Sidebar + header updates (nav items + unread badge)
+6. i18n keys
+7. App.tsx routes
+8. Admin moderation view

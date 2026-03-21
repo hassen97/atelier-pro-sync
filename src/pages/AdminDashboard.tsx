@@ -16,6 +16,7 @@ import { AdminWaitlistView } from "@/components/admin/AdminWaitlistView";
 import { AdminSignupAttemptsView } from "@/components/admin/AdminSignupAttemptsView";
 import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
 import { AdminOrdersView } from "@/components/admin/AdminOrdersView";
+import { AdminCommunityView } from "@/components/admin/AdminCommunityView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";

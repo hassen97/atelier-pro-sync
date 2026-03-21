@@ -131,6 +131,8 @@ const translations = {
     "nav.statistics": "Statistics",
     "nav.profit": "Profit",
     "nav.warranty": "Warranty",
+    "nav.community": "Community",
+    "nav.messages": "Messages",
     "nav.settings": "Settings",
     "nav.feedback": "Report / Suggest",
 

@@ -69,6 +69,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { allowedPages } = useAllowedPages();
   const { t } = useI18n();
+  const { data: unreadCount = 0 } = useUnreadMessageCount();
 
   // Filter navigation based on allowed pages
   const filteredNavigation = allowedPages
@@ -84,6 +85,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
     const active = isActive(item.href);
     const Icon = item.icon;
     const name = t(item.nameKey as any);
+    const hasUnread = item.href === "/messages" && unreadCount > 0;
 
     const linkContent = (
       <NavLink
@@ -97,7 +99,12 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
           collapsed && !isMobile && "justify-center px-2"
         )}
       >
-        <Icon className={cn("h-5 w-5 shrink-0", active && "text-sidebar-primary-foreground")} />
+        <span className="relative shrink-0">
+          <Icon className={cn("h-5 w-5", active && "text-sidebar-primary-foreground")} />
+          {hasUnread && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-destructive" />
+          )}
+        </span>
         {(!collapsed || isMobile) && (
           <span className="truncate">{name}</span>
         )}

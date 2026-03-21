@@ -18,6 +18,8 @@ import {
   Smartphone,
   MessageSquareWarning,
   Shield,
+  Users2,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,7 @@ import {
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useAllowedPages } from "@/hooks/useTeam";
 import { useI18n } from "@/contexts/I18nContext";
+import { useUnreadMessageCount } from "@/hooks/useCommunity";
 
 const navigation = [
   { nameKey: "nav.dashboard" as const, href: "/dashboard", icon: LayoutDashboard },
@@ -45,6 +48,8 @@ const navigation = [
   { nameKey: "nav.statistics" as const, href: "/statistics", icon: BarChart3 },
   { nameKey: "nav.profit" as const, href: "/profit", icon: TrendingUp },
   { nameKey: "nav.warranty" as const, href: "/warranty", icon: Shield },
+  { nameKey: "nav.community" as const, href: "/communaute", icon: Users2 },
+  { nameKey: "nav.messages" as const, href: "/messages", icon: MessageCircle },
 ];
 
 const bottomNav = [

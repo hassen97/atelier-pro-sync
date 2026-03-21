@@ -42,6 +42,7 @@ const navSections = [
       { id: "reset_requests" as const, label: "Demandes", icon: KeyRound },
       { id: "announcements" as const, label: "Annonces", icon: Megaphone },
       { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
+      { id: "community" as const, label: "Communauté", icon: Users2 },
     ],
   },
   {

@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound,
   Settings, Users, CreditCard, Tags, ToggleRight, ClipboardList, Shield,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Users2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";

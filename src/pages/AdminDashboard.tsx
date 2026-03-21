@@ -16,11 +16,12 @@ import { AdminWaitlistView } from "@/components/admin/AdminWaitlistView";
 import { AdminSignupAttemptsView } from "@/components/admin/AdminSignupAttemptsView";
 import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
 import { AdminOrdersView } from "@/components/admin/AdminOrdersView";
+import { AdminCommunityView } from "@/components/admin/AdminCommunityView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "orders";
+type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "orders" | "community";
 
 const viewLabels: Record<AdminView, string> = {
   overview: "Dashboard",
@@ -33,6 +34,7 @@ const viewLabels: Record<AdminView, string> = {
   reset_requests: "Demandes",
   announcements: "Annonces",
   feedback: "Feedback",
+  community: "Communauté",
   signup_attempts: "Tentatives de connexion",
   settings: "Paramètres",
   feature_flags: "Feature Flags",
@@ -177,6 +179,7 @@ const AdminDashboard = () => {
                 {activeView === "waitlist" && <AdminWaitlistView />}
                 {activeView === "signup_attempts" && <AdminSignupAttemptsView />}
                 {activeView === "orders" && <AdminOrdersView />}
+                {activeView === "community" && <AdminCommunityView />}
               </motion.div>
             </AnimatePresence>
           </div>

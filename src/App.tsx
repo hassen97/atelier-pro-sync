@@ -47,6 +47,8 @@ const Warranty = lazyWithRetry(() => import("./pages/Warranty"));
 const RepairTracking = lazyWithRetry(() => import("./pages/RepairTracking"));
 const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
 const Checkout = lazyWithRetry(() => import("./pages/Checkout"));
+const Communaute = lazyWithRetry(() => import("./pages/Communaute"));
+const MessagesPage = lazyWithRetry(() => import("./pages/Messages"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -121,6 +123,8 @@ const App = () => (
                   <Route path="/profit" element={<Profit />} />
                   <Route path="/warranty" element={<Warranty />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/communaute" element={<Communaute />} />
+                  <Route path="/messages" element={<MessagesPage />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />

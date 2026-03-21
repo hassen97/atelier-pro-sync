@@ -47,6 +47,8 @@ export const ALL_PAGES = [
   { href: "/statistics", label: "Statistiques" },
   { href: "/profit", label: "Profit" },
   { href: "/settings", label: "Paramètres" },
+  { href: "/communaute", label: "Entraide" },
+  { href: "/messages", label: "Messages" },
 ] as const;
 
 // Check if current user is a super_admin (owner)

@@ -19,6 +19,8 @@ const translations = {
     "nav.warranty": "Garantie",
     "nav.settings": "Paramètres",
     "nav.feedback": "Signaler / Suggérer",
+    "nav.community": "Entraide",
+    "nav.messages": "Messages",
 
     // Common
     "common.save": "Enregistrer",

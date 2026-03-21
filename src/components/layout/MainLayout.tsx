@@ -111,6 +111,19 @@ export function MainLayout() {
               )}
             </Button>
 
+            {/* Messages button with unread badge */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/messages")}
+              className="h-9 w-9 relative"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive" />
+              )}
+            </Button>
+
             <NotificationsDropdown />
 
             <DropdownMenu>

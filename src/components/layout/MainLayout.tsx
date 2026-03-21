@@ -29,6 +29,7 @@ export function MainLayout() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { data: unreadCount = 0 } = useUnreadMessageCount();
 
   const handleSignOut = async () => {
     await signOut();

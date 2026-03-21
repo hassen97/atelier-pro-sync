@@ -184,7 +184,7 @@ export default function Messages() {
               </div>
 
               {/* Messages */}
-              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+              <ScrollArea className="flex-1 p-4">
                 {msgLoading ? (
                   <div className="space-y-3">
                     {[...Array(4)].map((_, i) => (

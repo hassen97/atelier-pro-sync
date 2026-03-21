@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { Menu, Search, User, Moon, Sun, LogOut, Settings } from "lucide-react";
+import { Menu, Search, User, Moon, Sun, LogOut, Settings, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { AppSidebar } from "./AppSidebar";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useUnreadMessageCount } from "@/hooks/useCommunity";
 
 export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

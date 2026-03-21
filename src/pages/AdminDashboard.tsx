@@ -34,6 +34,7 @@ const viewLabels: Record<AdminView, string> = {
   reset_requests: "Demandes",
   announcements: "Annonces",
   feedback: "Feedback",
+  community: "Communauté",
   signup_attempts: "Tentatives de connexion",
   settings: "Paramètres",
   feature_flags: "Feature Flags",

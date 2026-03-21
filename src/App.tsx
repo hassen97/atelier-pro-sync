@@ -123,6 +123,8 @@ const App = () => (
                   <Route path="/profit" element={<Profit />} />
                   <Route path="/warranty" element={<Warranty />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/communaute" element={<Communaute />} />
+                  <Route path="/messages" element={<MessagesPage />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />

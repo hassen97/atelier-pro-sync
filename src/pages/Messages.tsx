@@ -28,7 +28,7 @@ export default function Messages() {
   const isMobile = useIsMobile();
   const [activeConvId, setActiveConvId] = useState<string | null>(searchParams.get("id"));
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: conversations = [], isLoading: convLoading } = useConversations();
   const { data: messages = [], isLoading: msgLoading } = useMessages(activeConvId);

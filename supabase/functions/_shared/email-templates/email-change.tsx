@@ -8,7 +8,6 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Link,
   Preview,
@@ -28,29 +27,32 @@ export const EmailChangeEmail = ({
   newEmail,
   confirmationUrl,
 }: EmailChangeEmailProps) => (
-  <Html lang="fr" dir="ltr">
+  <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirmez le changement d'email — {siteName}</Preview>
+    <Preview>Confirm your email change for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={logoText}>{siteName}</Text>
-        <Hr style={divider} />
-        <Heading style={h1}>Confirmer le changement d'adresse email</Heading>
+        <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>
-          Vous avez demandé à changer votre adresse email {siteName} de{' '}
-          <Link href={`mailto:${email}`} style={link}>{email}</Link>{' '}
-          vers{' '}
-          <Link href={`mailto:${newEmail}`} style={link}>{newEmail}</Link>.
+          You requested to change your email address for {siteName} from{' '}
+          <Link href={`mailto:${email}`} style={link}>
+            {email}
+          </Link>{' '}
+          to{' '}
+          <Link href={`mailto:${newEmail}`} style={link}>
+            {newEmail}
+          </Link>
+          .
         </Text>
         <Text style={text}>
-          Cliquez sur le bouton ci-dessous pour confirmer ce changement :
+          Click the button below to confirm this change:
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Confirmer le changement
+          Confirm Email Change
         </Button>
-        <Hr style={divider} />
         <Text style={footer}>
-          Si vous n'avez pas demandé ce changement, sécurisez votre compte immédiatement.
+          If you didn't request this change, please secure your account
+          immediately.
         </Text>
       </Container>
     </Body>
@@ -59,46 +61,27 @@ export const EmailChangeEmail = ({
 
 export default EmailChangeEmail
 
-const main = {
-  backgroundColor: 'hsl(210, 20%, 98%)',
-  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
-}
-const container = {
-  maxWidth: '520px',
-  margin: '40px auto',
-  backgroundColor: 'hsl(0, 0%, 100%)',
-  borderRadius: '0.625rem',
-  padding: '36px 40px',
-  border: '1px solid hsl(214, 32%, 91%)',
-}
-const logoText = {
-  fontSize: '20px',
-  fontWeight: 'bold' as const,
-  color: 'hsl(217, 91%, 40%)',
-  margin: '0 0 4px',
-}
-const divider = { borderColor: 'hsl(214, 32%, 91%)', margin: '20px 0' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: 'hsl(215, 25%, 15%)',
+  color: '#000000',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: 'hsl(215, 16%, 47%)',
-  lineHeight: '1.6',
-  margin: '0 0 20px',
+  color: '#55575d',
+  lineHeight: '1.5',
+  margin: '0 0 25px',
 }
-const link = { color: 'hsl(217, 91%, 40%)', textDecoration: 'underline' }
+const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: 'hsl(217, 91%, 40%)',
-  color: 'hsl(0, 0%, 100%)',
+  backgroundColor: '#000000',
+  color: '#ffffff',
   fontSize: '14px',
-  fontWeight: 'bold' as const,
-  borderRadius: '0.625rem',
-  padding: '13px 24px',
+  borderRadius: '8px',
+  padding: '12px 20px',
   textDecoration: 'none',
-  display: 'inline-block',
 }
-const footer = { fontSize: '12px', color: 'hsl(215, 16%, 60%)', margin: '0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

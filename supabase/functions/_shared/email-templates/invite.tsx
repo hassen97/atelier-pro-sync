@@ -8,7 +8,6 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Link,
   Preview,
@@ -26,28 +25,26 @@ export const InviteEmail = ({
   siteUrl,
   confirmationUrl,
 }: InviteEmailProps) => (
-  <Html lang="fr" dir="ltr">
+  <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Vous avez été invité à rejoindre {siteName}</Preview>
+    <Preview>You've been invited to join {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={logoText}>{siteName}</Text>
-        <Hr style={divider} />
-        <Heading style={h1}>Vous avez été invité</Heading>
+        <Heading style={h1}>You've been invited</Heading>
         <Text style={text}>
-          Vous avez été invité à rejoindre{' '}
+          You've been invited to join{' '}
           <Link href={siteUrl} style={link}>
             <strong>{siteName}</strong>
           </Link>
-          . Cliquez sur le bouton ci-dessous pour accepter l'invitation et
-          créer votre compte.
+          . Click the button below to accept the invitation and create your
+          account.
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Accepter l'invitation
+          Accept Invitation
         </Button>
-        <Hr style={divider} />
         <Text style={footer}>
-          Si vous n'attendiez pas cette invitation, ignorez cet email.
+          If you weren't expecting this invitation, you can safely ignore this
+          email.
         </Text>
       </Container>
     </Body>
@@ -56,46 +53,27 @@ export const InviteEmail = ({
 
 export default InviteEmail
 
-const main = {
-  backgroundColor: 'hsl(210, 20%, 98%)',
-  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
-}
-const container = {
-  maxWidth: '520px',
-  margin: '40px auto',
-  backgroundColor: 'hsl(0, 0%, 100%)',
-  borderRadius: '0.625rem',
-  padding: '36px 40px',
-  border: '1px solid hsl(214, 32%, 91%)',
-}
-const logoText = {
-  fontSize: '20px',
-  fontWeight: 'bold' as const,
-  color: 'hsl(217, 91%, 40%)',
-  margin: '0 0 4px',
-}
-const divider = { borderColor: 'hsl(214, 32%, 91%)', margin: '20px 0' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: 'hsl(215, 25%, 15%)',
+  color: '#000000',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: 'hsl(215, 16%, 47%)',
-  lineHeight: '1.6',
-  margin: '0 0 20px',
+  color: '#55575d',
+  lineHeight: '1.5',
+  margin: '0 0 25px',
 }
-const link = { color: 'hsl(217, 91%, 40%)', textDecoration: 'underline' }
+const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: 'hsl(217, 91%, 40%)',
-  color: 'hsl(0, 0%, 100%)',
+  backgroundColor: '#000000',
+  color: '#ffffff',
   fontSize: '14px',
-  fontWeight: 'bold' as const,
-  borderRadius: '0.625rem',
-  padding: '13px 24px',
+  borderRadius: '8px',
+  padding: '12px 20px',
   textDecoration: 'none',
-  display: 'inline-block',
 }
-const footer = { fontSize: '12px', color: 'hsl(215, 16%, 60%)', margin: '0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

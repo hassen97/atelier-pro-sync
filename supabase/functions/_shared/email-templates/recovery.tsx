@@ -8,6 +8,7 @@ import {
   Container,
   Head,
   Heading,
+  Hr,
   Html,
   Preview,
   Text,
@@ -22,22 +23,26 @@ export const RecoveryEmail = ({
   siteName,
   confirmationUrl,
 }: RecoveryEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="fr" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
+    <Preview>Réinitialisation de votre mot de passe — {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Reset your password</Heading>
+        <Text style={logoText}>{siteName}</Text>
+        <Hr style={divider} />
+        <Heading style={h1}>Réinitialisation du mot de passe</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+          Nous avons reçu une demande de réinitialisation du mot de passe pour
+          votre compte {siteName}. Cliquez ci-dessous pour choisir un nouveau
+          mot de passe.
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Reset Password
+          Réinitialiser mon mot de passe
         </Button>
+        <Hr style={divider} />
         <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
+          Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
+          Votre mot de passe ne sera pas modifié.
         </Text>
       </Container>
     </Body>
@@ -46,26 +51,45 @@ export const RecoveryEmail = ({
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = {
+  backgroundColor: 'hsl(210, 20%, 98%)',
+  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+}
+const container = {
+  maxWidth: '520px',
+  margin: '40px auto',
+  backgroundColor: 'hsl(0, 0%, 100%)',
+  borderRadius: '0.625rem',
+  padding: '36px 40px',
+  border: '1px solid hsl(214, 32%, 91%)',
+}
+const logoText = {
+  fontSize: '20px',
+  fontWeight: 'bold' as const,
+  color: 'hsl(217, 91%, 40%)',
+  margin: '0 0 4px',
+}
+const divider = { borderColor: 'hsl(214, 32%, 91%)', margin: '20px 0' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: 'hsl(215, 25%, 15%)',
   margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+  color: 'hsl(215, 16%, 47%)',
+  lineHeight: '1.6',
+  margin: '0 0 20px',
 }
 const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
+  backgroundColor: 'hsl(217, 91%, 40%)',
+  color: 'hsl(0, 0%, 100%)',
   fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  fontWeight: 'bold' as const,
+  borderRadius: '0.625rem',
+  padding: '13px 24px',
   textDecoration: 'none',
+  display: 'inline-block',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: 'hsl(215, 16%, 60%)', margin: '0' }

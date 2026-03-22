@@ -1,125 +1,46 @@
 
-## Mutual Aid & Chat Hub ("Entraide + Messagerie")
 
-### What's being built
-A community feature spanning 4 new DB tables, 2 new pages (`/communaute`, `/messages`), 2 new hooks, and updates to the sidebar + notifications.
+# Auth Email Templates — Brand Styling + Deploy
 
----
+The scaffold created default English templates with black/white styling. This project is a French-language repair shop platform ("RepairPro Tunisie") with a Professional Blue theme (`hsl(217, 91%, 40%)`).
 
-### Database Migration (3 tables)
+## Changes Required
 
-**`community_posts`** — The social feed board:
-```sql
-id, user_id (poster's shop owner id), shop_id (shop_settings.id),
-type (enum: 'looking_for_part' | 'surplus_stock' | 'technical_advice'),
-title text, body text,
-city text (from shop_settings),
-is_reported boolean default false,
-created_at, updated_at
+### 1. Brand-style all 6 email templates
+Apply the project's existing brand identity to every template:
+- **Language**: French (matching the app's locale)
+- **Primary color** (buttons, logo text): `hsl(217, 91%, 40%)` (Professional Blue)
+- **Primary foreground** (button text): `hsl(0, 0%, 100%)` (White)
+- **Foreground** (headings): `hsl(215, 25%, 15%)`
+- **Muted foreground** (body text): `hsl(215, 16%, 47%)`
+- **Background**: `hsl(210, 20%, 98%)` for outer body, white for card container
+- **Border radius**: `0.625rem` (10px)
+- **Font stack**: `Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif`
+- **Card layout**: Centered card with subtle border (`hsl(214, 32%, 91%)`) and padding
+- **Site name**: Display "RepairPro" as branded logo text at top of each email
+- Add `Hr` dividers between sections
+
+This matches the previous custom templates the user had before the scaffold overwrote them.
+
+### 2. Update subject lines to French
 ```
-RLS: Any authenticated user can SELECT. Only owner (user_id = auth.uid()) can INSERT/UPDATE/DELETE. Platform admin can see all.
-
-**`conversations`** — Tracks 1-on-1 threads between two shop owners:
-```sql
-id, participant_a uuid (user_id), participant_b uuid (user_id),
-post_id uuid (optional ref — which post started the convo), created_at
+signup: "Bienvenue — confirmez votre compte"
+invite: "Vous êtes invité à rejoindre RepairPro"
+magiclink: "Votre lien de connexion"
+recovery: "Réinitialisez votre mot de passe"
+email_change: "Confirmez le changement d'email"
+reauthentication: "Votre code de vérification"
 ```
-RLS: SELECT/INSERT only if auth.uid() = participant_a OR participant_b.
 
-**`messages`** — Chat messages inside a conversation:
-```sql
-id, conversation_id uuid FK → conversations.id,
-sender_id uuid, body text, is_read boolean default false, created_at
-```
-RLS: SELECT/INSERT only if auth.uid() is a participant in the linked conversation (via `EXISTS` subquery on conversations table).
+### 3. Deploy the edge function
+Call `deploy_edge_functions` with `auth-email-hook` to activate the templates.
 
-Enable Realtime on `messages` table.
+### Files to modify
+- `supabase/functions/_shared/email-templates/signup.tsx`
+- `supabase/functions/_shared/email-templates/recovery.tsx`
+- `supabase/functions/_shared/email-templates/magic-link.tsx`
+- `supabase/functions/_shared/email-templates/invite.tsx`
+- `supabase/functions/_shared/email-templates/email-change.tsx`
+- `supabase/functions/_shared/email-templates/reauthentication.tsx`
+- `supabase/functions/auth-email-hook/index.ts` (update `EMAIL_SUBJECTS` to French)
 
-No subscription gate — these tables are completely open to all authenticated users.
-
----
-
-### New Files
-
-**`src/hooks/useCommunity.ts`**
-- `useCommunityPosts(filter?)` — paginated feed (20/page), sorted by `created_at DESC`
-- `useCreatePost()` mutation
-- `useReportPost()` mutation (sets `is_reported = true`)
-- `useConversations()` — lists all convos for current user, with latest message preview + unread count
-- `useMessages(conversationId)` — fetches messages with realtime subscription on `messages` channel
-- `useSendMessage()` mutation
-- `useStartConversation(postId, recipientId)` — finds or creates a conversation, returns its id
-- `useUnreadMessageCount()` — sum of unread messages across all conversations (for the badge)
-
-**`src/pages/Communaute.tsx`**
-- Page header: "🤝 Entraide & Communauté" with "Nouvelle demande" button
-- Filter bar: 3 pill buttons (Tout / Recherche Pièce / Surplus Stock / Conseil Technique)
-- Feed: Masonry-style or stacked cards — each card shows:
-  - Post type badge (color-coded pill)
-  - Title + truncated body
-  - Shop name + City + "il y a X" relative time
-  - "Contacter la boutique" button → calls `useStartConversation` → navigates to `/messages?id=<convId>`
-  - "Signaler" button (small, subtle)
-- Empty state with CTA to create first post
-- `CreatePostDialog` — modal with type selector, title, body fields
-
-**`src/pages/Messages.tsx`**
-- Split-pane layout: left = conversation list, right = active chat
-- Conversation list: avatar (initials), shop name, last message preview, unread count badge, "il y a X" timestamp
-- Chat pane: scrollable message bubbles (own messages right/blue, theirs left/gray), input + send button at bottom
-- Realtime: new messages appear instantly via Supabase channel subscription
-- If `?id=` query param present, auto-opens that conversation
-
----
-
-### Modified Files
-
-**`src/App.tsx`**
-- Add lazy routes: `/communaute` and `/messages` inside the protected `<MainLayout>` wrapper
-
-**`src/components/layout/AppSidebar.tsx`**
-- Add two new nav items to the `navigation` array:
-  - `{ nameKey: "nav.community", href: "/communaute", icon: Users2 }`
-  - `{ nameKey: "nav.messages", href: "/messages", icon: MessageCircle }` with unread badge overlay
-- The messages icon gets a red dot if `unreadCount > 0` (from `useUnreadMessageCount`)
-
-**`src/components/layout/MainLayout.tsx`**
-- Add a chat/messages icon button in the top header bar (next to Bell), with unread badge
-- Clicking it navigates to `/messages`
-
-**`src/contexts/I18nContext.tsx`**
-- Add translation keys: `"nav.community": "Entraide"` and `"nav.messages": "Messages"`
-
-**`src/hooks/useTeam.ts` — `ALL_PAGES`**
-- Add `/communaute` and `/messages` to `ALL_PAGES` so employees can be granted access
-
-**Ultra Admin — `src/components/admin/AdminShopsView.tsx` or a new `AdminCommunityView.tsx`**
-- A simple "Posts signalés" tab listing `community_posts` where `is_reported = true`, with a delete/dismiss action
-- Added as a new `activeView === "community"` panel in `AdminDashboard.tsx`
-- New sidebar item in Admin panel: "Communauté" under the "Engagement" group
-
----
-
-### Technical Details
-
-**Realtime**: Subscribe to the `messages` table filtered by `conversation_id` inside `useMessages`. Use `supabase.channel('messages-<convId>').on('postgres_changes', ...)`. Mark messages as read when the chat pane is open.
-
-**Unread Count**: Query `SELECT COUNT(*) FROM messages WHERE is_read = false AND sender_id != auth.uid() AND conversation_id IN (SELECT id FROM conversations WHERE participant_a = auth.uid() OR participant_b = auth.uid())`.
-
-**City field**: Read from `shop_settings.address` (parsed) or add a `city` column read from profile metadata. Simpler: display `shop_settings.shop_name` + country as location fallback.
-
-**No subscription gate**: Community pages bypass `PremiumFeature` entirely. The routes are added unconditionally.
-
-**Post identity**: Posts join with `shop_settings` on `user_id` to show shop name and city. Uses the same `effectiveUserId` pattern so employees posting on behalf of their shop show the shop's identity.
-
----
-
-### Implementation Order
-1. DB Migration (3 tables + RLS + realtime)
-2. `useCommunity.ts` hook
-3. `Communaute.tsx` page + `CreatePostDialog` component
-4. `Messages.tsx` page (split-pane chat)
-5. Sidebar + header updates (nav items + unread badge)
-6. i18n keys
-7. App.tsx routes
-8. Admin moderation view

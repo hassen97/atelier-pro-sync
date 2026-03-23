@@ -3,11 +3,13 @@ import { useSearchParams, Link, useNavigate, Navigate } from "react-router-dom";
 import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
 import { useEnabledGateways, useCreateOrder } from "@/hooks/useCheckout";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   ArrowLeft, Check, Upload, Loader2, Smartphone, CreditCard,
-  Landmark, Globe, Bitcoin, Image, ChevronRight
+  Landmark, Globe, Bitcoin, Image, ChevronRight, Clock, Zap
 } from "lucide-react";
 
 const gatewayIcons: Record<string, any> = {

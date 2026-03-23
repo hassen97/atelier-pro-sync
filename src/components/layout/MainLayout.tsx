@@ -8,6 +8,7 @@ import { NotificationsDropdown } from "./NotificationsDropdown";
 import { ReadOnlyBanner } from "./ReadOnlyBanner";
 import { WhatsNewModal } from "@/components/announcements/WhatsNewModal";
 import { VerificationBanner } from "@/components/verification/VerificationBanner";
+import { TrialBanner } from "@/components/dashboard/TrialBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

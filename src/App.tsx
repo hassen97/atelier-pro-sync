@@ -49,6 +49,7 @@ const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
 const Checkout = lazyWithRetry(() => import("./pages/Checkout"));
 const Communaute = lazyWithRetry(() => import("./pages/Communaute"));
 const MessagesPage = lazyWithRetry(() => import("./pages/Messages"));
+const OnboardingSetup = lazyWithRetry(() => import("./pages/OnboardingSetup"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

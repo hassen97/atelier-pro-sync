@@ -90,6 +90,13 @@ const App = () => (
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/checkout" element={<Checkout />} />
                 
+                {/* Onboarding route - standalone layout */}
+                <Route path="/onboarding/setup" element={
+                  <ProtectedRoute>
+                    <OnboardingSetup />
+                  </ProtectedRoute>
+                } />
+                
                 {/* Admin route - separate layout */}
                 <Route path="/admin" element={
                   <ProtectedRoute>

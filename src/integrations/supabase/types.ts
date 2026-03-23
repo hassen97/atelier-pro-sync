@@ -1156,6 +1156,7 @@ export type Database = {
           inventory_locked: boolean
           language: string | null
           logo_url: string | null
+          onboarding_completed: boolean
           phone: string | null
           receipt_mode: string
           receipt_terms: string | null
@@ -1182,6 +1183,7 @@ export type Database = {
           inventory_locked?: boolean
           language?: string | null
           logo_url?: string | null
+          onboarding_completed?: boolean
           phone?: string | null
           receipt_mode?: string
           receipt_terms?: string | null
@@ -1208,6 +1210,7 @@ export type Database = {
           inventory_locked?: boolean
           language?: string | null
           logo_url?: string | null
+          onboarding_completed?: boolean
           phone?: string | null
           receipt_mode?: string
           receipt_terms?: string | null

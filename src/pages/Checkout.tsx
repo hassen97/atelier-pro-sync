@@ -3,11 +3,13 @@ import { useSearchParams, Link, useNavigate, Navigate } from "react-router-dom";
 import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
 import { useEnabledGateways, useCreateOrder } from "@/hooks/useCheckout";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   ArrowLeft, Check, Upload, Loader2, Smartphone, CreditCard,
-  Landmark, Globe, Bitcoin, Image, ChevronRight
+  Landmark, Globe, Bitcoin, Image, ChevronRight, Clock, Zap
 } from "lucide-react";
 
 const gatewayIcons: Record<string, any> = {
@@ -23,11 +25,14 @@ const gatewayIcons: Record<string, any> = {
 export default function Checkout() {
   const [params] = useSearchParams();
   const planId = params.get("plan");
+  const isOnboarding = params.get("onboarding") === "true";
+  const isExpired = params.get("reason") === "expired";
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: plans } = usePublicPlans();
   const { data: gateways, isLoading: gatewaysLoading } = useEnabledGateways();
   const createOrder = useCreateOrder();
+  const [startingTrial, setStartingTrial] = useState(false);
 
   const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -37,18 +42,132 @@ export default function Checkout() {
   const plan = plans?.find(p => p.id === planId);
   const gateway = gateways?.find(g => g.gateway_key === selectedGateway);
 
+  const handleStartTrial = async () => {
+    if (!user) return;
+    setStartingTrial(true);
+    try {
+      // Find cheapest plan as the trial plan (or first active plan)
+      const trialPlan = plans?.sort((a, b) => a.price - b.price)?.[0];
+      if (!trialPlan) {
+        toast.error("Aucun plan disponible");
+        return;
+      }
+
+      const now = new Date();
+      const trialEnd = new Date(now);
+      trialEnd.setDate(trialEnd.getDate() + 3);
+
+      // Deactivate any existing subscriptions
+      await supabase
+        .from("shop_subscriptions")
+        .update({ status: "canceled" })
+        .eq("user_id", user.id);
+
+      const { error } = await supabase
+        .from("shop_subscriptions")
+        .insert({
+          user_id: user.id,
+          plan_id: trialPlan.id,
+          status: "trialing",
+          started_at: now.toISOString(),
+          expires_at: trialEnd.toISOString(),
+        });
+
+      if (error) throw error;
+      toast.success("Essai de 3 jours activé ! Bienvenue 🎉");
+      navigate("/dashboard", { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de l'activation de l'essai");
+    } finally {
+      setStartingTrial(false);
+    }
+  };
+
   if (!user) {
     return <Navigate to={`/auth?redirect=${encodeURIComponent(`/checkout?plan=${planId}`)}`} replace />;
   }
 
+  // Plan selection view (onboarding or no plan selected)
   if (!plan) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(222 47% 6%)" }}>
-        <div className="text-center">
-          <p style={{ color: "hsl(240 5% 55%)" }}>Plan introuvable</p>
-          <Link to="/" className="text-sm mt-4 inline-block" style={{ color: "hsl(217 91% 60%)" }}>
-            ← Retour
-          </Link>
+      <div className="min-h-screen" style={{ background: "hsl(222 47% 6%)" }}>
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="text-center mb-10">
+            <h1 className="text-2xl sm:text-3xl font-bold" style={{ color: "hsl(0 0% 98%)" }}>
+              {isExpired ? "Votre abonnement a expiré" : "Choisissez votre formule"}
+            </h1>
+            <p className="mt-2" style={{ color: "hsl(240 5% 55%)" }}>
+              {isExpired
+                ? "Renouvelez votre abonnement pour continuer à utiliser RepairPro"
+                : "Sélectionnez un plan ou démarrez un essai gratuit"
+              }
+            </p>
+          </div>
+
+          {/* Plans grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            {plans?.filter(p => p.is_active).sort((a, b) => a.sort_order - b.sort_order).map(p => (
+              <div
+                key={p.id}
+                className={`rounded-xl border p-6 cursor-pointer transition-all hover:scale-[1.02] ${
+                  p.highlight
+                    ? "border-blue-500/50 bg-blue-950/20"
+                    : "border-white/10 bg-white/5"
+                }`}
+                onClick={() => navigate(`/checkout?plan=${p.id}`)}
+              >
+                {p.highlight && (
+                  <Badge className="mb-3 bg-blue-500/20 text-blue-400 border-blue-500/30">
+                    Populaire
+                  </Badge>
+                )}
+                <h3 className="text-lg font-bold" style={{ color: "hsl(0 0% 98%)" }}>{p.name}</h3>
+                <div className="mt-2">
+                  <span className="text-2xl font-bold" style={{ color: "hsl(217 91% 60%)" }}>
+                    {p.price} {p.currency}
+                  </span>
+                  <span style={{ color: "hsl(240 5% 55%)" }}>{p.period}</span>
+                </div>
+                {p.description && (
+                  <p className="text-sm mt-2" style={{ color: "hsl(240 5% 55%)" }}>{p.description}</p>
+                )}
+                <Button className="w-full mt-4" size="sm">
+                  <ChevronRight className="h-4 w-4 mr-1" />
+                  Sélectionner
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Trial button */}
+          {(isOnboarding || !isExpired) && (
+            <div className="text-center border-t border-white/10 pt-8">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleStartTrial}
+                disabled={startingTrial}
+                className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              >
+                {startingTrial ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Activation...</>
+                ) : (
+                  <><Clock className="h-4 w-4 mr-2" />Démarrer l'essai de 3 jours</>
+                )}
+              </Button>
+              <p className="text-xs mt-2" style={{ color: "hsl(240 5% 55%)" }}>
+                Aucun paiement requis. Accès complet pendant 3 jours.
+              </p>
+            </div>
+          )}
+
+          {!isOnboarding && !isExpired && (
+            <div className="text-center mt-6">
+              <Link to="/dashboard" className="text-sm" style={{ color: "hsl(240 5% 55%)" }}>
+                ← Retour au tableau de bord
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     );

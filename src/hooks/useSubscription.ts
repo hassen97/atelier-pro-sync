@@ -33,10 +33,10 @@ export function useSubscription() {
           plan:subscription_plans(id, name, price, currency, period, features, highlight)
         `)
         .eq("user_id", user.id)
-        .eq("status", "active")
+        .in("status", ["active", "trialing"])
         .order("started_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       if (error && error.code !== "PGRST116") throw error;
       if (!data) return null;
       return {

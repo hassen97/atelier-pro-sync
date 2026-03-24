@@ -101,7 +101,7 @@ export function SupplierPaymentDialog({ open, onOpenChange, supplier }: Supplier
                 type="number"
                 step="0.001"
                 min="0"
-                max={currentDebt}
+                max={currentDebt > 0 ? currentDebt : undefined}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.000"

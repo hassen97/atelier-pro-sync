@@ -165,7 +165,7 @@ export default function CustomerDebts() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="payment">Montant du paiement</Label>
-                <Input id="payment" type="number" step="0.001" min="0" max={selectedDebt.totalAmount - selectedDebt.paidAmount} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0.000" />
+                <Input id="payment" type="number" step="0.001" min="0" max={(selectedDebt.totalAmount - selectedDebt.paidAmount) > 0 ? (selectedDebt.totalAmount - selectedDebt.paidAmount) : undefined} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0.000" />
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Annuler</Button>

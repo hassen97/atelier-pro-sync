@@ -1,46 +1,63 @@
 
 
-# Auth Email Templates — Brand Styling + Deploy
+# Fix Three Issues: Email Domain, Payment Validation, Trial RLS
 
-The scaffold created default English templates with black/white styling. This project is a French-language repair shop platform ("RepairPro Tunisie") with a Professional Blue theme (`hsl(217, 91%, 40%)`).
+## Issue 1: Email Domain → www.getheavencoin.com
 
-## Changes Required
+Update `supabase/functions/auth-email-hook/index.ts` to use `www.getheavencoin.com` as the site URL and display name. Change `SITE_NAME` to "RepairPro" (or keep as-is) and update `SAMPLE_PROJECT_URL` and `siteUrl` references to use `https://www.getheavencoin.com`.
 
-### 1. Brand-style all 6 email templates
-Apply the project's existing brand identity to every template:
-- **Language**: French (matching the app's locale)
-- **Primary color** (buttons, logo text): `hsl(217, 91%, 40%)` (Professional Blue)
-- **Primary foreground** (button text): `hsl(0, 0%, 100%)` (White)
-- **Foreground** (headings): `hsl(215, 25%, 15%)`
-- **Muted foreground** (body text): `hsl(215, 16%, 47%)`
-- **Background**: `hsl(210, 20%, 98%)` for outer body, white for card container
-- **Border radius**: `0.625rem` (10px)
-- **Font stack**: `Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif`
-- **Card layout**: Centered card with subtle border (`hsl(214, 32%, 91%)`) and padding
-- **Site name**: Display "RepairPro" as branded logo text at top of each email
-- Add `Hr` dividers between sections
+Also update all 6 email templates to reference `www.getheavencoin.com` where applicable (the `siteUrl` prop is passed at runtime, so templates themselves may not need changes — but the hook's `SITE_NAME`, `SAMPLE_PROJECT_URL`, and `siteUrl` in `templateProps` need updating).
 
-This matches the previous custom templates the user had before the scaffold overwrote them.
+**Files:** `supabase/functions/auth-email-hook/index.ts`
+- `SITE_NAME` → `"RepairPro"` (already set)
+- `SAMPLE_PROJECT_URL` → `"https://www.getheavencoin.com"`
+- `templateProps.siteUrl` → `"https://www.getheavencoin.com"`
 
-### 2. Update subject lines to French
+Then redeploy `auth-email-hook`.
+
+## Issue 2: Payment Input Validation Error
+
+The screenshot shows "Il valore deve essere 0" (browser native validation: "value must be 0"). This happens because the `<Input type="number" max={currentDebt}>` has `max` set to `0` when the supplier's current debt is 0 (or the debt calculation results in 0).
+
+**Root cause:** `max={currentDebt}` when `currentDebt === 0` means the browser enforces max=0, rejecting any positive value.
+
+**Fix for SupplierPaymentDialog.tsx (line 104):** Remove the `max` attribute entirely. The server-side/submit handler already validates the amount. Alternatively, only set `max` when `currentDebt > 0`.
+
+**Fix for CustomerDebts.tsx (line 168):** Same issue — `max={selectedDebt.totalAmount - selectedDebt.paidAmount}` can be 0. Remove `max` or conditionally apply it.
+
+**Files:**
+- `src/components/suppliers/SupplierPaymentDialog.tsx` — remove `max={currentDebt}` from Input
+- `src/pages/CustomerDebts.tsx` — remove `max={...}` from Input
+
+## Issue 3: Trial Activation Error
+
+**Root cause:** The `shop_subscriptions` table has RLS policies that only allow `platform_admin` to INSERT/UPDATE. Regular shop owners (role `super_admin`) cannot insert a trial subscription.
+
+**Fix:** Add two RLS policies:
+1. Allow authenticated users to INSERT their own subscription (`user_id = auth.uid()`)
+2. Allow authenticated users to UPDATE their own subscription (`user_id = auth.uid()`)
+
+This lets shop owners start a trial or cancel their own subscriptions via the Checkout page.
+
+**Migration SQL:**
+```sql
+CREATE POLICY "Users can insert own subscription"
+ON public.shop_subscriptions FOR INSERT TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own subscription"
+ON public.shop_subscriptions FOR UPDATE TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
 ```
-signup: "Bienvenue — confirmez votre compte"
-invite: "Vous êtes invité à rejoindre RepairPro"
-magiclink: "Votre lien de connexion"
-recovery: "Réinitialisez votre mot de passe"
-email_change: "Confirmez le changement d'email"
-reauthentication: "Votre code de vérification"
-```
 
-### 3. Deploy the edge function
-Call `deploy_edge_functions` with `auth-email-hook` to activate the templates.
+## Summary of Changes
 
-### Files to modify
-- `supabase/functions/_shared/email-templates/signup.tsx`
-- `supabase/functions/_shared/email-templates/recovery.tsx`
-- `supabase/functions/_shared/email-templates/magic-link.tsx`
-- `supabase/functions/_shared/email-templates/invite.tsx`
-- `supabase/functions/_shared/email-templates/email-change.tsx`
-- `supabase/functions/_shared/email-templates/reauthentication.tsx`
-- `supabase/functions/auth-email-hook/index.ts` (update `EMAIL_SUBJECTS` to French)
+| File | Change |
+|------|--------|
+| `auth-email-hook/index.ts` | Update URLs to www.getheavencoin.com |
+| `SupplierPaymentDialog.tsx` | Remove `max` attribute from payment input |
+| `CustomerDebts.tsx` | Remove `max` attribute from payment input |
+| DB migration | Add INSERT/UPDATE RLS policies for shop owners on `shop_subscriptions` |
+| Deploy | Redeploy `auth-email-hook` edge function |
 

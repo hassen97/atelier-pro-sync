@@ -37,7 +37,7 @@ function useOnboardingStatus(userId: string | undefined) {
       // Fetch verification status
       const { data: profile } = await supabase
         .from("profiles")
-        .select("verification_status, is_locked")
+        .select("verification_status, is_locked, verification_requested_at")
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -58,7 +58,11 @@ function useOnboardingStatus(userId: string | undefined) {
         .limit(1)
         .maybeSingle();
 
-      const isVerified = profile?.verification_status === "verified";
+      const verificationStatus = profile?.verification_status || "pending_verification";
+      const isVerified = verificationStatus === "verified";
+      const isPendingVerification = verificationStatus === "pending_verification";
+      const isSuspended = verificationStatus === "suspended";
+      const hasSubmittedVerification = !!profile?.verification_requested_at;
       const onboardingCompleted = (settings as any)?.onboarding_completed === true;
 
       // Check subscription: expired if exists but past expiry date
@@ -67,12 +71,17 @@ function useOnboardingStatus(userId: string | undefined) {
         subscriptionExpired = new Date(sub.expires_at) < new Date();
       }
       const hasActiveSubscription = sub && !subscriptionExpired;
+      const hasNoSubscription = !sub;
 
       return {
         skip: false,
         isVerified,
+        isPendingVerification,
+        isSuspended,
+        hasSubmittedVerification,
         onboardingCompleted,
         hasActiveSubscription,
+        hasNoSubscription,
         subscriptionExpired,
       } as const;
     },
@@ -132,12 +141,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (onboardingStatus && !onboardingStatus.skip && !isImpersonating) {
     const path = location.pathname;
 
-    // Allow onboarding and checkout routes to pass through
+    // Allow funnel routes to pass through
     const funnelRoutes = ["/onboarding/setup", "/checkout"];
     const isOnFunnelRoute = funnelRoutes.some(r => path.startsWith(r));
 
-    // Stage 1: Not verified yet → verification overlay handles it (no redirect needed)
-    // The VerificationBanner in MainLayout blocks the UI
+    // Stage 1: Not verified yet → VerificationBanner overlay blocks the UI
+    // But after submitting verification form, user is still pending_verification
+    // They should NOT be able to access dashboard — the overlay handles this
 
     // Stage 2: Verified but onboarding not completed → force to /onboarding/setup
     if (onboardingStatus.isVerified && !onboardingStatus.onboardingCompleted) {
@@ -146,7 +156,17 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       }
     }
 
-    // Stage 3: Onboarding completed but subscription expired → force to /checkout
+    // Stage 3: Onboarding completed but no subscription at all → force to /checkout
+    if (
+      onboardingStatus.isVerified &&
+      onboardingStatus.onboardingCompleted &&
+      onboardingStatus.hasNoSubscription &&
+      !isOnFunnelRoute
+    ) {
+      return <Navigate to="/checkout?onboarding=true" replace />;
+    }
+
+    // Stage 4: Onboarding completed but subscription expired → force to /checkout
     if (
       onboardingStatus.isVerified &&
       onboardingStatus.onboardingCompleted &&

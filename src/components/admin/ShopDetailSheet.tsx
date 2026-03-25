@@ -1,13 +1,21 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useShopDetails } from "@/hooks/useAdmin";
-import { Loader2, Store, Users, Package, ShoppingCart, Wrench, Receipt, Truck, Phone, MessageCircle, Mail, MapPin, Globe } from "lucide-react";
+import { Loader2, Store, Users, Package, ShoppingCart, Wrench, Receipt, Truck, Phone, MessageCircle, Mail, MapPin, CheckCircle, Ban, Clock, Zap, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { VerifiedBadge } from "@/components/verification/VerifiedBadge";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useAdminShopSubscriptions } from "@/hooks/useSubscription";
+import { GodModeSubscriptionDialog } from "./GodModeSubscriptionDialog";
 
 interface ShopDetailSheetProps {
   userId: string | null;
@@ -25,8 +33,38 @@ function getOnlineStatus(lastOnline: string | null) {
 const statusLabel: Record<string, string> = { online: "En ligne", away: "Absent", offline: "Hors ligne" };
 const statusColor: Record<string, string> = { online: "bg-emerald-400", away: "bg-amber-400", offline: "bg-red-400" };
 
+function useVerifyAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, action }: { userId: string; action: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action, userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-shop-details"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-verification-data"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
 export function ShopDetailSheet({ userId, onClose }: ShopDetailSheetProps) {
   const { data, isLoading } = useShopDetails(userId);
+  const { data: shopSubs } = useAdminShopSubscriptions();
+  const verifyAction = useVerifyAction();
+  const [godModeOpen, setGodModeOpen] = useState(false);
+
+  const sub = (shopSubs || []).find((s: any) => s.user_id === userId);
+  const verificationStatus = data?.profile?.verification_status || "pending_verification";
+
+  const shopName = data?.shop?.shop_name && data.shop.shop_name !== "Mon Atelier"
+    ? data.shop.shop_name
+    : `⚠️ Setup Incomplet (@${data?.profile?.username || "?"})`;
 
   return (
     <Sheet open={!!userId} onOpenChange={(open) => !open && onClose()}>
@@ -48,7 +86,7 @@ export function ShopDetailSheet({ userId, onClose }: ShopDetailSheetProps) {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-bold text-white truncate">{data.shop?.shop_name || "Mon Atelier"}</h2>
+                  <h2 className="text-xl font-bold text-white truncate">{shopName}</h2>
                   <p className="text-sm text-slate-400">
                     {data.profile?.full_name || data.profile?.username} · @{data.profile?.username}
                   </p>
@@ -72,27 +110,133 @@ export function ShopDetailSheet({ userId, onClose }: ShopDetailSheetProps) {
                 </div>
               </div>
 
-              {data.profile?.is_locked && (
-                <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10">
-                  Compte verrouillé
-                </Badge>
-              )}
+              {/* Verification Status + Quick Actions */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Vérification</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {verificationStatus === "verified" && (
+                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
+                      <CheckCircle className="h-3 w-3 mr-1" /> Vérifié
+                    </Badge>
+                  )}
+                  {verificationStatus === "pending_verification" && (
+                    <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10">
+                      <Clock className="h-3 w-3 mr-1" /> En attente
+                    </Badge>
+                  )}
+                  {verificationStatus === "suspended" && (
+                    <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10">
+                      <Ban className="h-3 w-3 mr-1" /> Suspendu
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {verificationStatus !== "verified" && (
+                    <Button
+                      size="sm"
+                      className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 h-8 text-xs"
+                      onClick={() => { verifyAction.mutate({ userId: userId!, action: "verify-owner" }); toast.success("Propriétaire approuvé !"); }}
+                      disabled={verifyAction.isPending}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" /> Approuver
+                    </Button>
+                  )}
+                  {verificationStatus === "verified" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 h-8 text-xs"
+                      onClick={() => { verifyAction.mutate({ userId: userId!, action: "revert-to-pending" }); toast.success("Remis en attente"); }}
+                      disabled={verifyAction.isPending}
+                    >
+                      <Clock className="h-3.5 w-3.5 mr-1.5" /> Remettre en attente
+                    </Button>
+                  )}
+                  {verificationStatus !== "suspended" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-500/30 text-red-400 hover:bg-red-500/10 h-8 text-xs"
+                      onClick={() => { verifyAction.mutate({ userId: userId!, action: "suspend-owner" }); toast.success("Suspendu"); }}
+                      disabled={verifyAction.isPending}
+                    >
+                      <Ban className="h-3.5 w-3.5 mr-1.5" /> Suspendre
+                    </Button>
+                  )}
+                </div>
+              </div>
 
               <Separator className="bg-white/10" />
 
-              {/* Contact Info */}
+              {/* Subscription / Plan Override */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Abonnement</h3>
+                {sub ? (
+                  <div className="admin-glass-card rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Badge className="text-xs bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20">
+                        {sub.plan?.name ?? "—"}
+                      </Badge>
+                      <span className="text-xs text-slate-500">{sub.status}</span>
+                    </div>
+                    {sub.expires_at && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                        <Calendar className="h-3 w-3" />
+                        Expire : {format(new Date(sub.expires_at), "dd MMM yyyy", { locale: fr })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">Aucun abonnement actif</p>
+                )}
+                <Button
+                  size="sm"
+                  className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30 h-8 text-xs w-full"
+                  onClick={() => setGodModeOpen(true)}
+                >
+                  <Zap className="h-3.5 w-3.5 mr-1.5" /> God Mode — Gérer l'abonnement
+                </Button>
+              </div>
+
+              <Separator className="bg-white/10" />
+
+              {/* Contact Info with clickable links */}
               <div>
                 <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Contact</h3>
                 <div className="space-y-2">
                   {[
-                    { icon: Phone, value: data.profile?.phone || data.shop?.phone, label: "Téléphone" },
-                    { icon: MessageCircle, value: data.profile?.whatsapp_phone || data.shop?.whatsapp_phone, label: "WhatsApp" },
-                    { icon: Mail, value: data.profile?.email || data.shop?.email, label: "Email" },
+                    {
+                      icon: Phone,
+                      value: data.profile?.phone || data.shop?.phone,
+                      label: "Téléphone",
+                      href: data.profile?.phone || data.shop?.phone ? `tel:${data.profile?.phone || data.shop?.phone}` : undefined,
+                    },
+                    {
+                      icon: MessageCircle,
+                      value: data.profile?.whatsapp_phone || data.shop?.whatsapp_phone,
+                      label: "WhatsApp",
+                      href: (data.profile?.whatsapp_phone || data.shop?.whatsapp_phone)
+                        ? `https://wa.me/${(data.profile?.whatsapp_phone || data.shop?.whatsapp_phone || "").replace(/[^0-9]/g, "")}`
+                        : undefined,
+                      color: "text-emerald-400",
+                    },
+                    {
+                      icon: Mail,
+                      value: data.profile?.email || data.shop?.email,
+                      label: "Email",
+                      href: data.profile?.email || data.shop?.email ? `mailto:${data.profile?.email || data.shop?.email}` : undefined,
+                    },
                     { icon: MapPin, value: data.shop?.address, label: "Adresse" },
-                  ].map(({ icon: Icon, value, label }) => (
+                  ].map(({ icon: Icon, value, label, href, color }) => (
                     <div key={label} className="flex items-center gap-2 text-sm">
                       <Icon className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                      <span className={value ? "text-slate-300" : "text-slate-600"}>{value || "—"}</span>
+                      {href && value ? (
+                        <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className={cn("hover:underline", color || "text-[#00D4FF]")}>
+                          {value}
+                        </a>
+                      ) : (
+                        <span className={value ? "text-slate-300" : "text-slate-600"}>{value || "—"}</span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -210,6 +354,16 @@ export function ShopDetailSheet({ userId, onClose }: ShopDetailSheetProps) {
           </ScrollArea>
         ) : null}
       </SheetContent>
+
+      {/* God Mode Dialog */}
+      {userId && godModeOpen && (
+        <GodModeSubscriptionDialog
+          open={godModeOpen}
+          onOpenChange={setGodModeOpen}
+          userId={userId}
+          shopName={data?.shop?.shop_name || "Boutique"}
+        />
+      )}
     </Sheet>
   );
 }

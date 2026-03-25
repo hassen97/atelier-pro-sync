@@ -15,17 +15,17 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, Eye, LogIn, ShieldCheck, Download, ArrowRightLeft, UserCog, Zap, CreditCard } from "lucide-react";
+import { Plus, MoreHorizontal, KeyRound, Lock, Unlock, Trash2, Settings2, Search, ArrowUp, ArrowDown, Phone, MessageCircle, CheckCircle, Megaphone, LogIn, Download, ArrowRightLeft, UserCog, Zap, CreditCard, Clock, Ban, ShieldCheck, AlertTriangle } from "lucide-react";
 import { VerifiedBadge } from "@/components/verification/VerifiedBadge";
 import { ShopDetailSheet } from "./ShopDetailSheet";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AdminVerificationView } from "./AdminVerificationView";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCountryByCode, getCurrencyByCode } from "@/data/countries";
 import { useAdminShopSubscriptions } from "@/hooks/useSubscription";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
@@ -56,14 +57,7 @@ function ShopAnnouncementDialog({
     if (!title.trim()) return;
     createAnnouncement.mutate(
       { title, new_features: newFeatures, changes_fixes: changesFixes, target_user_id: userId },
-      {
-        onSuccess: () => {
-          onOpenChange(false);
-          setTitle("");
-          setNewFeatures("");
-          setChangesFixes("");
-        },
-      }
+      { onSuccess: () => { onOpenChange(false); setTitle(""); setNewFeatures(""); setChangesFixes(""); } }
     );
   };
 
@@ -79,42 +73,21 @@ function ShopAnnouncementDialog({
         <div className="space-y-4">
           <div>
             <Label className="text-slate-300">Titre</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Message important pour votre boutique"
-              className="bg-white/5 border-white/10 text-white"
-            />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Message important" className="bg-white/5 border-white/10 text-white" />
           </div>
           <div>
             <Label className="text-slate-300">Nouvelles fonctionnalités</Label>
-            <Textarea
-              value={newFeatures}
-              onChange={(e) => setNewFeatures(e.target.value)}
-              placeholder="- Nouveau module disponible&#10;- Accès à la fonctionnalité X"
-              className="bg-white/5 border-white/10 text-white min-h-[90px]"
-            />
+            <Textarea value={newFeatures} onChange={(e) => setNewFeatures(e.target.value)} placeholder="- Nouveau module" className="bg-white/5 border-white/10 text-white min-h-[90px]" />
           </div>
           <div>
             <Label className="text-slate-300">Message / Notes</Label>
-            <Textarea
-              value={changesFixes}
-              onChange={(e) => setChangesFixes(e.target.value)}
-              placeholder="- Information spécifique&#10;- Action requise de votre part"
-              className="bg-white/5 border-white/10 text-white min-h-[90px]"
-            />
+            <Textarea value={changesFixes} onChange={(e) => setChangesFixes(e.target.value)} placeholder="- Info spécifique" className="bg-white/5 border-white/10 text-white min-h-[90px]" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-400">
-            Annuler
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!title.trim() || createAnnouncement.isPending}
-            className="bg-violet-600 hover:bg-violet-700 text-white"
-          >
-            <Megaphone className="h-3.5 w-3.5 mr-2" /> Envoyer l'annonce
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-400">Annuler</Button>
+          <Button onClick={handleSubmit} disabled={!title.trim() || createAnnouncement.isPending} className="bg-violet-600 hover:bg-violet-700 text-white">
+            <Megaphone className="h-3.5 w-3.5 mr-2" /> Envoyer
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -122,8 +95,9 @@ function ShopAnnouncementDialog({
   );
 }
 
-type FilterType = "all" | "active_now" | "active_24h" | "inactive_7d" | "pending";
-type SortKey = "name" | "status" | null;
+type FilterType = "all" | "pending_verification" | "verified" | "trialing" | "pro" | "suspended" | "setup_incomplete";
+type SortKey = "name" | "status" | "created_at" | null;
+
 function getOnlineStatus(lastOnline: string | null) {
   if (!lastOnline) return "offline";
   const diff = Date.now() - new Date(lastOnline).getTime();
@@ -138,10 +112,95 @@ const statusDot: Record<string, string> = {
   offline: "bg-red-400",
 };
 
+function getUnifiedStatus(owner: any, sub: any): { key: string; label: string; color: string; icon: any } {
+  if (owner.verification_status === "suspended") {
+    return { key: "suspended", label: "Suspendu", color: "border-red-500/30 text-red-400 bg-red-500/10", icon: Ban };
+  }
+  if (owner.verification_status === "pending_verification") {
+    return { key: "pending", label: "En attente", color: "border-amber-500/30 text-amber-400 bg-amber-500/10", icon: Clock };
+  }
+  // Verified — check subscription
+  if (sub) {
+    const isExpired = sub.expires_at && new Date(sub.expires_at) < new Date();
+    if (!isExpired && sub.status === "trialing") {
+      return { key: "trialing", label: "Essai", color: "border-violet-500/30 text-violet-400 bg-violet-500/10", icon: Clock };
+    }
+    if (!isExpired && sub.status === "active") {
+      return { key: "pro", label: "Pro", color: "border-amber-400/30 text-amber-300 bg-amber-400/10", icon: CreditCard };
+    }
+  }
+  return { key: "verified", label: "Vérifié", color: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10", icon: CheckCircle };
+}
+
+function getDisplayName(owner: any): { name: string; isIncomplete: boolean } {
+  const shopName = owner.shop_name;
+  if (!shopName || shopName === "Mon Atelier") {
+    return { name: `⚠️ Setup Incomplet (@${owner.username || "?"})`, isIncomplete: true };
+  }
+  return { name: shopName, isIncomplete: false };
+}
+
+function useBulkAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ action, userIds }: { action: string; userIds: string[] }) => {
+      const CHUNK_SIZE = 80;
+      let totalCount = 0;
+      for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
+        const chunk = userIds.slice(i, i + CHUNK_SIZE);
+        const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+          body: { action, userIds: chunk },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        totalCount += data?.count || chunk.length;
+      }
+      return { count: totalCount };
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-verification-data"] });
+      const count = data?.count || variables.userIds.length;
+      const labels: Record<string, string> = {
+        "bulk-verify": `${count} vérifié(s)`,
+        "bulk-suspend": `${count} suspendu(s)`,
+        "bulk-delete": `${count} supprimé(s)`,
+        "bulk-revert-to-pending": `${count} remis en attente`,
+      };
+      toast.success(labels[variables.action] || "Action effectuée");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
+function useVerifyOwner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, action }: { userId: string; action: "verify" | "suspend" | "revert-to-pending" }) => {
+      const actionMap = { verify: "verify-owner", suspend: "suspend-owner", "revert-to-pending": "revert-to-pending" };
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: actionMap[action], userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-verification-data"] });
+      const msgs = { verify: "Propriétaire vérifié !", suspend: "Propriétaire suspendu", "revert-to-pending": "Remis en attente" };
+      toast.success(msgs[variables.action]);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+}
+
 export function AdminShopsView() {
   const { data } = useAdminData();
   const deleteOwner = useDeleteOwner();
   const lockOwner = useLockOwner();
+  const verifyOwner = useVerifyOwner();
+  const bulkAction = useBulkAction();
   const { data: shopSubs } = useAdminShopSubscriptions();
   const [createOpen, setCreateOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
@@ -154,25 +213,37 @@ export function AdminShopsView() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const owners = data?.owners || [];
 
-  const filteredOwners = useMemo(() => {
-    const now = Date.now();
-    let result = owners.filter((owner) => {
-      if (filter === "all") return true;
-      if (filter === "pending") return owner.is_locked && !owner.last_online_at;
-      const lastOnline = owner.last_online_at ? new Date(owner.last_online_at).getTime() : 0;
-      const diff = now - lastOnline;
-      if (filter === "active_now") return diff < 5 * 60 * 1000 && owner.last_online_at;
-      if (filter === "active_24h") return diff < 24 * 60 * 60 * 1000 && owner.last_online_at;
-      if (filter === "inactive_7d") return !owner.last_online_at || diff > 7 * 24 * 60 * 60 * 1000;
-      return true;
-    });
+  // Build subscription map
+  const subMap = useMemo(() => {
+    const m = new Map<string, any>();
+    (shopSubs || []).forEach((s: any) => m.set(s.user_id, s));
+    return m;
+  }, [shopSubs]);
 
-    // Search filter
+  const filteredOwners = useMemo(() => {
+    let result = owners.map((owner: any) => ({
+      ...owner,
+      _status: getUnifiedStatus(owner, subMap.get(owner.user_id)),
+      _display: getDisplayName(owner),
+    }));
+
+    // Filter
+    if (filter !== "all") {
+      if (filter === "setup_incomplete") {
+        result = result.filter((o: any) => o._display.isIncomplete);
+      } else {
+        result = result.filter((o: any) => o._status.key === filter);
+      }
+    }
+
+    // Search
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter((o) =>
+      result = result.filter((o: any) =>
         (o.shop_name || "").toLowerCase().includes(q) ||
         (o.full_name || "").toLowerCase().includes(q) ||
         (o.username || "").toLowerCase().includes(q) ||
@@ -184,28 +255,20 @@ export function AdminShopsView() {
 
     // Sort
     if (sortKey) {
-      const statusOrder: Record<string, number> = { online: 0, away: 1, offline: 2 };
-      result = [...result].sort((a, b) => {
+      result = [...result].sort((a: any, b: any) => {
         let cmp = 0;
-        if (sortKey === "name") {
-          cmp = (a.shop_name || "").localeCompare(b.shop_name || "");
-        } else if (sortKey === "status") {
-          cmp = (statusOrder[getOnlineStatus(a.last_online_at)] ?? 2) - (statusOrder[getOnlineStatus(b.last_online_at)] ?? 2);
-        }
+        if (sortKey === "name") cmp = (a._display.name).localeCompare(b._display.name);
+        else if (sortKey === "created_at") cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         return sortDir === "asc" ? cmp : -cmp;
       });
     }
 
     return result;
-  }, [owners, filter, search, sortKey, sortDir]);
+  }, [owners, filter, search, sortKey, sortDir, subMap]);
 
   const toggleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
   };
 
   const SortIcon = ({ col }: { col: SortKey }) => {
@@ -213,35 +276,75 @@ export function AdminShopsView() {
     return sortDir === "asc" ? <ArrowUp className="h-3 w-3 inline ml-1" /> : <ArrowDown className="h-3 w-3 inline ml-1" />;
   };
 
-  const pendingCount = owners.filter(o => o.is_locked && !o.last_online_at).length;
+  const counts = useMemo(() => {
+    const all = owners.map((o: any) => ({ ...o, _status: getUnifiedStatus(o, subMap.get(o.user_id)), _display: getDisplayName(o) }));
+    return {
+      all: all.length,
+      pending_verification: all.filter((o: any) => o._status.key === "pending").length,
+      verified: all.filter((o: any) => o._status.key === "verified").length,
+      trialing: all.filter((o: any) => o._status.key === "trialing").length,
+      pro: all.filter((o: any) => o._status.key === "pro").length,
+      suspended: all.filter((o: any) => o._status.key === "suspended").length,
+      setup_incomplete: all.filter((o: any) => o._display.isIncomplete).length,
+    };
+  }, [owners, subMap]);
 
-  const filters: { key: FilterType; label: string }[] = [
-    { key: "all", label: `Toutes (${owners.length})` },
-    { key: "pending", label: `En attente (${pendingCount})` },
-    { key: "active_now", label: "En ligne" },
-    { key: "active_24h", label: "Actif 24h" },
-    { key: "inactive_7d", label: "Inactif 7j+" },
+  const filters: { key: FilterType; label: string; color?: string }[] = [
+    { key: "all", label: `Tous (${counts.all})` },
+    { key: "pending_verification", label: `En attente (${counts.pending_verification})`, color: "text-amber-400" },
+    { key: "verified", label: `Vérifiés (${counts.verified})`, color: "text-emerald-400" },
+    { key: "trialing", label: `Essai (${counts.trialing})`, color: "text-violet-400" },
+    { key: "pro", label: `Pro (${counts.pro})`, color: "text-amber-300" },
+    { key: "suspended", label: `Suspendus (${counts.suspended})`, color: "text-red-400" },
+    { key: "setup_incomplete", label: `Setup ⚠️ (${counts.setup_incomplete})` },
   ];
+
+  // Selection
+  const allFilteredIds = filteredOwners.map((o: any) => o.user_id);
+  const allSelected = filteredOwners.length > 0 && filteredOwners.every((o: any) => selectedIds.has(o.user_id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleAll = () => {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(allFilteredIds));
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkConfirm = () => {
+    if (!confirmAction || selectedIds.size === 0) return;
+    bulkAction.mutate(
+      { action: confirmAction, userIds: Array.from(selectedIds) },
+      { onSuccess: () => { setSelectedIds(new Set()); setConfirmAction(null); }, onSettled: () => setConfirmAction(null) }
+    );
+  };
+
+  const confirmLabels: Record<string, { title: string; desc: string; btn: string; destructive?: boolean }> = {
+    "bulk-verify": { title: "Vérifier en masse", desc: `Vérifier ${selectedIds.size} propriétaire(s) ?`, btn: "Vérifier tout" },
+    "bulk-suspend": { title: "Suspendre en masse", desc: `Suspendre ${selectedIds.size} propriétaire(s) ?`, btn: "Suspendre tout", destructive: true },
+    "bulk-delete": { title: "Supprimer en masse", desc: `Supprimer ${selectedIds.size} propriétaire(s) ? Irréversible.`, btn: "Supprimer tout", destructive: true },
+    "bulk-revert-to-pending": { title: "Remettre en attente", desc: `Remettre ${selectedIds.size} propriétaire(s) en attente ?`, btn: "Remettre en attente" },
+  };
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <Tabs defaultValue="shops" className="w-full">
-        <TabsList className="bg-white/5 border border-white/10 mb-4">
-          <TabsTrigger value="shops" className="data-[state=active]:bg-[#00D4FF]/15 data-[state=active]:text-[#00D4FF] text-slate-400">Boutiques</TabsTrigger>
-          <TabsTrigger value="verification" className="data-[state=active]:bg-[#00D4FF]/15 data-[state=active]:text-[#00D4FF] text-slate-400">Vérification</TabsTrigger>
-        </TabsList>
-        <TabsContent value="shops" className="mt-0 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-lg font-semibold text-white">Gestion des boutiques</h2>
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30"
-        >
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-[#00D4FF]" />
+          Gestion des boutiques
+        </h2>
+        <Button onClick={() => setCreateOpen(true)} className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30">
           <Plus className="h-4 w-4 mr-2" /> Nouveau propriétaire
         </Button>
       </div>
 
-      {/* Smart Filters */}
+      {/* Status Filters */}
       <div className="flex gap-2 flex-wrap">
         {filters.map((f) => (
           <Button
@@ -254,7 +357,7 @@ export function AdminShopsView() {
                 ? "bg-[#00D4FF]/20 text-[#00D4FF] border-[#00D4FF]/30"
                 : "border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
             )}
-            onClick={() => setFilter(f.key)}
+            onClick={() => { setFilter(f.key); setSelectedIds(new Set()); }}
           >
             {f.label}
           </Button>
@@ -272,51 +375,91 @@ export function AdminShopsView() {
         />
       </div>
 
-      {/* Table */}
+      {/* Bulk action bar */}
+      {someSelected && (
+        <div className="flex items-center gap-2 flex-wrap bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+          <span className="text-xs text-slate-300 mr-1">{selectedIds.size} sélectionné(s)</span>
+          <Button size="sm" variant="ghost" className="text-emerald-400 hover:bg-emerald-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-verify")} disabled={bulkAction.isPending}>
+            <CheckCircle className="h-3 w-3 mr-1" /> Vérifier
+          </Button>
+          <Button size="sm" variant="ghost" className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-revert-to-pending")} disabled={bulkAction.isPending}>
+            <Clock className="h-3 w-3 mr-1" /> En attente
+          </Button>
+          <Button size="sm" variant="ghost" className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-suspend")} disabled={bulkAction.isPending}>
+            <Ban className="h-3 w-3 mr-1" /> Suspendre
+          </Button>
+          <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-delete")} disabled={bulkAction.isPending}>
+            <Trash2 className="h-3 w-3 mr-1" /> Supprimer
+          </Button>
+          <Button size="sm" variant="ghost" className="text-slate-400 hover:bg-white/5 h-7 text-xs ml-auto" onClick={() => setSelectedIds(new Set())}>
+            Désélectionner
+          </Button>
+        </div>
+      )}
+
+      {/* Unified Table */}
       <div className="admin-glass-card rounded-xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-white/5 hover:bg-transparent">
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={toggleAll}
+                  className="border-slate-600 data-[state=checked]:bg-[#00D4FF] data-[state=checked]:border-[#00D4FF]"
+                />
+              </TableHead>
               <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("name")}>
                 Boutique <SortIcon col="name" />
               </TableHead>
               <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Propriétaire</TableHead>
-              <TableHead className="text-slate-400 text-xs hidden md:table-cell">Inscription</TableHead>
-              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">Téléphone</TableHead>
-              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">WhatsApp</TableHead>
-              <TableHead className="text-slate-400 text-xs cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("status")}>
-                Statut <SortIcon col="status" />
+              <TableHead className="text-slate-400 text-xs hidden md:table-cell cursor-pointer select-none hover:text-white transition-colors" onClick={() => toggleSort("created_at")}>
+                Inscription <SortIcon col="created_at" />
               </TableHead>
-              <TableHead className="text-slate-400 text-xs hidden xl:table-cell">Plan</TableHead>
-              <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Réparations</TableHead>
+              <TableHead className="text-slate-400 text-xs">Statut</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden lg:table-cell">Contact</TableHead>
+              <TableHead className="text-slate-400 text-xs hidden sm:table-cell">Activité</TableHead>
               <TableHead className="text-slate-400 text-xs text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredOwners.map((owner) => {
+            {filteredOwners.map((owner: any) => {
               const status = getOnlineStatus(owner.last_online_at);
+              const unified = owner._status;
+              const display = owner._display;
+              const StatusIcon = unified.icon;
+              const isSelected = selectedIds.has(owner.user_id);
+
               return (
-                <TableRow key={owner.user_id} className={cn("border-white/5 cursor-pointer hover:bg-white/5 transition-colors", owner.is_locked && "opacity-60")} onClick={() => setSelectedShopId(owner.user_id)}>
+                <TableRow
+                  key={owner.user_id}
+                  className={cn(
+                    "border-white/5 cursor-pointer hover:bg-white/5 transition-colors",
+                    owner.is_locked && "opacity-60",
+                    isSelected && "bg-[#00D4FF]/5"
+                  )}
+                  onClick={() => setSelectedShopId(owner.user_id)}
+                >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleOne(owner.user_id)}
+                      className="border-slate-600 data-[state=checked]:bg-[#00D4FF] data-[state=checked]:border-[#00D4FF]"
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-white text-sm font-medium">{owner.shop_name}</span>
-                          {owner.verification_status === "verified" && <VerifiedBadge />}
+                          <span className={cn("text-sm font-medium", display.isIncomplete ? "text-amber-400" : "text-white")}>
+                            {display.name}
+                          </span>
+                          {owner.verification_status === "verified" && !display.isIncomplete && <VerifiedBadge />}
                         </div>
                         <span className="text-xs text-slate-500">
                           {getCountryByCode(owner.country || "TN")?.flag} {getCurrencyByCode(owner.currency || "TND")?.code}
                         </span>
                       </div>
-                      {owner.is_locked && !owner.last_online_at ? (
-                        <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400 bg-amber-500/10 px-1.5 py-0">
-                          En attente
-                        </Badge>
-                      ) : owner.is_locked ? (
-                        <Badge variant="outline" className="text-[10px] border-red-500/30 text-red-400 px-1.5 py-0">
-                          Verrouillé
-                        </Badge>
-                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
@@ -328,59 +471,43 @@ export function AdminShopsView() {
                   <TableCell className="hidden md:table-cell text-xs text-slate-500">
                     {format(new Date(owner.created_at), "dd MMM yyyy", { locale: fr })}
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {owner.phone ? (
-                      <a href={`tel:${owner.phone}`} className="text-xs text-[#00D4FF] hover:underline flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {owner.phone}
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-600">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {(owner.whatsapp_phone || owner.phone) ? (
-                      <a 
-                        href={`https://wa.me/${(owner.whatsapp_phone || owner.phone || "").replace(/[^0-9]/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
-                      >
-                        <MessageCircle className="h-3 w-3" />
-                        {owner.whatsapp_phone || owner.phone}
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-600">—</span>
-                    )}
-                  </TableCell>
                   <TableCell>
+                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", unified.color)}>
+                      <StatusIcon className="h-3 w-3 mr-1" />
+                      {unified.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
                     <div className="flex items-center gap-2">
-                      <span className={cn("w-2 h-2 rounded-full", statusDot[status])} />
-                      <span className="text-xs text-slate-400">
-                        {owner.last_online_at
-                          ? formatDistanceToNow(new Date(owner.last_online_at), { addSuffix: true, locale: fr })
-                          : "Jamais"}
-                      </span>
+                      {(owner.whatsapp_phone || owner.phone) ? (
+                        <a
+                          href={`https://wa.me/${(owner.whatsapp_phone || owner.phone || "").replace(/[^0-9]/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MessageCircle className="h-3 w-3" />
+                        </a>
+                      ) : null}
+                      {owner.phone ? (
+                        <a href={`tel:${owner.phone}`} className="text-xs text-[#00D4FF] hover:underline flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Phone className="h-3 w-3" />
+                        </a>
+                      ) : null}
+                      {!owner.phone && !owner.whatsapp_phone && <span className="text-xs text-slate-600">—</span>}
                     </div>
                   </TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    {(() => {
-                      const sub = shopSubs?.find((s: any) => s.user_id === owner.user_id);
-                      return sub ? (
-                        <Badge className="text-[10px] bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20">
-                          <CreditCard className="h-3 w-3 mr-1" />
-                          {sub.plan?.name ?? "—"}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-slate-600">Gratuit</span>
-                      );
-                    })()}
-                  </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <span className="text-sm text-white font-mono-numbers">{owner.repair_count}</span>
-                    <span className="text-xs text-slate-500 ml-1">({owner.team_count} membres)</span>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("w-2 h-2 rounded-full", statusDot[status])} />
+                      <div>
+                        <span className="text-sm text-white font-mono-numbers">{owner.repair_count}</span>
+                        <span className="text-xs text-slate-500 ml-1">rép.</span>
+                      </div>
+                    </div>
                   </TableCell>
-                   <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
@@ -388,38 +515,36 @@ export function AdminShopsView() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          className="text-[#00D4FF]"
-                          onClick={(e) => { e.stopPropagation(); setGodModeTarget({ userId: owner.user_id, shopName: owner.shop_name }); }}
-                        >
+                        {/* Quick verification actions */}
+                        {owner.verification_status !== "verified" && (
+                          <DropdownMenuItem className="text-emerald-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "verify" })}>
+                            <CheckCircle className="h-4 w-4 mr-2" /> Approuver
+                          </DropdownMenuItem>
+                        )}
+                        {owner.verification_status === "verified" && (
+                          <DropdownMenuItem className="text-amber-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "revert-to-pending" })}>
+                            <Clock className="h-4 w-4 mr-2" /> Remettre en attente
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-[#00D4FF]" onClick={() => setGodModeTarget({ userId: owner.user_id, shopName: display.name })}>
                           <Zap className="h-4 w-4 mr-2" /> God Mode — Abonnement
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setEditTarget({
-                          userId: owner.user_id,
-                          name: owner.full_name || owner.username || "",
-                          country: owner.country || "TN",
-                          currency: owner.currency || "TND",
-                        })}>
+                        <DropdownMenuItem onClick={() => setEditTarget({ userId: owner.user_id, name: owner.full_name || owner.username || "", country: owner.country || "TN", currency: owner.currency || "TND" })}>
                           <Settings2 className="h-4 w-4 mr-2" /> Modifier pays/devise
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setResetTarget({
-                          userId: owner.user_id,
-                          name: owner.full_name || owner.username || "",
-                        })}>
+                        <DropdownMenuItem onClick={() => setResetTarget({ userId: owner.user_id, name: owner.full_name || owner.username || "" })}>
                           <KeyRound className="h-4 w-4 mr-2" /> Réinitialiser mot de passe
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setAnnouncementTarget({
-                          userId: owner.user_id,
-                          shopName: owner.shop_name,
-                        })}>
+                        <DropdownMenuItem onClick={() => setAnnouncementTarget({ userId: owner.user_id, shopName: owner.shop_name })}>
                           <Megaphone className="h-4 w-4 mr-2" /> Envoyer une annonce
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={async () => {
                           const newRole = prompt("Nouveau rôle (super_admin ou employee) :", "employee");
                           if (!newRole || !["super_admin", "employee"].includes(newRole)) return;
                           const { error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "change-role", userId: owner.user_id, newRole } });
-                          if (error) { toast.error("Erreur changement de rôle"); } else { toast.success("Rôle modifié"); }
+                          if (error) toast.error("Erreur"); else toast.success("Rôle modifié");
                         }}>
                           <UserCog className="h-4 w-4 mr-2" /> Changer le rôle
                         </DropdownMenuItem>
@@ -432,45 +557,21 @@ export function AdminShopsView() {
                           if (error) { toast.error("Erreur d'export"); return; }
                           const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
                           const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url; a.download = `backup-${owner.shop_name}-${new Date().toISOString().slice(0,10)}.json`; a.click();
-                          URL.revokeObjectURL(url);
+                          const a = document.createElement("a"); a.href = url; a.download = `backup-${owner.shop_name}-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url);
                           toast.success("Export téléchargé");
                         }}>
                           <Download className="h-4 w-4 mr-2" /> Sauvegarder (JSON)
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          const viewUrl = `/?impersonate=${owner.user_id}&mode=readonly`;
-                          window.location.href = viewUrl;
-                        }}>
+                        <DropdownMenuItem onClick={() => { window.location.href = `/?impersonate=${owner.user_id}&mode=readonly`; }}>
                           <LogIn className="h-4 w-4 mr-2" /> Accéder à la boutique
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        {owner.is_locked && !owner.last_online_at ? (
-                          <DropdownMenuItem 
-                            className="text-emerald-400"
-                            onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: false })}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" /> Approuver l'inscription
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem onClick={() => lockOwner.mutate({ userId: owner.user_id, lock: !owner.is_locked })}>
-                            {owner.is_locked ? (
-                              <><Unlock className="h-4 w-4 mr-2" /> Déverrouiller</>
-                            ) : (
-                              <><Lock className="h-4 w-4 mr-2" /> Verrouiller</>
-                            )}
+                        {owner.verification_status !== "suspended" && (
+                          <DropdownMenuItem className="text-amber-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "suspend" })}>
+                            <Ban className="h-4 w-4 mr-2" /> Suspendre
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-red-400"
-                          onClick={() => {
-                            if (confirm(`Supprimer ${owner.full_name || owner.username} ?`)) {
-                              deleteOwner.mutate(owner.user_id);
-                            }
-                          }}
-                        >
+                        <DropdownMenuItem className="text-red-400" onClick={() => { if (confirm(`Supprimer ${owner.full_name || owner.username} ?`)) deleteOwner.mutate(owner.user_id); }}>
                           <Trash2 className="h-4 w-4 mr-2" /> Supprimer
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -490,41 +591,41 @@ export function AdminShopsView() {
         </Table>
       </div>
 
+      {/* Bulk confirm dialog */}
+      {confirmAction && confirmLabels[confirmAction] && (
+        <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+          <AlertDialogContent className="bg-slate-900 border-white/10 text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>{confirmLabels[confirmAction].title}</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400">{confirmLabels[confirmAction].desc}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-white/5 border-white/10 text-slate-300">Annuler</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleBulkConfirm}
+                className={confirmLabels[confirmAction].destructive ? "bg-red-600 hover:bg-red-700" : "bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30"}
+              >
+                {confirmLabels[confirmAction].btn}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Dialogs */}
       <CreateOwnerDialog open={createOpen} onOpenChange={setCreateOpen} />
       {announcementTarget && (
-        <ShopAnnouncementDialog
-          open={!!announcementTarget}
-          onOpenChange={() => setAnnouncementTarget(null)}
-          userId={announcementTarget.userId}
-          shopName={announcementTarget.shopName}
-        />
+        <ShopAnnouncementDialog open={!!announcementTarget} onOpenChange={() => setAnnouncementTarget(null)} userId={announcementTarget.userId} shopName={announcementTarget.shopName} />
       )}
       {resetTarget && (
-        <ResetPasswordDialog
-          open={!!resetTarget}
-          onOpenChange={() => setResetTarget(null)}
-          userId={resetTarget.userId}
-          userName={resetTarget.name}
-        />
+        <ResetPasswordDialog open={!!resetTarget} onOpenChange={() => setResetTarget(null)} userId={resetTarget.userId} userName={resetTarget.name} />
       )}
       {editTarget && (
-        <EditOwnerSettingsDialog
-          open={!!editTarget}
-          onOpenChange={() => setEditTarget(null)}
-          userId={editTarget.userId}
-          userName={editTarget.name}
-          currentCountry={editTarget.country}
-          currentCurrency={editTarget.currency}
-        />
+        <EditOwnerSettingsDialog open={!!editTarget} onOpenChange={() => setEditTarget(null)} userId={editTarget.userId} userName={editTarget.name} currentCountry={editTarget.country} currentCurrency={editTarget.currency} />
       )}
       <ShopDetailSheet userId={selectedShopId} onClose={() => setSelectedShopId(null)} />
       {godModeTarget && (
-        <GodModeSubscriptionDialog
-          open={!!godModeTarget}
-          onOpenChange={(v) => !v && setGodModeTarget(null)}
-          userId={godModeTarget.userId}
-          shopName={godModeTarget.shopName}
-        />
+        <GodModeSubscriptionDialog open={!!godModeTarget} onOpenChange={(v) => !v && setGodModeTarget(null)} userId={godModeTarget.userId} shopName={godModeTarget.shopName} />
       )}
       {transferSource && (
         <Dialog open={!!transferSource} onOpenChange={() => setTransferSource(null)}>
@@ -536,19 +637,12 @@ export function AdminShopsView() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <p className="text-sm text-slate-400">
-                Cloner les produits, clients et catégories de cette boutique vers une autre.
-              </p>
+              <p className="text-sm text-slate-400">Cloner produits, clients et catégories vers une autre boutique.</p>
               <div className="space-y-2">
                 <Label className="text-slate-300">Boutique cible</Label>
-                <select
-                  className="w-full rounded-md bg-white/5 border border-white/10 text-white px-3 py-2 text-sm"
-                  id="transfer-target"
-                >
-                  {owners.filter(o => o.user_id !== transferSource).map(o => (
-                    <option key={o.user_id} value={o.user_id} className="bg-slate-900">
-                      {o.shop_name} (@{o.username})
-                    </option>
+                <select className="w-full rounded-md bg-white/5 border border-white/10 text-white px-3 py-2 text-sm" id="transfer-target">
+                  {owners.filter((o: any) => o.user_id !== transferSource).map((o: any) => (
+                    <option key={o.user_id} value={o.user_id} className="bg-slate-900">{o.shop_name} (@{o.username})</option>
                   ))}
                 </select>
               </div>
@@ -561,11 +655,8 @@ export function AdminShopsView() {
                   const target = (document.getElementById("transfer-target") as HTMLSelectElement)?.value;
                   if (!target) return;
                   toast.info("Transfert en cours...");
-                  const { data, error } = await supabase.functions.invoke("admin-manage-users", {
-                    body: { action: "transfer-data", userId: transferSource, targetUserId: target }
-                  });
-                  if (error) { toast.error("Erreur de transfert"); }
-                  else { toast.success(`Transféré : ${data?.cloned?.products || 0} produits, ${data?.cloned?.customers || 0} clients, ${data?.cloned?.categories || 0} catégories`); }
+                  const { data, error } = await supabase.functions.invoke("admin-manage-users", { body: { action: "transfer-data", userId: transferSource, targetUserId: target } });
+                  if (error) toast.error("Erreur"); else toast.success(`Transféré : ${data?.cloned?.products || 0} produits, ${data?.cloned?.customers || 0} clients`);
                   setTransferSource(null);
                 }}
               >
@@ -575,11 +666,6 @@ export function AdminShopsView() {
           </DialogContent>
         </Dialog>
       )}
-        </TabsContent>
-        <TabsContent value="verification" className="mt-0">
-          <AdminVerificationView />
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

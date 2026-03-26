@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp, user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [loginRole, setLoginRole] = useState<"owner" | "employee">("owner");
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
@@ -170,6 +172,8 @@ export default function Auth() {
           return;
         }
       }
+      // Invalidate onboarding cache to force fresh fetch
+      queryClient.invalidateQueries({ queryKey: ["onboarding-status"] });
       const searchParams = new URLSearchParams(location.search);
       const redirect = searchParams.get("redirect");
       const from = redirect || (location.state as { from?: Location })?.from?.pathname || "/dashboard";

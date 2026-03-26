@@ -86,7 +86,7 @@ function useOnboardingStatus(userId: string | undefined) {
       } as const;
     },
     enabled: !!userId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
   });
 }
 
@@ -145,9 +145,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     const funnelRoutes = ["/onboarding/setup", "/checkout"];
     const isOnFunnelRoute = funnelRoutes.some(r => path.startsWith(r));
 
-    // Stage 1: Not verified yet → VerificationBanner overlay blocks the UI
-    // But after submitting verification form, user is still pending_verification
-    // They should NOT be able to access dashboard — the overlay handles this
+    // Stage 1: Pending verification or suspended → block funnel routes
+    if (onboardingStatus.isPendingVerification || onboardingStatus.isSuspended) {
+      if (isOnFunnelRoute) {
+        return <Navigate to="/dashboard" replace />;
+      }
+      // Allow through — VerificationBanner overlay handles blocking
+    }
 
     // Stage 2: Verified but onboarding not completed → force to /onboarding/setup
     if (onboardingStatus.isVerified && !onboardingStatus.onboardingCompleted) {

@@ -150,14 +150,22 @@ export default function Auth() {
           .eq("user_id", userId)
           .single();
 
-        if (profile?.is_locked) {
-          await supabase.auth.signOut();
-          const vs = (profile as any).verification_status;
-          if (vs === "suspended") {
-            setError("Votre compte a été suspendu car il n'a pas été vérifié dans les 48 heures. Veuillez contacter l'administration pour réactiver votre compte.");
-          } else {
-            setError("Votre compte est en attente de validation par l'administrateur.");
+        const vs = profile?.verification_status;
+
+        // Verified users pass through even if is_locked was stale
+        if (vs === "verified") {
+          if (profile?.is_locked) {
+            await supabase.from("profiles").update({ is_locked: false }).eq("user_id", userId);
           }
+          // Proceed — ProtectedRoute handles the rest of the funnel
+        } else if (vs === "suspended") {
+          await supabase.auth.signOut();
+          setError("Votre compte a été suspendu car il n'a pas été vérifié dans les 48 heures. Veuillez contacter l'administration pour réactiver votre compte.");
+          setLoading(false);
+          return;
+        } else if (profile?.is_locked || vs === "pending_verification") {
+          await supabase.auth.signOut();
+          setError("Votre compte est en attente de validation par l'administrateur.");
           setLoading(false);
           return;
         }

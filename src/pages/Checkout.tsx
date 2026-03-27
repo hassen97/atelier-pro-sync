@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useSearchParams, Link, useNavigate, Navigate } from "react-router-dom";
 import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
 import { useEnabledGateways, useCreateOrder } from "@/hooks/useCheckout";
@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, Upload, Loader2, Smartphone, CreditCard,
-  Landmark, Globe, Bitcoin, Image, ChevronRight, Clock, Zap
+  Landmark, Globe, Bitcoin, Image, ChevronRight, Clock, Zap, Camera
 } from "lucide-react";
+import { ProofPickerSheet } from "@/components/ui/ProofPickerSheet";
 
 const gatewayIcons: Record<string, any> = {
   stripe: CreditCard,
@@ -37,7 +38,7 @@ export default function Checkout() {
   const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const plan = plans?.find(p => p.id === planId);
   const gateway = gateways?.find(g => g.gateway_key === selectedGateway);
@@ -173,16 +174,13 @@ export default function Checkout() {
     );
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Fichier trop volumineux (max 5MB)");
-        return;
-      }
-      setProofFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+  const handleProofSelected = (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Fichier trop volumineux (max 5MB)");
+      return;
     }
+    setProofFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
   const handleSubmit = () => {
@@ -327,19 +325,11 @@ export default function Checkout() {
               Capture d'écran du paiement
             </h2>
             
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            
             {previewUrl ? (
               <div className="rounded-xl overflow-hidden relative" style={{ border: "1px solid hsla(0, 0%, 100%, 0.08)" }}>
                 <img src={previewUrl} alt="Preuve de paiement" className="w-full max-h-64 object-contain" style={{ background: "hsla(0, 0%, 0%, 0.3)" }} />
                 <button
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => setPickerOpen(true)}
                   className="absolute bottom-3 right-3 rounded-lg px-3 py-1.5 text-xs font-medium"
                   style={{ background: "hsla(0, 0%, 0%, 0.6)", color: "white", backdropFilter: "blur(8px)" }}
                 >
@@ -348,12 +338,12 @@ export default function Checkout() {
               </div>
             ) : (
               <button
-                onClick={() => fileRef.current?.click()}
+                onClick={() => setPickerOpen(true)}
                 className="w-full rounded-xl p-8 flex flex-col items-center gap-3 transition-colors"
                 style={{ background: "hsla(0, 0%, 100%, 0.02)", border: "2px dashed hsla(0, 0%, 100%, 0.1)" }}
               >
                 <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "hsla(217, 91%, 60%, 0.1)" }}>
-                  <Upload className="h-5 w-5" style={{ color: "hsl(217 91% 60%)" }} />
+                  <Camera className="h-5 w-5" style={{ color: "hsl(217 91% 60%)" }} />
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium" style={{ color: "hsl(0 0% 85%)" }}>Cliquez pour télécharger</p>
@@ -361,6 +351,11 @@ export default function Checkout() {
                 </div>
               </button>
             )}
+            <ProofPickerSheet
+              open={pickerOpen}
+              onOpenChange={setPickerOpen}
+              onFileSelected={handleProofSelected}
+            />
           </div>
         )}
 

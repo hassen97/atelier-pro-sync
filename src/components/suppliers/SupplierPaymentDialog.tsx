@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { useUpdateSupplierBalance, Supplier } from "@/hooks/useSuppliers";
 import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, X, Camera } from "lucide-react";
+import { ProofPickerSheet } from "@/components/ui/ProofPickerSheet";
 
 interface SupplierPaymentDialogProps {
   open: boolean;
@@ -20,13 +21,13 @@ export function SupplierPaymentDialog({ open, onOpenChange, supplier }: Supplier
   const [description, setDescription] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const { format } = useCurrency();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setProofFile(file);
-  };
+  const proofPreviewUrl = useMemo(
+    () => (proofFile ? URL.createObjectURL(proofFile) : null),
+    [proofFile]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +69,6 @@ export function SupplierPaymentDialog({ open, onOpenChange, supplier }: Supplier
       setAmount("");
       setDescription("");
       setProofFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
       onOpenChange(false);
     } catch (error) {
       console.error("Error recording payment:", error);
@@ -120,24 +120,39 @@ export function SupplierPaymentDialog({ open, onOpenChange, supplier }: Supplier
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="proof">Preuve de paiement (optionnel)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  ref={fileInputRef}
-                  id="proof"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileChange}
-                  className="text-sm"
-                />
-              </div>
-              {proofFile && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Upload className="h-3 w-3" />
-                  {proofFile.name}
-                </p>
+              <Label>Preuve de paiement (optionnel)</Label>
+              {proofFile && proofPreviewUrl ? (
+                <div className="relative rounded-lg overflow-hidden border border-border">
+                  <img
+                    src={proofPreviewUrl}
+                    alt="Preuve"
+                    className="w-full max-h-40 object-contain bg-muted/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setProofFile(null)}
+                    className="absolute top-2 right-2 rounded-full p-1 bg-background/80 backdrop-blur-sm border border-border hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                  <p className="text-xs text-muted-foreground p-2 truncate">{proofFile.name}</p>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => setPickerOpen(true)}
+                >
+                  <Camera className="h-4 w-4" />
+                  Choisir un fichier
+                </Button>
               )}
+              <ProofPickerSheet
+                open={pickerOpen}
+                onOpenChange={setPickerOpen}
+                onFileSelected={setProofFile}
+              />
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

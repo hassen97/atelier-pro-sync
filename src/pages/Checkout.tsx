@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useSearchParams, Link, useNavigate, Navigate } from "react-router-dom";
 import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
 import { useEnabledGateways, useCreateOrder } from "@/hooks/useCheckout";
@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, Upload, Loader2, Smartphone, CreditCard,
-  Landmark, Globe, Bitcoin, Image, ChevronRight, Clock, Zap
+  Landmark, Globe, Bitcoin, Image, ChevronRight, Clock, Zap, Camera
 } from "lucide-react";
+import { ProofPickerSheet } from "@/components/ui/ProofPickerSheet";
 
 const gatewayIcons: Record<string, any> = {
   stripe: CreditCard,
@@ -37,7 +38,7 @@ export default function Checkout() {
   const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const plan = plans?.find(p => p.id === planId);
   const gateway = gateways?.find(g => g.gateway_key === selectedGateway);

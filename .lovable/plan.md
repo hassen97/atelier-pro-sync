@@ -1,85 +1,44 @@
 
 
-# Fix Login Gate Bug & Strengthen Onboarding Funnel
+# Add Proof-of-Payment Source Picker (Camera vs Gallery)
 
-## Root Cause Analysis
+## Problem
+The `SupplierPaymentDialog` uses `capture="environment"` which forces the camera on mobile, preventing users from selecting existing screenshots or photos from their gallery.
 
-**Bug 1 — Login "Red Box" for verified users:** In `Auth.tsx` line 153, `handleLogin` checks `profile.is_locked`. When admin verifies a user (sets `verification_status = 'verified'`), if `is_locked` remains `true`, the login is rejected with "en attente de validation" even though the user IS verified. The fix: check `verification_status` directly, not just `is_locked`.
+## Solution
+Create a reusable `ProofPickerSheet` bottom-sheet component that offers two choices: Camera or Gallery/Files. Replace the raw file input in `SupplierPaymentDialog` (and optionally `Checkout.tsx`) with this picker.
 
-**Bug 2 — Dashboard bypass for pending users:** `ProtectedRoute` has NO redirect for `pending_verification` users. It relies on the `VerificationBanner` overlay rendered inside `MainLayout`, but users can still reach dashboard routes and see content behind the overlay. The guard needs an explicit redirect.
+## Changes
 
-**Bug 3 — Stale data after login:** `useOnboardingStatus` caches for 2 minutes. After login, stale cache can show old status. Need to invalidate on login.
+### 1. New Component: `src/components/ui/ProofPickerSheet.tsx`
 
-## Plan
+A Drawer (bottom-sheet on mobile) with two large buttons:
+- **"Utiliser l'appareil photo"** — Camera icon, triggers a hidden `<input type="file" accept="image/*" capture="environment" />`
+- **"Choisir dans la galerie/fichiers"** — Images icon, triggers a hidden `<input type="file" accept="image/*" />` (no `capture` attribute, opens native file picker)
 
-### 1. Fix Auth.tsx `handleLogin` (lines 147-163)
+On file selection, calls `onFileSelected(file: File)` and closes.
 
-Replace the `is_locked` check with proper verification_status logic:
+### 2. Update `SupplierPaymentDialog.tsx`
 
-```typescript
-const { data: profile } = await supabase
-  .from("profiles")
-  .select("is_locked, verification_status")
-  .eq("user_id", userId)
-  .single();
+- Remove the raw `<Input type="file" capture="environment" />` block (lines 124-134)
+- Replace with a styled button "Choisir un fichier" that opens the `ProofPickerSheet`
+- When a file is selected, show a thumbnail preview + filename instead of "Aucun fichier choisi"
+- Add an "X" button to clear the selection
 
-const vs = profile?.verification_status;
+### 3. Update `Checkout.tsx` (same pattern)
 
-// Allow verified users through, even if is_locked was stale
-if (vs === "verified") {
-  // Unlock if still locked (admin verified but forgot to unlock)
-  if (profile?.is_locked) {
-    await supabase.from("profiles").update({ is_locked: false }).eq("user_id", userId);
-  }
-  // Proceed — ProtectedRoute will handle funnel
-} else if (vs === "suspended") {
-  await supabase.auth.signOut();
-  setError("Votre compte a été suspendu...");
-  setLoading(false);
-  return;
-} else if (profile?.is_locked) {
-  await supabase.auth.signOut();
-  setError("Votre compte est en attente de validation par l'administrateur.");
-  setLoading(false);
-  return;
-}
-```
+Apply the same `ProofPickerSheet` to the checkout proof upload for consistency across the app.
 
-### 2. Add explicit `pending_verification` redirect in ProtectedRoute
+## Technical Details
 
-Before the "Stage 2" check, add Stage 1 — redirect pending users who have NOT yet submitted verification to `/dashboard` (where the overlay blocks them), but redirect those who HAVE submitted to a waiting state. More critically, ensure `pending_verification` users cannot bypass to dashboard sub-routes:
-
-```typescript
-// Stage 1: Pending verification → let through to MainLayout (overlay blocks)
-// But prevent access to funnel routes meant for verified users
-if (onboardingStatus.isPendingVerification || onboardingStatus.isSuspended) {
-  if (isOnFunnelRoute) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  // Allow through — VerificationBanner overlay handles blocking
-}
-```
-
-### 3. Invalidate onboarding cache after login
-
-In `Auth.tsx` after successful login, invalidate the onboarding query cache to force fresh fetch:
-
-```typescript
-import { useQueryClient } from "@tanstack/react-query";
-// ...
-const queryClient = useQueryClient();
-// After successful login:
-queryClient.invalidateQueries({ queryKey: ["onboarding-status"] });
-```
-
-### 4. Reduce staleTime for onboarding-status
-
-Change `staleTime` in `useOnboardingStatus` from 2 minutes to 0 so it always refetches on mount (the query itself is fast — 3 small SELECTs).
-
-## Files Modified
+- Uses the existing `Drawer` component from `src/components/ui/drawer.tsx` for the bottom-sheet behavior
+- Two hidden `<input>` elements: one with `capture="environment"` (camera), one without (gallery)
+- File state remains managed by the parent component
+- Thumbnail preview via `URL.createObjectURL(file)`
 
 | File | Change |
 |------|--------|
-| `src/pages/Auth.tsx` | Fix `handleLogin` to check `verification_status` instead of just `is_locked`; invalidate cache after login |
-| `src/components/auth/ProtectedRoute.tsx` | Add Stage 1 redirect for pending/suspended users; set `staleTime: 0` |
+| `src/components/ui/ProofPickerSheet.tsx` | New reusable bottom-sheet picker |
+| `src/components/suppliers/SupplierPaymentDialog.tsx` | Replace file input with ProofPickerSheet + thumbnail preview |
+| `src/pages/Checkout.tsx` | Same treatment for checkout proof upload |
 

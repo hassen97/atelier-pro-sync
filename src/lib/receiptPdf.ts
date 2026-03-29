@@ -221,7 +221,7 @@ ${itemsHtml}
 <div class="sep"></div>
 
 <div class="total-row"><span>Sous-total :</span><span class="val">${escHtml(formatCurrency(data.subtotal))}</span></div>
-${data.taxEnabled && data.taxRate && data.taxAmount && data.taxAmount > 0 ? `<div class="total-row"><span>TVA (${data.taxRate}%) :</span><span class="val">${escHtml(formatCurrency(data.taxAmount))}</span></div>` : ""}
+
 <div class="total-row"><span>Payé :</span><span class="val">${escHtml(formatCurrency(data.paid))}</span></div>
 ${data.remaining > 0 ? `<div class="total-row"><span>Reste :</span><span class="val bold">${escHtml(formatCurrency(data.remaining))}</span></div>` : ""}
 ${data.paymentMethod ? `<div class="total-row"><span>Paiement :</span><span class="val">${data.paymentMethod === "card" ? "Carte" : "Espèces"}</span></div>` : ""}

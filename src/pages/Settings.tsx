@@ -150,8 +150,6 @@ export default function Settings() {
   const [shopName, setShopName] = useState("");
   const [shopCountry, setShopCountry] = useState("TN");
   const [shopCurrency, setShopCurrency] = useState("TND");
-  const [taxRate, setTaxRate] = useState("");
-  const [taxEnabled, setTaxEnabled] = useState(true);
   const [stockThreshold, setStockThreshold] = useState("");
   const [shopAddress, setShopAddress] = useState("");
   const [shopPhone, setShopPhone] = useState("");
@@ -207,8 +205,6 @@ export default function Settings() {
       setShopName(settings.shop_name);
       setShopCountry(settings.country || "TN");
       setShopCurrency(settings.currency || "TND");
-      setTaxRate(String(settings.tax_rate));
-      setTaxEnabled(settings.tax_enabled);
       setStockThreshold(String(settings.stock_alert_threshold));
       setBrandColor(settings.brand_color || "blue");
       setShopAddress(settings.address || "");
@@ -268,8 +264,8 @@ export default function Settings() {
       shop_name: shopName,
       country: shopCountry,
       currency: shopCurrency,
-      tax_rate: parseFloat(taxRate) || 19,
-      tax_enabled: taxEnabled,
+      tax_rate: 0,
+      tax_enabled: false,
       stock_alert_threshold: parseInt(stockThreshold) || 5,
       address: shopAddress.trim() || null,
       phone: shopPhone.trim() || null,
@@ -442,33 +438,20 @@ export default function Settings() {
           </div>
         </GlassCard>
 
-        {/* TVA & Receipt */}
+        {/* Receipt Settings */}
         <GlassCard>
           <div className="p-5 sm:p-6">
-            <SectionHeading icon={Receipt} title="Paramètres TVA & Reçus" />
+            <SectionHeading icon={Receipt} title="Paramètres Reçus" />
             <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="taxRate">Taux TVA (%)</Label>
-                  <div className="flex gap-3 items-center">
-                    <Input id="taxRate" type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} disabled={!taxEnabled} className={!taxEnabled ? "opacity-50" : ""} />
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Switch id="taxEnabled" checked={taxEnabled} onCheckedChange={setTaxEnabled} />
-                      <Label htmlFor="taxEnabled" className="text-sm cursor-pointer whitespace-nowrap">Activer TVA</Label>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{taxEnabled ? "La TVA sera appliquée aux ventes" : "TVA désactivée pour les ventes"}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="receiptMode" className="flex items-center gap-2">Mode reçu par défaut</Label>
-                  <Select value={receiptMode} onValueChange={setReceiptMode}>
-                    <SelectTrigger id="receiptMode"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="detailed">Reçu détaillé (pièces + main d'œuvre)</SelectItem>
-                      <SelectItem value="simple">Reçu simple (total seulement)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="receiptMode" className="flex items-center gap-2">Mode reçu par défaut</Label>
+                <Select value={receiptMode} onValueChange={setReceiptMode}>
+                  <SelectTrigger id="receiptMode"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="detailed">Reçu détaillé (pièces + main d'œuvre)</SelectItem>
+                    <SelectItem value="simple">Reçu simple (total seulement)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="receiptTerms">Conditions / Garantie (reçu)</Label>

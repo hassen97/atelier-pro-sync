@@ -178,9 +178,7 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const taxRate = settings.tax_enabled ? settings.tax_rate / 100 : 0;
-  const tax = subtotal * taxRate;
-  const total = subtotal + tax;
+  const total = subtotal;
 
   const clearCart = () => setCart([]);
 
@@ -198,9 +196,7 @@ export default function POS() {
     const repairItems = cart.filter((i) => i.type === "repair");
 
     if (productItems.length > 0) {
-      const productSubtotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
-      const productTax = productSubtotal * taxRate;
-      const productTotal = productSubtotal + productTax;
+      const productTotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
       await createSale.mutateAsync({
         customer_id: null,
         payment_method: "cash",
@@ -223,8 +219,6 @@ export default function POS() {
         time: new Date().toLocaleTimeString("fr-TN", { hour: "2-digit", minute: "2-digit" }),
         items: cart.map((i) => ({ name: i.name, qty: i.quantity, unitPrice: i.price, total: i.price * i.quantity })),
         subtotal,
-        taxRate: settings.tax_enabled ? settings.tax_rate : undefined,
-        taxAmount: settings.tax_enabled ? tax : undefined,
         total,
         paid: total,
         remaining: 0,
@@ -269,9 +263,7 @@ export default function POS() {
 
     // Create sale for products
     if (productItems.length > 0) {
-      const productSubtotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
-      const productTax = productSubtotal * taxRate;
-      const productTotal = productSubtotal + productTax;
+      const productTotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
       const productPaid = repairItems.length > 0
         ? Math.min(actualPaid, productTotal)
         : actualPaid;
@@ -307,8 +299,6 @@ export default function POS() {
         time: new Date().toLocaleTimeString("fr-TN", { hour: "2-digit", minute: "2-digit" }),
         items: cart.map((i) => ({ name: i.name, qty: i.quantity, unitPrice: i.price, total: i.price * i.quantity })),
         subtotal,
-        taxRate: settings.tax_enabled ? settings.tax_rate : undefined,
-        taxAmount: settings.tax_enabled ? tax : undefined,
         total,
         paid: actualPaid,
         remaining: remainder,
@@ -355,7 +345,7 @@ export default function POS() {
             </TabsList>
 
             <TabsContent value="products" className="flex flex-col flex-1 min-h-0 mt-0">
-              <div className="space-y-3 mb-4">
+              <div className="space-y-2 mb-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input placeholder="Rechercher un produit..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
@@ -373,19 +363,18 @@ export default function POS() {
                     {products.length === 0 ? "Aucun produit dans l'inventaire." : "Aucun produit trouvé."}
                   </div>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {filteredProducts.map((product: any) => (
                       <Card key={product.id} className={cn("cursor-pointer transition-all hover:shadow-soft hover:border-primary/30", product.quantity <= 0 && "opacity-50 cursor-not-allowed")} onClick={() => addToCart(product)}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-medium text-sm leading-tight">{product.name}</h3>
-                            <Badge variant={product.quantity <= 0 ? "destructive" : "outline"} className="text-[10px] shrink-0 ml-2">{product.quantity}</Badge>
+                        <CardContent className="p-3">
+                          <div className="flex justify-between items-start mb-1">
+                            <h3 className="font-medium text-sm leading-tight line-clamp-2">{product.name}</h3>
+                            <Badge variant={product.quantity <= 0 ? "destructive" : "outline"} className="text-[10px] shrink-0 ml-1">{product.quantity}</Badge>
                           </div>
                           <div className="flex justify-between items-center">
-                            <Badge variant="secondary" className="text-xs">{product.category?.name || "Sans catégorie"}</Badge>
-                            <span className="font-bold font-mono-numbers text-primary">{format(product.sell_price)}</span>
+                            <Badge variant="secondary" className="text-[10px]">{product.category?.name || "—"}</Badge>
+                            <span className="font-bold font-mono-numbers text-primary text-sm">{format(product.sell_price)}</span>
                           </div>
-                          {product.sku && <p className="text-[10px] font-mono text-muted-foreground mt-1">SKU: {product.sku}</p>}
                         </CardContent>
                       </Card>
                     ))}
@@ -544,7 +533,6 @@ export default function POS() {
             <div className="shrink-0 pt-3 space-y-2">
               <Separator />
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="font-mono-numbers">{format(subtotal)}</span></div>
-              {settings.tax_enabled && <div className="flex justify-between text-sm"><span className="text-muted-foreground">TVA ({settings.tax_rate}%)</span><span className="font-mono-numbers">{format(tax)}</span></div>}
               <Separator />
               <div className="flex justify-between text-lg font-bold"><span>Total</span><span className="font-mono-numbers text-primary">{format(total)}</span></div>
               <div className="grid grid-cols-2 gap-2 pt-2">

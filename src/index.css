@@ -500,14 +500,56 @@
 }
 
 @media print {
+  @page { margin: 0; }
   .no-print { display: none !important; }
   .print-only { display: block !important; }
-  body * { visibility: hidden; }
-  #thermal-label, #thermal-label * { visibility: visible; }
+  .thermal-print-root,
+  .thermal-print-root * {
+    color: #000000 !important;
+    background: #FFFFFF !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: unset;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .thermal-print-container {
+    width: 72mm;
+    max-width: 72mm;
+    margin: 0 auto;
+    font-family: "Courier New", Courier, "Liberation Mono", monospace;
+  }
+  .thermal-print-container table,
+  .thermal-print-container .font-mono-numbers {
+    font-family: "Courier New", Courier, "Liberation Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .thermal-print-container img,
+  .thermal-print-container svg,
+  .thermal-print-container canvas,
+  .thermal-qr {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  .thermal-qr {
+    display: block;
+    margin: 2mm auto;
+  }
   #thermal-label {
     position: fixed;
     left: 0;
     top: 0;
+    max-width: 72mm;
+    color: #000000 !important;
+    background: #FFFFFF !important;
+    font-family: "Courier New", Courier, "Liberation Mono", monospace;
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: none;
+    image-rendering: pixelated;
   }
 }
 

@@ -1249,6 +1249,7 @@ export type Database = {
           receipt_terms: string | null
           shop_name: string
           show_payment_on_tracking: boolean
+          show_receipt_note: boolean
           stock_alert_threshold: number
           store_hours: string | null
           tax_enabled: boolean
@@ -1276,6 +1277,7 @@ export type Database = {
           receipt_terms?: string | null
           shop_name?: string
           show_payment_on_tracking?: boolean
+          show_receipt_note?: boolean
           stock_alert_threshold?: number
           store_hours?: string | null
           tax_enabled?: boolean
@@ -1303,6 +1305,7 @@ export type Database = {
           receipt_terms?: string | null
           shop_name?: string
           show_payment_on_tracking?: boolean
+          show_receipt_note?: boolean
           stock_alert_threshold?: number
           store_hours?: string | null
           tax_enabled?: boolean

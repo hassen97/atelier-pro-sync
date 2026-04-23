@@ -46,6 +46,7 @@ export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-weight: bold !important;
       color: #000000 !important;
       background: #FFFFFF !important;
       box-shadow: none !important;
@@ -73,6 +74,7 @@ export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
       width: ${pageW};
       max-width: ${pageW};
       margin: 0 auto;
+      padding-bottom: 5mm;
       font-family: "Courier New", Courier, "Liberation Mono", monospace;
     }
     img, svg, canvas, .thermal-qr {
@@ -106,7 +108,6 @@ export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
     .terms { font-size: 9px; text-align: center; margin: 1px 0; }
     .qr-section { text-align: center; margin: 3px 0; }
     .qr-label { font-size: 10px; font-weight: bold; }
-    .qr-url { font-size: 9px; word-break: break-all; }
     .barcode-section, .barcode { text-align: center; margin: 3px 0; }
     .barcode-section img, .barcode img { display: block; margin: 0 auto; }
     .footer { font-size: 10px; text-align: center; font-weight: bold; margin-top: 4px; }
@@ -168,11 +169,9 @@ export async function generateThermalReceipt(
 
   // QR code
   let qrImgTag = "";
-  let shortUrl = "";
   if (data.trackingUrl) {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.trackingUrl)}&format=png&margin=2`;
     qrImgTag = `<img class="thermal-qr" src="${qrUrl}" style="width:${printerWidth === "58mm" ? "19mm" : "24mm"};" alt="QR" />`;
-    shortUrl = data.trackingUrl.replace(/^https?:\/\//, "");
   }
 
   // Logo
@@ -209,11 +208,13 @@ export async function generateThermalReceipt(
     "Garantie de 90 jours sur toutes les pièces.",
     "Appareils non récupérés après 30 jours non garantis.",
     "Présentez ce ticket pour récupérer votre appareil.",
-    "Merci pour votre confiance !",
   ];
   const termsRaw: string = (settings as any).receipt_terms || "";
   const terms = termsRaw.trim() ? termsRaw.split("\n").filter((l: string) => l.trim()) : defaultTerms;
   const termsHtml = terms.map(t => `<p class="terms">${escHtml(t)}</p>`).join("");
+  const thankYouHtml = (settings as any).show_receipt_note !== false
+    ? `<p class="footer">Merci de votre confiance !</p>`
+    : "";
 
   // Phones
   const phones = [settings.phone, settings.whatsapp_phone].filter(Boolean);
@@ -282,7 +283,6 @@ ${data.trackingUrl ? `
   <p class="qr-label">Suivre votre réparation</p>
   <p class="terms">Scannez le QR code ci-dessous</p>
   ${qrImgTag}
-  <p class="qr-url">${escHtml(shortUrl)}</p>
 </div>
 ` : ""}
 
@@ -294,6 +294,7 @@ ${barcodeImgTag ? `
 ` : ""}
 
 <p class="footer">Présentez ce ticket pour récupérer<br>votre appareil.</p>
+${thankYouHtml}
 
 </main></body>
 </html>`;

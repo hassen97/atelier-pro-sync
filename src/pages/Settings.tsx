@@ -156,6 +156,7 @@ export default function Settings() {
   const [shopWhatsapp, setShopWhatsapp] = useState("");
   const [shopEmail, setShopEmail] = useState("");
   const [receiptTerms, setReceiptTerms] = useState("");
+  const [showReceiptNote, setShowReceiptNote] = useState(true);
   const [receiptMode, setReceiptMode] = useState("detailed");
   const [googleMapsUrl, setGoogleMapsUrl] = useState("");
   const [warrantyDays, setWarrantyDays] = useState("30");
@@ -212,6 +213,7 @@ export default function Settings() {
       setShopWhatsapp(settings.whatsapp_phone || "");
       setShopEmail(settings.email || "");
       setReceiptTerms(settings.receipt_terms || "");
+      setShowReceiptNote((settings as any).show_receipt_note ?? true);
       setReceiptMode(settings.receipt_mode || "detailed");
       setGoogleMapsUrl((settings as any).google_maps_url || "");
       setWarrantyDays(String((settings as any).warranty_days ?? 30));
@@ -272,6 +274,7 @@ export default function Settings() {
       whatsapp_phone: shopWhatsapp.trim() || null,
       email: shopEmail.trim() || null,
       receipt_terms: receiptTerms.trim() || null,
+      show_receipt_note: showReceiptNote,
       receipt_mode: receiptMode,
       google_maps_url: googleMapsUrl.trim() || null,
       warranty_days: parseInt(warrantyDays) || 30,
@@ -457,6 +460,13 @@ export default function Settings() {
                 <Label htmlFor="receiptTerms">Conditions / Garantie (reçu)</Label>
                 <Textarea id="receiptTerms" value={receiptTerms} onChange={(e) => setReceiptTerms(e.target.value)} placeholder="Garantie de 90 jours sur toutes les pièces..." rows={3} />
                 <p className="text-xs text-muted-foreground">Ce texte apparaîtra en bas de vos reçus.</p>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/30">
+                <div>
+                  <p className="font-medium text-sm">Afficher le message de remerciement</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Affiche “Merci de votre confiance !” en bas des reçus.</p>
+                </div>
+                <Switch checked={showReceiptNote} onCheckedChange={setShowReceiptNote} />
               </div>
             </div>
           </div>

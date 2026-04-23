@@ -20,6 +20,7 @@ export interface ShopSettings {
   whatsapp_phone: string | null;
   email: string | null;
   receipt_terms: string | null;
+  show_receipt_note: boolean;
   inventory_locked: boolean;
   receipt_mode: string;
   // New tracking page fields
@@ -44,6 +45,7 @@ const defaultSettings: ShopSettings = {
   whatsapp_phone: null,
   email: null,
   receipt_terms: null,
+  show_receipt_note: true,
   inventory_locked: false,
   receipt_mode: "detailed",
   google_maps_url: null,
@@ -96,6 +98,7 @@ export function useShopSettings() {
           whatsapp_phone: (data as any).whatsapp_phone || null,
           email: (data as any).email || null,
           receipt_terms: (data as any).receipt_terms || null,
+          show_receipt_note: (data as any).show_receipt_note ?? true,
           inventory_locked: (data as any).inventory_locked ?? false,
           receipt_mode: (data as any).receipt_mode || "detailed",
           google_maps_url: (data as any).google_maps_url || null,
@@ -141,6 +144,7 @@ export function useShopSettings() {
             whatsapp_phone: updatedSettings.whatsapp_phone,
             email: updatedSettings.email,
             receipt_terms: updatedSettings.receipt_terms,
+            show_receipt_note: updatedSettings.show_receipt_note,
             inventory_locked: updatedSettings.inventory_locked,
             receipt_mode: updatedSettings.receipt_mode,
             google_maps_url: updatedSettings.google_maps_url,
@@ -172,6 +176,7 @@ export function useShopSettings() {
             whatsapp_phone: updatedSettings.whatsapp_phone,
             email: updatedSettings.email,
             receipt_terms: updatedSettings.receipt_terms,
+            show_receipt_note: updatedSettings.show_receipt_note,
             inventory_locked: updatedSettings.inventory_locked,
             receipt_mode: updatedSettings.receipt_mode,
             google_maps_url: updatedSettings.google_maps_url,

@@ -505,6 +505,7 @@
   .print-only { display: block !important; }
   .thermal-print-root,
   .thermal-print-root * {
+    font-weight: bold !important;
     color: #000000 !important;
     background: #FFFFFF !important;
     box-shadow: none !important;
@@ -521,6 +522,7 @@
     width: 72mm;
     max-width: 72mm;
     margin: 0 auto;
+    padding-bottom: 5mm;
     font-family: "Courier New", Courier, "Liberation Mono", monospace;
   }
   .thermal-print-container table,

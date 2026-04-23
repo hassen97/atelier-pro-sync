@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useInvoices, useUpdateInvoice, useDeleteInvoice, InvoiceWithRelations } from "@/hooks/useInvoices";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
-import { getThermalPrintCss, printThermalHtml } from "@/lib/receiptPdf";
+import { getThermalPrintCss, printThermalHtml, thermalEscape } from "@/lib/receiptPdf";
 import { toast } from "sonner";
 
 const statusConfig = {
@@ -93,17 +93,17 @@ export default function Invoices() {
     const status = statusConfig[invoice.status as keyof typeof statusConfig]?.label || invoice.status;
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture</title><style>${getThermalPrintCss("72mm", "12px")}</style></head>
       <body class="thermal-print-root"><main class="thermal-print-container">
-        <p class="shop-name">${settings.shop_name}</p>
+        <p class="shop-name">${thermalEscape(settings.shop_name)}</p>
         <div class="sep-bold"></div>
         <p class="title">FACTURE</p>
-        <p class="ticket-num">${invoice.invoice_number}</p>
+        <p class="ticket-num">${thermalEscape(invoice.invoice_number)}</p>
         <div class="sep"></div>
         <p class="field">Date : ${new Date(invoice.created_at).toLocaleDateString("fr-TN")}</p>
-        <p class="field">Client : ${invoice.customer?.name || "Client passager"}</p>
-        ${invoice.customer?.phone ? `<p class="field">Tél : ${invoice.customer.phone}</p>` : ""}
+        <p class="field">Client : ${thermalEscape(invoice.customer?.name || "Client passager")}</p>
+        ${invoice.customer?.phone ? `<p class="field">Tél : ${thermalEscape(invoice.customer.phone)}</p>` : ""}
         <div class="sep"></div>
         <p class="field">Type : ${invoice.repair ? "Réparation" : "Vente"}</p>
-        ${invoice.repair ? `<p class="field">Appareil : ${invoice.repair.device_model}</p>` : ""}
+        ${invoice.repair ? `<p class="field">Appareil : ${thermalEscape(invoice.repair.device_model)}</p>` : ""}
         ${invoice.sale ? `<p class="field">Vente : ${format(Number(invoice.sale.total_amount))}</p>` : ""}
         <div class="sep-bold"></div>
         <div class="total-row grand"><span>TOTAL :</span><span class="val">${format(Number(invoice.total_amount))}</span></div>

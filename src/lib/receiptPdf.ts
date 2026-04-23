@@ -37,6 +37,94 @@ function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+export const thermalEscape = escHtml;
+
+export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
+  return `
+    @page { size: ${pageW} auto; margin: 0; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      color: #000000 !important;
+      background: #FFFFFF !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+      filter: none !important;
+      opacity: 1 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    html, body {
+      margin: 0;
+      padding: 5mm;
+      color: #000000 !important;
+      background: #FFFFFF !important;
+      font-family: "Courier New", Courier, "Liberation Mono", monospace;
+      font-size: ${fontSize};
+      line-height: 1.35;
+      letter-spacing: 0;
+      text-rendering: optimizeSpeed;
+      -webkit-font-smoothing: none;
+      -moz-osx-font-smoothing: unset;
+    }
+    .thermal-print-root { width: 100%; }
+    .thermal-print-container {
+      width: ${pageW};
+      max-width: ${pageW};
+      margin: 0 auto;
+      font-family: "Courier New", Courier, "Liberation Mono", monospace;
+    }
+    img, svg, canvas, .thermal-qr {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .thermal-qr {
+      display: block;
+      margin: 2mm auto;
+      height: auto;
+    }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .bold { font-weight: bold; }
+    .shop-name { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 1px; }
+    .shop-info { font-size: 10px; text-align: center; }
+    .title { font-size: 14px; font-weight: bold; text-align: center; margin: 3px 0 1px; }
+    .ticket-num { font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 2px; }
+    .sep { border-top: 1px dashed #000000; margin: 3px 0; }
+    .sep-bold { border-top: 2px solid #000000; margin: 3px 0; }
+    .field { font-size: 12px; margin: 1px 0; }
+    .label { font-weight: bold; font-size: 12px; margin: 2px 0 1px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 2px 0; font-family: inherit; }
+    th, td { padding: 1px 0; vertical-align: top; text-align: left; }
+    th { font-weight: bold; border-bottom: 1px solid #000000; }
+    th.center, td.center { text-align: center; }
+    th.right, td.right { text-align: right; }
+    .total-row { display: flex; justify-content: space-between; font-size: 12px; margin: 1px 0; gap: 3mm; }
+    .total-row.grand { font-size: 14px; font-weight: bold; }
+    .total-row .val { text-align: right; }
+    .terms { font-size: 9px; text-align: center; margin: 1px 0; }
+    .qr-section { text-align: center; margin: 3px 0; }
+    .qr-label { font-size: 10px; font-weight: bold; }
+    .qr-url { font-size: 9px; word-break: break-all; }
+    .barcode-section, .barcode { text-align: center; margin: 3px 0; }
+    .barcode-section img, .barcode img { display: block; margin: 0 auto; }
+    .footer { font-size: 10px; text-align: center; font-weight: bold; margin-top: 4px; }
+    @media print { body { width: auto; } }
+  `;
+}
+
+export function printThermalHtml(html: string, windowSize = "width=400,height=600") {
+  const printWindow = window.open("", "_blank", windowSize);
+  if (!printWindow) return;
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+  }, 400);
+}
+
 async function generateBarcodeDataUrl(value: string): Promise<string | null> {
   try {
     const mod = await import("jsbarcode");
@@ -83,7 +171,7 @@ export async function generateThermalReceipt(
   let shortUrl = "";
   if (data.trackingUrl) {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.trackingUrl)}&format=png&margin=2`;
-    qrImgTag = `<img src="${qrUrl}" style="width:${printerWidth === "58mm" ? "38mm" : "48mm"};height:auto;" alt="QR" />`;
+    qrImgTag = `<img class="thermal-qr" src="${qrUrl}" style="width:${printerWidth === "58mm" ? "19mm" : "24mm"};" alt="QR" />`;
     shortUrl = data.trackingUrl.replace(/^https?:\/\//, "");
   }
 
@@ -139,54 +227,10 @@ export async function generateThermalReceipt(
 <meta charset="utf-8">
 <title>Reçu</title>
 <style>
-  @page { size: ${pageW} auto; margin: 0; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: "Courier New", "Liberation Mono", monospace;
-    font-size: 12px;
-    color: #000;
-    background: #fff;
-    -webkit-font-smoothing: none;
-    -moz-osx-font-smoothing: unset;
-    text-rendering: optimizeSpeed;
-    line-height: 1.4;
-    letter-spacing: 0.5px;
-    width: ${pageW};
-    padding: 2mm;
-  }
-  .center { text-align: center; }
-  .right { text-align: right; }
-  .bold { font-weight: bold; }
-  .shop-name { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 1px; }
-  .shop-info { font-size: 10px; text-align: center; color: #000; }
-  .title { font-size: 14px; font-weight: bold; text-align: center; margin: 3px 0 1px; }
-  .ticket-num { font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 2px; }
-  .sep { border-top: 1px dashed #000; margin: 3px 0; }
-  .sep-bold { border-top: 2px solid #000; margin: 3px 0; }
-  .field { font-size: 12px; margin: 1px 0; }
-  .label { font-weight: bold; font-size: 12px; margin: 2px 0 1px; }
-  table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 2px 0; }
-  th, td { padding: 1px 0; vertical-align: top; text-align: left; }
-  th { font-weight: bold; border-bottom: 1px solid #000; }
-  th.center, td.center { text-align: center; }
-  th.right, td.right { text-align: right; }
-  .total-row { display: flex; justify-content: space-between; font-size: 12px; margin: 1px 0; }
-  .total-row.grand { font-size: 14px; font-weight: bold; }
-  .total-row .val { text-align: right; }
-  .terms { font-size: 9px; text-align: center; color: #000; margin: 1px 0; }
-  .qr-section { text-align: center; margin: 3px 0; }
-  .qr-section img { display: block; margin: 2px auto; }
-  .qr-label { font-size: 10px; font-weight: bold; }
-  .qr-url { font-size: 9px; word-break: break-all; }
-  .barcode-section { text-align: center; margin: 3px 0; }
-  .barcode-section img { display: block; margin: 0 auto; }
-  .footer { font-size: 10px; text-align: center; font-weight: bold; margin-top: 4px; }
-  @media print {
-    body { width: ${pageW}; }
-  }
+  ${getThermalPrintCss(pageW, "12px")}
 </style>
 </head>
-<body>
+<body class="thermal-print-root"><main class="thermal-print-container">
 
 ${logoTag}
 <p class="shop-name">${escHtml(settings.shop_name)}</p>
@@ -251,17 +295,10 @@ ${barcodeImgTag ? `
 
 <p class="footer">Présentez ce ticket pour récupérer<br>votre appareil.</p>
 
-</body>
+</main></body>
 </html>`;
 
-  const printWindow = window.open("", "_blank", "width=400,height=600");
-  if (!printWindow) return;
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => {
-    printWindow.print();
-  }, 400);
+  printThermalHtml(html, "width=400,height=600");
 }
 
 // ── Phone Label (compact sticker for attaching to device) ──────────────
@@ -304,32 +341,13 @@ export async function generatePhoneLabel(
 <meta charset="utf-8">
 <title>Étiquette</title>
 <style>
-  @page { size: ${pageW} auto; margin: 0; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: "Courier New", "Liberation Mono", monospace;
-    font-size: 11px;
-    color: #000;
-    background: #fff;
-    -webkit-font-smoothing: none;
-    text-rendering: optimizeSpeed;
-    line-height: 1.3;
-    letter-spacing: 0.5px;
-    width: ${pageW};
-    padding: 2mm;
-  }
-  .center { text-align: center; }
-  .bold { font-weight: bold; }
-  .sep { border-top: 1px dashed #000; margin: 2px 0; }
+  ${getThermalPrintCss(pageW, "11px")}
   .shop { font-size: 12px; font-weight: bold; text-align: center; }
   .ticket { font-size: 14px; font-weight: bold; text-align: center; margin: 2px 0; }
   .field { font-size: 11px; margin: 1px 0; }
-  .barcode { text-align: center; margin: 3px 0; }
-  .barcode img { display: block; margin: 0 auto; }
-  @media print { body { width: ${pageW}; } }
 </style>
 </head>
-<body>
+<body class="thermal-print-root"><main class="thermal-print-container">
 
 <p class="shop">${escHtml(shopName)}</p>
 ${ticketStr ? `<p class="ticket">N° ${ticketStr}</p>` : ""}
@@ -344,15 +362,8 @@ ${data.repairedBy ? `<p class="field"><span class="bold">Tech:</span> ${escHtml(
 <div class="sep"></div>
 ${barcodeImgTag ? `<div class="barcode">${barcodeImgTag}</div>` : ""}
 
-</body>
+</main></body>
 </html>`;
 
-  const printWindow = window.open("", "_blank", "width=350,height=400");
-  if (!printWindow) return;
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => {
-    printWindow.print();
-  }, 400);
+  printThermalHtml(html, "width=350,height=400");
 }

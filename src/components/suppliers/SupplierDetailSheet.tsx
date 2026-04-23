@@ -34,9 +34,11 @@ import {
   ExternalLink,
   ShoppingCart,
   BookOpen,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
+import { getThermalPrintCss, printThermalHtml, thermalEscape } from "@/lib/receiptPdf";
 import {
   Supplier,
   SupplierTransaction,
@@ -93,6 +95,24 @@ export function SupplierDetailSheet({
     }
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, "_blank");
     setWhatsappPopoverOpen(false);
+  };
+
+  const handlePrintTransaction = (tx: SupplierTransaction & { computedBalance: number }) => {
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Paiement fournisseur</title><style>${getThermalPrintCss("72mm", "12px")}</style></head>
+      <body class="thermal-print-root"><main class="thermal-print-container">
+        <p class="shop-name">REÇU FOURNISSEUR</p>
+        <div class="sep-bold"></div>
+        <p class="field">Fournisseur : ${thermalEscape(supplier.name)}</p>
+        <p class="field">Date : ${format(new Date(tx.created_at), "dd/MM/yyyy", { locale: fr })}</p>
+        <p class="field">Type : ${tx.type === "purchase" ? "Achat" : "Paiement"}</p>
+        <p class="field">Description : ${thermalEscape(tx.description || "—")}</p>
+        ${tx.proof_url ? `<p class="field">Preuve : ${thermalEscape(tx.proof_url)}</p><img src="${thermalEscape(tx.proof_url)}" style="display:block;max-width:60mm;margin:2mm auto;height:auto;" alt="preuve" />` : ""}
+        <div class="sep-bold"></div>
+        <div class="total-row grand"><span>Montant :</span><span class="val">${formatCurrency(tx.amount)}</span></div>
+        <div class="total-row"><span>Solde :</span><span class="val">${formatCurrency(Math.abs(tx.computedBalance))}</span></div>
+        <div class="sep-bold"></div>
+      </main></body></html>`;
+    printThermalHtml(html, "width=400,height=600");
   };
 
   // Compute running balance client-side for display
@@ -255,6 +275,7 @@ export function SupplierDetailSheet({
                       <TableHead className="text-xs">Description</TableHead>
                       <TableHead className="text-xs text-right">Montant</TableHead>
                       <TableHead className="text-xs text-right">Solde</TableHead>
+                      <TableHead className="w-8"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -291,6 +312,11 @@ export function SupplierDetailSheet({
                         <TableCell className={cn("text-xs text-right font-semibold", tx.computedBalance < 0 ? "text-destructive" : "text-success")}>
                           {formatCurrency(Math.abs(tx.computedBalance))}
                           {tx.computedBalance < 0 ? " D" : " ✓"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintTransaction(tx)}>
+                            <Printer className="h-3.5 w-3.5" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

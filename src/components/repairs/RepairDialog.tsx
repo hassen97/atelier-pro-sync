@@ -63,6 +63,7 @@ const repairSchema = z.object({
   diagnosis: z.string().optional(),
   labor_cost: z.coerce.number().min(0, "Le coût doit être positif"),
   parts_cost: z.coerce.number().min(0, "Le coût doit être positif"),
+  total_cost: z.coerce.number().min(0, "Le prix total doit être positif"),
   amount_paid: z.coerce.number().min(0, "Le montant doit être positif"),
   notes: z.string().optional(),
   estimated_ready_date: z.string().optional(),
@@ -70,6 +71,9 @@ const repairSchema = z.object({
   received_by: z.string().optional(),
   repaired_by: z.string().optional(),
   device_condition: z.string().optional(),
+}).refine((data) => data.amount_paid <= data.total_cost, {
+  message: "L'avance ne peut pas dépasser le prix total",
+  path: ["amount_paid"],
 });
 
 type RepairFormValues = z.infer<typeof repairSchema>;
@@ -87,6 +91,7 @@ interface RepairDialogProps {
     diagnosis?: string | null;
     labor_cost: number;
     parts_cost: number;
+    total_cost: number;
     amount_paid: number;
     notes?: string | null;
     estimated_ready_date?: string | null;
@@ -177,6 +182,7 @@ export function RepairDialog({
       diagnosis: "",
       labor_cost: 0,
       parts_cost: 0,
+      total_cost: 0,
       amount_paid: 0,
       notes: "",
       estimated_ready_date: "",
@@ -190,7 +196,7 @@ export function RepairDialog({
   const defaultDraftValues = {
     customer_id: "", customer_name: "", customer_phone: "", category_id: "",
     device_brand: "", device_model: "", imei: "", problem_description: "",
-    diagnosis: "", labor_cost: 0, parts_cost: 0, amount_paid: 0, notes: "",
+    diagnosis: "", labor_cost: 0, parts_cost: 0, total_cost: 0, amount_paid: 0, notes: "",
     estimated_ready_date: "", technician_note: "", received_by: "", repaired_by: "",
     device_condition: "",
   };

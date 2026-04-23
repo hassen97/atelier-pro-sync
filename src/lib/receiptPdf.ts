@@ -46,6 +46,7 @@ export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-weight: bold !important;
       color: #000000 !important;
       background: #FFFFFF !important;
       box-shadow: none !important;
@@ -73,6 +74,7 @@ export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
       width: ${pageW};
       max-width: ${pageW};
       margin: 0 auto;
+      padding-bottom: 5mm;
       font-family: "Courier New", Courier, "Liberation Mono", monospace;
     }
     img, svg, canvas, .thermal-qr {
@@ -106,7 +108,6 @@ export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
     .terms { font-size: 9px; text-align: center; margin: 1px 0; }
     .qr-section { text-align: center; margin: 3px 0; }
     .qr-label { font-size: 10px; font-weight: bold; }
-    .qr-url { font-size: 9px; word-break: break-all; }
     .barcode-section, .barcode { text-align: center; margin: 3px 0; }
     .barcode-section img, .barcode img { display: block; margin: 0 auto; }
     .footer { font-size: 10px; text-align: center; font-weight: bold; margin-top: 4px; }

@@ -37,6 +37,8 @@ function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+export const thermalEscape = escHtml;
+
 export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
   return `
     @page { size: ${pageW} auto; margin: 0; }

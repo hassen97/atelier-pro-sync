@@ -313,7 +313,7 @@ export default function Dashboard() {
             diagnosis: data.diagnosis,
             labor_cost: data.labor_cost,
             parts_cost: data.parts_cost,
-            total_cost: (data.labor_cost || 0) + (data.parts_cost || 0),
+            total_cost: data.total_cost,
             amount_paid: data.amount_paid,
             notes: data.notes,
             estimated_ready_date: data.estimated_ready_date || null,

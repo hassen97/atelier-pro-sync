@@ -63,6 +63,7 @@ const repairSchema = z.object({
   diagnosis: z.string().optional(),
   labor_cost: z.coerce.number().min(0, "Le coût doit être positif"),
   parts_cost: z.coerce.number().min(0, "Le coût doit être positif"),
+  total_cost: z.coerce.number().min(0, "Le prix total doit être positif"),
   amount_paid: z.coerce.number().min(0, "Le montant doit être positif"),
   notes: z.string().optional(),
   estimated_ready_date: z.string().optional(),
@@ -70,6 +71,9 @@ const repairSchema = z.object({
   received_by: z.string().optional(),
   repaired_by: z.string().optional(),
   device_condition: z.string().optional(),
+}).refine((data) => data.amount_paid <= data.total_cost, {
+  message: "L'avance ne peut pas dépasser le prix total",
+  path: ["amount_paid"],
 });
 
 type RepairFormValues = z.infer<typeof repairSchema>;
@@ -87,6 +91,7 @@ interface RepairDialogProps {
     diagnosis?: string | null;
     labor_cost: number;
     parts_cost: number;
+    total_cost: number;
     amount_paid: number;
     notes?: string | null;
     estimated_ready_date?: string | null;
@@ -177,6 +182,7 @@ export function RepairDialog({
       diagnosis: "",
       labor_cost: 0,
       parts_cost: 0,
+      total_cost: 0,
       amount_paid: 0,
       notes: "",
       estimated_ready_date: "",
@@ -190,7 +196,7 @@ export function RepairDialog({
   const defaultDraftValues = {
     customer_id: "", customer_name: "", customer_phone: "", category_id: "",
     device_brand: "", device_model: "", imei: "", problem_description: "",
-    diagnosis: "", labor_cost: 0, parts_cost: 0, amount_paid: 0, notes: "",
+    diagnosis: "", labor_cost: 0, parts_cost: 0, total_cost: 0, amount_paid: 0, notes: "",
     estimated_ready_date: "", technician_note: "", received_by: "", repaired_by: "",
     device_condition: "",
   };
@@ -238,6 +244,7 @@ export function RepairDialog({
         diagnosis: repair.diagnosis || "",
         labor_cost: Number(repair.labor_cost) || 0,
         parts_cost: Number(repair.parts_cost) || 0,
+        total_cost: Number(repair.total_cost) || 0,
         amount_paid: Number(repair.amount_paid) || 0,
         notes: repair.notes || "",
         estimated_ready_date: repair.estimated_ready_date || "",
@@ -261,6 +268,7 @@ export function RepairDialog({
         diagnosis: "",
         labor_cost: 0,
         parts_cost: 0,
+        total_cost: 0,
         amount_paid: 0,
         notes: "",
         estimated_ready_date: "",
@@ -350,9 +358,14 @@ export function RepairDialog({
 
   const laborCostWatch = form.watch("labor_cost");
   const partsCostWatch = form.watch("parts_cost");
+  const totalCostWatch = form.watch("total_cost");
+  const amountPaidWatch = form.watch("amount_paid");
   const laborCost = Number(laborCostWatch) || 0;
   const partsCost = Number(partsCostWatch) || 0;
-  const totalCost = laborCost + partsCost;
+  const calculatedInternalCost = laborCost + partsCost;
+  const totalCost = Number(totalCostWatch) || 0;
+  const amountPaid = Number(amountPaidWatch) || 0;
+  const remainingBalance = Math.max(0, totalCost - amountPaid);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -652,7 +665,7 @@ export function RepairDialog({
             {/* Costs — hidden for employees (confidential) */}
             {!isEmployee && (
             <>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="labor_cost"
@@ -693,32 +706,13 @@ export function RepairDialog({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="amount_paid"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Avance payée</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        placeholder="0.000"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
 
             {/* Total Display */}
             <div className="bg-muted/50 p-3 rounded-lg flex justify-between items-center">
               <span className="text-sm font-medium">Total estimé:</span>
               <span className="text-lg font-bold text-primary">
-                {format(totalCost)}
+                {format(calculatedInternalCost)}
               </span>
             </div>
             </>
@@ -866,6 +860,57 @@ export function RepairDialog({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="total_cost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prix Total Estimé</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          placeholder="0"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="amount_paid"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Avance payée</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          placeholder="0"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-md bg-background px-3 py-2">
+                <span className="text-sm font-medium">Reste à payer</span>
+                <span className="text-lg font-bold font-mono-numbers text-primary">
+                  {format(remainingBalance)}
+                </span>
+              </div>
+            </div>
 
             <DialogFooter>
               <Button

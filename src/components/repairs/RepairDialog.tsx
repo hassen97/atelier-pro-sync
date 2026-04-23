@@ -731,7 +731,7 @@ export function RepairDialog({
             <div className="bg-muted/50 p-3 rounded-lg flex justify-between items-center">
               <span className="text-sm font-medium">Total estimé:</span>
               <span className="text-lg font-bold text-primary">
-                {format(totalCost)}
+                {format(calculatedInternalCost)}
               </span>
             </div>
             </>
@@ -879,6 +879,57 @@ export function RepairDialog({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="total_cost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prix Total Estimé</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          placeholder="0"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="amount_paid"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Avance payée</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          placeholder="0"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-md bg-background px-3 py-2">
+                <span className="text-sm font-medium">Reste à payer</span>
+                <span className="text-lg font-bold font-mono-numbers text-primary">
+                  {format(remainingBalance)}
+                </span>
+              </div>
+            </div>
 
             <DialogFooter>
               <Button

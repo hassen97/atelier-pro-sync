@@ -134,6 +134,20 @@ export function useCreateRepair() {
         .single();
 
       if (error) throw error;
+
+      const amountPaid = Number(repair.amount_paid) || 0;
+      if (amountPaid > 0) {
+        const { error: expenseError } = await supabase.from("expenses").insert({
+          user_id: effectiveUserId,
+          category: "Avance Réparation",
+          amount: -amountPaid,
+          description: `Avance réparation: ${repair.device_model}`,
+          expense_date: new Date().toISOString().split("T")[0],
+        });
+
+        if (expenseError) throw expenseError;
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -141,6 +155,7 @@ export function useCreateRepair() {
       queryClient.invalidateQueries({ queryKey: ["recent-repairs"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["profit"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       toast.success("Réparation créée avec succès");
     },
     onError: (error) => {

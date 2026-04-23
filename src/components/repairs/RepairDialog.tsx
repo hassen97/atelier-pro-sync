@@ -665,7 +665,7 @@ export function RepairDialog({
             {/* Costs — hidden for employees (confidential) */}
             {!isEmployee && (
             <>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="labor_cost"
@@ -706,25 +706,6 @@ export function RepairDialog({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="amount_paid"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Avance payée</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        placeholder="0.000"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
 
             {/* Total Display */}

@@ -309,6 +309,7 @@ export default function Repairs() {
     diagnosis?: string;
     labor_cost: number;
     parts_cost: number;
+    total_cost: number;
     amount_paid: number;
     notes?: string;
     estimated_ready_date?: string;
@@ -325,7 +326,7 @@ export default function Repairs() {
       diagnosis: data.diagnosis || null,
       labor_cost: data.labor_cost,
       parts_cost: data.parts_cost,
-      total_cost: data.labor_cost + data.parts_cost,
+      total_cost: data.total_cost,
       amount_paid: data.amount_paid,
       notes: data.notes || null,
       estimated_ready_date: data.estimated_ready_date || null,

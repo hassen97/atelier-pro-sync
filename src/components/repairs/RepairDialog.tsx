@@ -244,6 +244,7 @@ export function RepairDialog({
         diagnosis: repair.diagnosis || "",
         labor_cost: Number(repair.labor_cost) || 0,
         parts_cost: Number(repair.parts_cost) || 0,
+        total_cost: Number(repair.total_cost) || 0,
         amount_paid: Number(repair.amount_paid) || 0,
         notes: repair.notes || "",
         estimated_ready_date: repair.estimated_ready_date || "",
@@ -267,6 +268,7 @@ export function RepairDialog({
         diagnosis: "",
         labor_cost: 0,
         parts_cost: 0,
+        total_cost: 0,
         amount_paid: 0,
         notes: "",
         estimated_ready_date: "",
@@ -356,9 +358,14 @@ export function RepairDialog({
 
   const laborCostWatch = form.watch("labor_cost");
   const partsCostWatch = form.watch("parts_cost");
+  const totalCostWatch = form.watch("total_cost");
+  const amountPaidWatch = form.watch("amount_paid");
   const laborCost = Number(laborCostWatch) || 0;
   const partsCost = Number(partsCostWatch) || 0;
-  const totalCost = laborCost + partsCost;
+  const calculatedInternalCost = laborCost + partsCost;
+  const totalCost = Number(totalCostWatch) || 0;
+  const amountPaid = Number(amountPaidWatch) || 0;
+  const remainingBalance = Math.max(0, totalCost - amountPaid);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

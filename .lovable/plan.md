@@ -1,146 +1,124 @@
 
-# Global Thermal Print Sharpness + QR Half-Size
+# Finalize Thermal Receipt Template
 
 ## Goal
-Make every thermal print output sharper on Epson TM-T20X and similar printers by applying a consistent high-contrast “Thermal Profile” to POS receipts, repair tickets/labels, invoices, and supplier payment proof printing. Also reduce the repair tracking QR code to 50% of its current printed size while keeping it centered and scanner-readable.
+Improve receipt readability and control the thank-you footer by:
+- forcing all thermal print text to bold black,
+- removing the printed tracking link/URL text,
+- adding a shop setting to show/hide “Merci de votre confiance !”,
+- preserving compact thermal spacing with a safe bottom margin.
 
 ## Implementation Plan
 
-### 1. Add a reusable Thermal Print CSS profile
-Create a shared print CSS helper in `src/lib/receiptPdf.ts` so every generated print window uses the same rules:
+### 1. Add a receipt footer toggle setting
+Add a new boolean field to `shop_settings`:
 
-- Pure black text: `#000000`
-- Pure white backgrounds: `#FFFFFF`
-- No gray tones, shadows, blur, opacity, gradients, or filters
-- Thermal sharpness rules:
-  - `text-rendering: optimizeSpeed`
-  - `-webkit-font-smoothing: none`
-  - `-moz-osx-font-smoothing: grayscale/unset where appropriate`
-  - `image-rendering: pixelated`
-  - `print-color-adjust: exact`
-  - `-webkit-print-color-adjust: exact`
-- Monospace typography for printed data:
-  - `"Courier New", Courier, "Liberation Mono", monospace`
-- Thermal roll calibration:
-  - `@page { margin: 0; }`
-  - `body { margin: 0; padding: 5mm; }`
-  - `.thermal-print-container { max-width: 72mm; width: 72mm; }` for 80mm
-  - Keep existing 58mm support using the compact width already available in the receipt generator.
+```sql
+show_receipt_note boolean not null default true
+```
 
-### 2. Apply the profile to POS sales receipts
-File: `src/lib/receiptPdf.ts`
+Defaulting to `true` preserves the current receipt behavior for existing shops.
 
-Update `generateThermalReceipt()` so POS receipts use the global profile instead of local duplicated print CSS.
+Update the settings data flow:
+- `src/hooks/useShopSettings.ts`
+  - Add `show_receipt_note` to `ShopSettings`
+  - Set default to `true`
+  - Read it from `shop_settings`
+  - Save it when settings are updated
+- `src/pages/Settings.tsx`
+  - Add local state for the toggle
+  - Add a switch in “Paramètres Reçus” labeled:
+    - `Afficher le message de remerciement`
+  - Description:
+    - `Affiche “Merci de votre confiance !” en bas des reçus.`
+  - Include the value in `handleSaveGeneralSettings`
 
-This will affect receipts generated from:
-- `src/pages/POS.tsx`
+### 2. Force all thermal receipt text to bold
+Update the shared thermal print CSS in `src/lib/receiptPdf.ts`:
 
-Changes:
-- Wrap printed content in a `.thermal-print-container`
-- Force all receipt tables, totals, separators, logos, barcodes, and QR images into black/white print-safe styling
-- Keep the receipt layout compact for 80mm thermal rolls.
+```css
+* {
+  font-weight: bold !important;
+  color: #000000 !important;
+  background: #FFFFFF !important;
+}
+```
 
-### 3. Apply the profile to repair intake and collection tickets
-Files:
-- `src/lib/receiptPdf.ts`
-- `src/components/repairs/RepairReceiptDialog.tsx`
+This will apply globally to:
+- POS receipts
+- repair receipts
+- phone labels
+- invoices
+- supplier payment receipts
 
-Update both repair receipt types:
-- Full repair receipt / collection ticket via `generateThermalReceipt()`
-- Compact phone label via `generatePhoneLabel()`
+Also mirror the same rule in the safe global print rules in `src/index.css` for any `.thermal-print-root` / `.thermal-print-container` content.
 
-Changes:
-- Use the same thermal print CSS profile
-- Keep barcode rendering sharp with `image-rendering: pixelated`
-- Preserve existing French ticket text and repair details.
+### 3. Remove the printed tracking link text
+In `src/lib/receiptPdf.ts`, remove the visible URL output from the repair receipt QR section.
 
-### 4. Reduce QR code size by 50%
-File: `src/lib/receiptPdf.ts`
+Currently the template prints a shortened tracking URL under the QR code. That line will be removed entirely:
 
-Current QR print size is approximately:
-- `48mm` on 80mm receipts
-- `38mm` on 58mm receipts
+```html
+<p class="qr-url">...</p>
+```
 
-Update to:
-- `24mm` on 80mm receipts
-- `19mm` on 58mm receipts
+The receipt will no longer show a clickable/readable tracking link at the bottom.
 
-Also:
-- Keep QR centered with `display: block; margin: 2mm auto;`
-- Add a dedicated class like `.thermal-qr`
-- Apply `image-rendering: pixelated` directly to the QR image
-- Keep the QR URL text readable below it.
+The QR image can remain available for repair tracking, but the printed text URL/link will be gone and its space collapsed.
 
-### 5. Fix invoice print styling
-File: `src/pages/Invoices.tsx`
+### 4. Make the thank-you footer conditional
+Separate the built-in thank-you note from the receipt terms.
 
-The invoice page currently uses `window.print()` from inside a dialog, while the global print CSS in `src/index.css` hides almost everything except `#thermal-label`.
+Current default terms include:
 
-I will update invoice printing to use a dedicated thermal print window instead of printing the whole app page.
+```text
+Merci pour votre confiance !
+```
 
-Changes:
-- Add a `handlePrintInvoice(invoice)` function that opens a new print window
-- Use the same shared Thermal Profile CSS
-- Format invoice content as a thermal invoice:
-  - Shop name
-  - Invoice number
-  - Date
-  - Customer
-  - Type: Réparation / Vente
-  - Device if repair exists
-  - Total
-  - Status
-- Keep it black/white and max-width `72mm`.
+I will remove that line from the default terms array and render it separately only when:
 
-### 6. Add supplier payment proof / accounting print support
-Files:
-- `src/components/suppliers/SupplierDetailSheet.tsx`
-- optionally `src/lib/receiptPdf.ts`
+```ts
+settings.show_receipt_note === true
+```
 
-Supplier payment proofs are currently viewed as uploaded images/links, not a dedicated thermal print flow. I will add a reusable print function for supplier payment records.
+Receipt behavior:
+- Toggle ON: prints `Merci de votre confiance !`
+- Toggle OFF: no thank-you line is printed, and no blank space remains
 
-Changes:
-- Add an “Imprimer” action beside supplier payment transactions that have payment data
-- Print a compact thermal payment receipt containing:
-  - Shop name
-  - Supplier name
-  - Date
-  - Amount
-  - Description
-  - Payment/proof reference if available
-- Use the same Thermal Profile CSS
-- If the proof image itself is printed, force:
-  - black/white-friendly background
-  - no shadows
-  - `image-rendering: pixelated`
-  - centered max-width within `72mm`.
+The existing warranty/condition text remains controlled by `receipt_terms`.
 
-### 7. Update global print CSS safely
-File: `src/index.css`
+### 5. Preserve thermal spacing and prevent tear-bar clipping
+Update the thermal print layout so receipts have a safe bottom margin:
 
-Improve the existing global `@media print` rules so they do not accidentally break invoices or other future print modules.
+```css
+.thermal-print-container {
+  padding-bottom: 5mm;
+}
+```
 
-Changes:
-- Keep `.no-print` / `.print-only`
-- Add `.thermal-print-container` and `.thermal-print-root` rules
-- Avoid forcing all printed pages to only show `#thermal-label` unless that element exists
-- Add thermal defaults under print media:
-  - black/white colors
-  - no shadows
-  - monospace for thermal print containers
-  - pixelated image rendering.
+This ensures the final line, QR code, barcode, or footer is not cut by the printer’s tear bar.
+
+### 6. Keep prominent repair headers
+Keep the existing receipt hierarchy:
+- `BON DE RÉPARATION`
+- ticket number / reference
+- barcode where available
+
+But because the global bold rule applies everywhere, headers and regular fields will all print with maximum ink visibility.
 
 ## Files to Modify
 
 | File | Change |
 |---|---|
-| `src/lib/receiptPdf.ts` | Add shared Thermal Profile CSS; apply to POS receipts, repair receipts, phone labels; reduce QR size by 50% |
-| `src/pages/Invoices.tsx` | Replace dialog `window.print()` with dedicated thermal invoice print window |
-| `src/components/suppliers/SupplierDetailSheet.tsx` | Add thermal print action for supplier payment/proof records |
-| `src/index.css` | Add safe global print thermal rules and prevent current print CSS from hiding invoice content |
+| `supabase/migrations/...sql` | Add `shop_settings.show_receipt_note boolean not null default true` |
+| `src/hooks/useShopSettings.ts` | Add/read/save `show_receipt_note` |
+| `src/pages/Settings.tsx` | Add “Afficher le message de remerciement” toggle in receipt settings |
+| `src/lib/receiptPdf.ts` | Force bold thermal CSS, remove printed tracking URL text, conditionally render thank-you note, add bottom padding |
+| `src/index.css` | Add bold/high-visibility print fallback for thermal containers |
 
 ## Expected Result
-- Epson TM-T20X output becomes sharper and higher contrast.
-- POS receipts, repair tickets, labels, invoices, and supplier payment proofs share one consistent thermal print style.
-- QR codes print at half their current size while remaining centered and sharp.
-- 80mm rolls use a calibrated `72mm` content width to reduce clipping and wasted paper.
+- Every thermal print uses bold pure-black text for better Epson TM-T20X readability.
+- The printed tracking URL/link is removed from receipts.
+- Shop owners can enable or disable the thank-you message from Settings.
+- Turning the footer note off saves paper by collapsing the space.
+- Receipts keep a 5mm bottom safety margin to avoid cut-off text.

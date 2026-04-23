@@ -169,11 +169,9 @@ export async function generateThermalReceipt(
 
   // QR code
   let qrImgTag = "";
-  let shortUrl = "";
   if (data.trackingUrl) {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.trackingUrl)}&format=png&margin=2`;
     qrImgTag = `<img class="thermal-qr" src="${qrUrl}" style="width:${printerWidth === "58mm" ? "19mm" : "24mm"};" alt="QR" />`;
-    shortUrl = data.trackingUrl.replace(/^https?:\/\//, "");
   }
 
   // Logo
@@ -210,11 +208,13 @@ export async function generateThermalReceipt(
     "Garantie de 90 jours sur toutes les pièces.",
     "Appareils non récupérés après 30 jours non garantis.",
     "Présentez ce ticket pour récupérer votre appareil.",
-    "Merci pour votre confiance !",
   ];
   const termsRaw: string = (settings as any).receipt_terms || "";
   const terms = termsRaw.trim() ? termsRaw.split("\n").filter((l: string) => l.trim()) : defaultTerms;
   const termsHtml = terms.map(t => `<p class="terms">${escHtml(t)}</p>`).join("");
+  const thankYouHtml = (settings as any).show_receipt_note !== false
+    ? `<p class="footer">Merci de votre confiance !</p>`
+    : "";
 
   // Phones
   const phones = [settings.phone, settings.whatsapp_phone].filter(Boolean);
@@ -283,7 +283,6 @@ ${data.trackingUrl ? `
   <p class="qr-label">Suivre votre réparation</p>
   <p class="terms">Scannez le QR code ci-dessous</p>
   ${qrImgTag}
-  <p class="qr-url">${escHtml(shortUrl)}</p>
 </div>
 ` : ""}
 
@@ -295,6 +294,7 @@ ${barcodeImgTag ? `
 ` : ""}
 
 <p class="footer">Présentez ce ticket pour récupérer<br>votre appareil.</p>
+${thankYouHtml}
 
 </main></body>
 </html>`;

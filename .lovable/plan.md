@@ -1,147 +1,146 @@
-# Add Repair Financial Inputs + Advance Payment Cash Entry
+
+# Global Thermal Print Sharpness + QR Half-Size
 
 ## Goal
-
-Update the “Create Repair” form so employees can enter the estimated total price and advance payment at device drop-off, see the remaining balance instantly, and record the advance in the shop’s cash flow.
-
-## Key Clarification
-
-The database currently uses `repairs.total_cost`, not `total_price`. I will map:
-
-
-| UI Label            | Database Column                             |
-| ------------------- | ------------------------------------------- |
-| `Prix Total Estimé` | `repairs.total_cost`                        |
-| `Avance payée`      | `repairs.amount_paid`                       |
-| `Reste à payer`     | calculated only: `total_cost - amount_paid` |
-
+Make every thermal print output sharper on Epson TM-T20X and similar printers by applying a consistent high-contrast “Thermal Profile” to POS receipts, repair tickets/labels, invoices, and supplier payment proof printing. Also reduce the repair tracking QR code to 50% of its current printed size while keeping it centered and scanner-readable.
 
 ## Implementation Plan
 
-### 1. Update `RepairDialog` form fields
+### 1. Add a reusable Thermal Print CSS profile
+Create a shared print CSS helper in `src/lib/receiptPdf.ts` so every generated print window uses the same rules:
 
-File: `src/components/repairs/RepairDialog.tsx`
+- Pure black text: `#000000`
+- Pure white backgrounds: `#FFFFFF`
+- No gray tones, shadows, blur, opacity, gradients, or filters
+- Thermal sharpness rules:
+  - `text-rendering: optimizeSpeed`
+  - `-webkit-font-smoothing: none`
+  - `-moz-osx-font-smoothing: grayscale/unset where appropriate`
+  - `image-rendering: pixelated`
+  - `print-color-adjust: exact`
+  - `-webkit-print-color-adjust: exact`
+- Monospace typography for printed data:
+  - `"Courier New", Courier, "Liberation Mono", monospace`
+- Thermal roll calibration:
+  - `@page { margin: 0; }`
+  - `body { margin: 0; padding: 5mm; }`
+  - `.thermal-print-container { max-width: 72mm; width: 72mm; }` for 80mm
+  - Keep existing 58mm support using the compact width already available in the receipt generator.
 
-- Add a dedicated financial section near the bottom of the form, directly before the “Créer la réparation” / “Enregistrer” button.
-- Add:
-  - `Prix Total Estimé`
-  - `Avance payée`
-  - read-only `Reste à payer`
-- Keep `Avance payée` defaulted to `0`.
-- Use numeric inputs with:
-  - `type="number"`
-  - `min="0"`
-  - `step="1"`
-- Add validation:
-  - total price must be `>= 0`
-  - advance must be `>= 0`
-  - if advance is greater than total, show a validation error or prevent submit to avoid negative balances.
-- The balance will update live using form watch values:
+### 2. Apply the profile to POS sales receipts
+File: `src/lib/receiptPdf.ts`
 
-```ts
-resteAPayer = Math.max(0, totalCost - amountPaid)
-```
+Update `generateThermalReceipt()` so POS receipts use the global profile instead of local duplicated print CSS.
 
-### 2. Make financial inputs available to employees
+This will affect receipts generated from:
+- `src/pages/POS.tsx`
 
-The current repair form hides the existing cost fields for employees because labor/parts costs are confidential.
+Changes:
+- Wrap printed content in a `.thermal-print-container`
+- Force all receipt tables, totals, separators, logos, barcodes, and QR images into black/white print-safe styling
+- Keep the receipt layout compact for 80mm thermal rolls.
 
-I will keep confidential fields hidden:
-
-- `Main d'œuvre`
-- `Pièces`
-
-But I will make the new customer/payment fields visible to employees:
-
-- `Prix Total Estimé`
-- `Avance payée`
-- `Reste à payer`
-
-This preserves employee financial privacy while allowing accurate customer-facing accounting.
-
-### 3. Save values correctly when creating or editing repairs
-
+### 3. Apply the profile to repair intake and collection tickets
 Files:
+- `src/lib/receiptPdf.ts`
+- `src/components/repairs/RepairReceiptDialog.tsx`
 
-- `src/pages/Repairs.tsx`
-- `src/pages/Dashboard.tsx`
+Update both repair receipt types:
+- Full repair receipt / collection ticket via `generateThermalReceipt()`
+- Compact phone label via `generatePhoneLabel()`
 
-Update repair creation/edit submit logic so:
+Changes:
+- Use the same thermal print CSS profile
+- Keep barcode rendering sharp with `image-rendering: pixelated`
+- Preserve existing French ticket text and repair details.
 
-```ts
-total_cost: data.total_cost
-amount_paid: data.amount_paid
-```
+### 4. Reduce QR code size by 50%
+File: `src/lib/receiptPdf.ts`
 
-Instead of always calculating:
+Current QR print size is approximately:
+- `48mm` on 80mm receipts
+- `38mm` on 58mm receipts
 
-```ts
-total_cost: labor_cost + parts_cost
-```
+Update to:
+- `24mm` on 80mm receipts
+- `19mm` on 58mm receipts
 
-For admins, labor/parts can still exist for internal profitability tracking, but the customer-facing total will come from `Prix Total Estimé`.
+Also:
+- Keep QR centered with `display: block; margin: 2mm auto;`
+- Add a dedicated class like `.thermal-qr`
+- Apply `image-rendering: pixelated` directly to the QR image
+- Keep the QR URL text readable below it.
 
-### 4. Add automatic cash-flow entry for advance payments
+### 5. Fix invoice print styling
+File: `src/pages/Invoices.tsx`
 
-File: `src/hooks/useRepairs.ts`
+The invoice page currently uses `window.print()` from inside a dialog, while the global print CSS in `src/index.css` hides almost everything except `#thermal-label`.
 
-When a new repair is created with:
+I will update invoice printing to use a dedicated thermal print window instead of printing the whole app page.
 
-```ts
-amount_paid > 0
-```
+Changes:
+- Add a `handlePrintInvoice(invoice)` function that opens a new print window
+- Use the same shared Thermal Profile CSS
+- Format invoice content as a thermal invoice:
+  - Shop name
+  - Invoice number
+  - Date
+  - Customer
+  - Type: Réparation / Vente
+  - Device if repair exists
+  - Total
+  - Status
+- Keep it black/white and max-width `72mm`.
 
-automatically insert a cash-flow entry tagged:
+### 6. Add supplier payment proof / accounting print support
+Files:
+- `src/components/suppliers/SupplierDetailSheet.tsx`
+- optionally `src/lib/receiptPdf.ts`
 
-```text
-Avance Réparation
-```
+Supplier payment proofs are currently viewed as uploaded images/links, not a dedicated thermal print flow. I will add a reusable print function for supplier payment records.
 
-Because the current schema does not show a dedicated `cash_flow` / `caisse` table, I will use the existing accounting pattern already used in the app: entries that affect cash reporting are inserted into the `expenses` table.
+Changes:
+- Add an “Imprimer” action beside supplier payment transactions that have payment data
+- Print a compact thermal payment receipt containing:
+  - Shop name
+  - Supplier name
+  - Date
+  - Amount
+  - Description
+  - Payment/proof reference if available
+- Use the same Thermal Profile CSS
+- If the proof image itself is printed, force:
+  - black/white-friendly background
+  - no shadows
+  - `image-rendering: pixelated`
+  - centered max-width within `72mm`.
 
-To represent a cash credit/inflow without counting it as an expense, the entry will use a negative amount, following the existing return/refund pattern:
+### 7. Update global print CSS safely
+File: `src/index.css`
 
-```ts
-category: "Avance Réparation"
-description: `Avance réparation: ${device_model}`
-amount: -amount_paid
-expense_date: today
-```
+Improve the existing global `@media print` rules so they do not accidentally break invoices or other future print modules.
 
-This will make the daily cash flow reflect the received advance immediately.
-
-### 5. Cache invalidation after repair creation
-
-After creating the repair and cash entry, invalidate:
-
-```ts
-["repairs"]
-["recent-repairs"]
-["dashboard-stats"]
-["profit"]
-["expenses"]
-```
-
-So the repair list, dashboard, profit/cash reporting, and accounting screens refresh immediately.
+Changes:
+- Keep `.no-print` / `.print-only`
+- Add `.thermal-print-container` and `.thermal-print-root` rules
+- Avoid forcing all printed pages to only show `#thermal-label` unless that element exists
+- Add thermal defaults under print media:
+  - black/white colors
+  - no shadows
+  - monospace for thermal print containers
+  - pixelated image rendering.
 
 ## Files to Modify
 
+| File | Change |
+|---|---|
+| `src/lib/receiptPdf.ts` | Add shared Thermal Profile CSS; apply to POS receipts, repair receipts, phone labels; reduce QR size by 50% |
+| `src/pages/Invoices.tsx` | Replace dialog `window.print()` with dedicated thermal invoice print window |
+| `src/components/suppliers/SupplierDetailSheet.tsx` | Add thermal print action for supplier payment/proof records |
+| `src/index.css` | Add safe global print thermal rules and prevent current print CSS from hiding invoice content |
 
-| File                                      | Change                                                                                       |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `src/components/repairs/RepairDialog.tsx` | Add visible total/advance/balance fields near submit button; live calculation and validation |
-| `src/pages/Repairs.tsx`                   | Save `total_cost` from the new “Prix Total Estimé” field instead of forcing labor + parts    |
-| `src/pages/Dashboard.tsx`                 | Same mapping for quick repair creation from dashboard                                        |
-| `src/hooks/useRepairs.ts`                 | Insert “Avance Réparation” cash entry when `amount_paid > 0`; invalidate accounting caches   |
-
-
-## No Database Schema Migration Required
-
-The needed repair columns already exist:
-
-```text
-repairs.total_cost
-repairs.amount_paid
-```
-
-No structural database change is required unless you want a dedicated `caisse` table later.
+## Expected Result
+- Epson TM-T20X output becomes sharper and higher contrast.
+- POS receipts, repair tickets, labels, invoices, and supplier payment proofs share one consistent thermal print style.
+- QR codes print at half their current size while remaining centered and sharp.
+- 80mm rolls use a calibrated `72mm` content width to reduce clipping and wasted paper.

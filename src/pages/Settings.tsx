@@ -461,6 +461,13 @@ export default function Settings() {
                 <Textarea id="receiptTerms" value={receiptTerms} onChange={(e) => setReceiptTerms(e.target.value)} placeholder="Garantie de 90 jours sur toutes les pièces..." rows={3} />
                 <p className="text-xs text-muted-foreground">Ce texte apparaîtra en bas de vos reçus.</p>
               </div>
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/30">
+                <div>
+                  <p className="font-medium text-sm">Afficher le message de remerciement</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Affiche “Merci de votre confiance !” en bas des reçus.</p>
+                </div>
+                <Switch checked={showReceiptNote} onCheckedChange={setShowReceiptNote} />
+              </div>
             </div>
           </div>
         </GlassCard>

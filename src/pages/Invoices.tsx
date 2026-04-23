@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useInvoices, useUpdateInvoice, useDeleteInvoice, InvoiceWithRelations } from "@/hooks/useInvoices";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { getThermalPrintCss, printThermalHtml } from "@/lib/receiptPdf";
 import { toast } from "sonner";
 
 const statusConfig = {
@@ -89,9 +90,27 @@ export default function Invoices() {
   };
 
   const handlePrint = (invoice: InvoiceWithRelations) => {
-    setSelectedInvoice(invoice);
-    setViewDialogOpen(true);
-    setTimeout(() => window.print(), 500);
+    const status = statusConfig[invoice.status as keyof typeof statusConfig]?.label || invoice.status;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture</title><style>${getThermalPrintCss("72mm", "12px")}</style></head>
+      <body class="thermal-print-root"><main class="thermal-print-container">
+        <p class="shop-name">${settings.shop_name}</p>
+        <div class="sep-bold"></div>
+        <p class="title">FACTURE</p>
+        <p class="ticket-num">${invoice.invoice_number}</p>
+        <div class="sep"></div>
+        <p class="field">Date : ${new Date(invoice.created_at).toLocaleDateString("fr-TN")}</p>
+        <p class="field">Client : ${invoice.customer?.name || "Client passager"}</p>
+        ${invoice.customer?.phone ? `<p class="field">Tél : ${invoice.customer.phone}</p>` : ""}
+        <div class="sep"></div>
+        <p class="field">Type : ${invoice.repair ? "Réparation" : "Vente"}</p>
+        ${invoice.repair ? `<p class="field">Appareil : ${invoice.repair.device_model}</p>` : ""}
+        ${invoice.sale ? `<p class="field">Vente : ${format(Number(invoice.sale.total_amount))}</p>` : ""}
+        <div class="sep-bold"></div>
+        <div class="total-row grand"><span>TOTAL :</span><span class="val">${format(Number(invoice.total_amount))}</span></div>
+        <div class="total-row"><span>Statut :</span><span class="val">${status}</span></div>
+        <div class="sep-bold"></div>
+      </main></body></html>`;
+    printThermalHtml(html, "width=400,height=600");
   };
 
   const handleDownloadPDF = (invoice: InvoiceWithRelations) => {
@@ -283,7 +302,7 @@ Statut: ${statusConfig[invoice.status as keyof typeof statusConfig]?.label || in
               </div>
               <div className="flex gap-2 pt-4 print:hidden">
                 <Button variant="outline" className="flex-1" onClick={() => handleDownloadPDF(selectedInvoice)}><Download className="h-4 w-4 mr-2" />Télécharger</Button>
-                <Button className="flex-1" onClick={() => window.print()}><Printer className="h-4 w-4 mr-2" />Imprimer</Button>
+                <Button className="flex-1" onClick={() => handlePrint(selectedInvoice)}><Printer className="h-4 w-4 mr-2" />Imprimer</Button>
               </div>
             </div>
           )}

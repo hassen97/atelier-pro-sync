@@ -1,70 +1,67 @@
-## Diagnostic
+## Diagnostic — pourquoi les nouvelles inscriptions sont cassées
 
-The edge function `create-employee` is working as designed. The 403 error for user `coolstoresbz` (ID `26c3f824-a3a7-44f4-8664-9c7d15116e9a`) is caused by **missing database records**, not a bug in the function.
+J'ai vérifié la base : la fonction PostgreSQL `handle_new_user()` existe (elle crée correctement profil + rôle `super_admin` + `shop_settings`), **mais le trigger qui devait l'attacher à `auth.users` n'existe plus**.
 
-Database state for this user:
-
-- `auth.users` → exists (email `coolstoresbz@repairpro.local`)
-- `profiles` → **missing** (no row)
-- `user_roles` → **empty** (no role assigned)
-- `team_members` → **empty** (not part of any team)
-
-With no role and no team membership, the function correctly rejects the request with: *"Seuls les gérants (admin) et super admins peuvent créer des comptes employés."*
-
-## Plan — Repair the orphaned account, then test
-
-### 1. Backfill the missing records via SQL migration
-
-Create one migration that:
-
-- **Inserts a `profiles` row** for `26c3f824-a3a7-44f4-8664-9c7d15116e9a`:
-  - `username` = `coolstoresbz`
-  - `email` = `coolstoresbz@repairpro.local`
-  - `verification_status` = `verified` (so the account is unlocked and can use the app)
-  - `is_locked` = `false`
-- **Inserts a `user_roles` row** assigning role `super_admin` (shop owner — this is the standard role for a registered shop, matching the project's role hierarchy).
-- **Inserts a `shop_settings` row** with default values (`shop_name = 'Cool Store Sbz'`, `country = 'TN'`, etc.) so the owner has a working shop context.
-
-No changes to `team_members` — owners are not their own team members.
-
-### 2. Test the employee creation end-to-end
-
-Once the data is repaired, run the `create-employee` edge function as this user with a sample payload:
-
-```json
-{
-  "fullName": "Test Employé",
-  "username": "test_emp_coolstoresbz",
-  "password": "TempPass1234",
-  "role": "employee",
-  "allowedPages": ["/dashboard", "/pos"]
-}
+Requête exécutée :
+```
+SELECT tgname FROM pg_trigger WHERE tgname ILIKE '%user%' OR tgname ILIKE '%handle%';
+→ 0 lignes
 ```
 
-Expected outcomes:
+**Conséquence** : à chaque nouvelle inscription, un utilisateur est créé dans `auth.users`, mais aucun profil/rôle/paramètre n'est inséré dans le schéma public. C'est exactement ce qui s'est passé pour `coolstoresbz` hier — d'où le 403 sur la création d'employé.
 
-- HTTP **200** with `{ userId, username, member: {...} }`
-- A new `auth.users` row for `test_emp_coolstoresbz`
-- A `profiles` row (verified, unlocked)
-- A `user_roles` row with role = `employee`
-- A `team_members` row with `owner_id = 26c3f824-a3a7-44f4-8664-9c7d15116e9a`, role `employee`, status `active`
+Comptes actuels : 338 profils / 338 rôles / 330 shop_settings → **8 boutiques** ont aussi un `shop_settings` manquant (mêmes symptômes potentiels que coolstoresbz).
 
-### 3. Verify and report
+## Plan — réparer le flux de signup
 
-Query the database after the test to confirm all four rows were created and tied to the correct owner. If anything fails, capture the edge function logs and the exact response, then iterate.
+### 1. Recréer le trigger sur `auth.users`
 
-### 4. Cleanup (optional)
+Migration SQL qui attache `handle_new_user()` à l'événement `AFTER INSERT` sur `auth.users` :
 
-Delete the test employee account at the end so we leave a clean state. Ask before deleting if preferred.
+```sql
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
-## Files & operations
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+```
 
-- **New migration**: backfill profile + role + shop_settings for the affected user.
-- **Edge function call**: `supabase--curl_edge_functions` to `/create-employee` (no code changes required).
-- **Verification**: SQL `SELECT` queries against `profiles`, `user_roles`, `team_members`.
-- **No application code changes** — the 403 logic is correct and stays as-is.
+La fonction `handle_new_user()` est déjà correcte et fait exactement ce qu'on veut :
+- Crée la ligne `profiles` (avec `verification_status = 'pending_verification'`, `is_locked = true`)
+- Insère le rôle `super_admin` dans `user_roles`
+- Crée `shop_settings` avec `country` + `currency` issus du formulaire d'inscription, et `onboarding_completed = false` par défaut
 
-## Out of scope
+→ Résultat : tout futur propriétaire qui s'inscrit aura automatiquement le rôle `super_admin`, sera placé en attente de validation (Kill Switch + vérification 48 h respectés), puis après validation suivra le funnel normal (onboarding setup → checkout → dashboard).
 
-- Investigating why the original signup flow left this account orphaned (separate root-cause investigation).
-- Touching `useTeam.ts` / `VerificationBanner.tsx` — already aligned in the prior change.
+### 2. Sauvegarde de filet (optionnelle mais recommandée)
+
+Ajouter un garde-fou côté `AuthContext.signUp` (côté client) : juste après le `supabase.auth.signUp` réussi, faire un `select` rapide sur `user_roles` pour le user créé ; si vide après ~1s, appeler une edge function `bootstrap-profile` (à créer) qui rejoue la logique de `handle_new_user()` via le service-role. Cela protège contre une éventuelle nouvelle disparition du trigger ou un échec silencieux.
+
+Si vous trouvez ça trop défensif, on peut sauter cette étape — le trigger seul devrait suffire.
+
+### 3. Nettoyage des 8 boutiques actuellement sans `shop_settings`
+
+Identifier ces utilisateurs et leur insérer une ligne `shop_settings` par défaut (`shop_name = 'Mon Atelier'`, `country = 'TN'`, `currency = 'TND'`, `onboarding_completed = false`) pour qu'elles soient propres. Sans ça, à leur prochaine connexion elles iront sur `/onboarding/setup` mais pourraient avoir d'autres bizarreries.
+
+### 4. Test end-to-end
+
+Faire un signup test (par exemple `test_signup_check`) via l'UI, puis vérifier en SQL que profil + rôle `super_admin` + shop_settings sont bien créés. Supprimer le compte test après.
+
+## Détails techniques
+
+- **Migration uniquement** (pas de changement de code applicatif sauf si vous voulez l'étape 2 défensive).
+- Le trigger doit être attaché sur `auth.users`, schéma protégé. Lovable Cloud autorise ce type d'attachement spécifique car la fonction `handle_new_user()` est dans `public` (pratique standard Supabase).
+- `handle_new_user()` est déjà `SECURITY DEFINER`, donc elle a les droits nécessaires pour écrire dans `public`.
+- Aucun impact sur les comptes existants (le trigger ne s'exécute qu'aux futurs `INSERT`).
+
+## Hors scope
+
+- Modifications à l'UI d'inscription `Auth.tsx` ou au funnel `ProtectedRoute.tsx` — déjà corrects.
+- Modifications à la fonction `handle_new_user()` elle-même — son contenu est correct.
+
+## Confirmez avant que je passe en mode build
+
+1. **OK pour recréer le trigger** sur `auth.users` ? (étape 1, indispensable)
+2. **Voulez-vous le filet de sécurité** côté client (étape 2) ? — Je recommande "non" sauf si vous voulez être ceinture + bretelles.
+3. **OK pour réparer les 8 boutiques orphelines** sans `shop_settings` (étape 3) ?

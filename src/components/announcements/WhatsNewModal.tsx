@@ -8,12 +8,40 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Bug, Megaphone } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+function useVerificationGate() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["whats-new-verification-gate", user?.id],
+    queryFn: async () => {
+      if (!user) return { blocked: false };
+      const { data } = await supabase
+        .from("profiles")
+        .select("verification_status, verification_requested_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      // Block the announcement modal while the user is in the required
+      // verification gate (pending and has not yet submitted the form).
+      const blocked =
+        data?.verification_status === "pending_verification" &&
+        !data?.verification_requested_at;
+      return { blocked };
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+}
 
 export function WhatsNewModal() {
   const { data: announcement } = useLatestAnnouncement();
   const markRead = useMarkAnnouncementRead();
+  const { data: gate } = useVerificationGate();
 
   if (!announcement) return null;
+  if (gate?.blocked) return null;
 
   const handleClose = () => {
     markRead.mutate(announcement.id);

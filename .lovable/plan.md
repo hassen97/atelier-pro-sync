@@ -1,79 +1,70 @@
-# Fix 403 on Employee Creation for Owner Admins
+## Diagnostic
 
-## Goal
-Allow shop owners using the `admin` role to create employee accounts for their own shop, while preserving tenant isolation and updating the denial message for unauthorized callers.
+The edge function `create-employee` is working as designed. The 403 error for user `coolstoresbz` (ID `26c3f824-a3a7-44f4-8664-9c7d15116e9a`) is caused by **missing database records**, not a bug in the function.
 
-## What I found
-- The current `create-employee` function does **not** check `role === 'super_admin'` exactly; it currently allows `super_admin` and `platform_admin`, then falls back to active `team_members` with role `manager` or `admin`.
-- In the current database, there are **no** `user_roles = 'admin'` users at all. Shop owners are still stored as `super_admin`.
-- The user ID from the function logs (`26c3f824-a3a7-44f4-8664-9c7d15116e9a`) has **no** `user_roles` row and **no** `team_members` row, so the 403 is expected with the current data.
-- Tenant isolation is already modeled by `team_members.owner_id`. The function does **not** accept a `shop_id` or `owner_id` in the request body today, so there is no current request-body tenant injection path.
+Database state for this user:
 
-## Plan
+- `auth.users` → exists (email `coolstoresbz@repairpro.local`)
+- `profiles` → **missing** (no row)
+- `user_roles` → **empty** (no role assigned)
+- `team_members` → **empty** (not part of any team)
 
-### 1) Update `create-employee` authorization logic
-Refactor the authorization block in `supabase/functions/create-employee/index.ts` to support three valid caller types:
-- `platform_admin` for platform-level actions,
-- `super_admin` for existing shop owners,
-- `admin` for shop owners if the project is transitioning to that role model.
+With no role and no team membership, the function correctly rejects the request with: *"Seuls les gérants (admin) et super admins peuvent créer des comptes employés."*
 
-Implementation shape:
-- Read **all** roles for the caller from `user_roles`.
-- Treat callers with `platform_admin` as privileged platform admins.
-- Treat callers with `super_admin` or `admin` as shop owners.
-- Keep the fallback for active `team_members` with role `manager` or `admin` only if that delegation is still desired.
+## Plan — Repair the orphaned account, then test
 
-### 2) Preserve tenant isolation explicitly
-Keep ownership resolution server-side only:
-- For `admin` or `super_admin` shop owners, force `ownerId = callerId`.
-- For delegated team managers/admins, force `ownerId = managerMembership.owner_id`.
-- For `platform_admin`, allow an optional explicit owner/shop target only if the function is intentionally extended to support that. Otherwise keep current owner resolution behavior.
-- Ignore any client-provided tenant identifier unless the caller is a platform admin and the schema is explicitly expanded for it.
+### 1. Backfill the missing records via SQL migration
 
-### 3) Update the forbidden message
-Replace the current 403 message with:
-- `Erreur : Seuls les gérants (admin) et super admins peuvent créer des comptes employés.`
+Create one migration that:
 
-If delegated managers remain allowed, adjust the copy to match the actual rule so the message does not contradict the code.
+- **Inserts a `profiles` row** for `26c3f824-a3a7-44f4-8664-9c7d15116e9a`:
+  - `username` = `coolstoresbz`
+  - `email` = `coolstoresbz@repairpro.local`
+  - `verification_status` = `verified` (so the account is unlocked and can use the app)
+  - `is_locked` = `false`
+- **Inserts a `user_roles` row** assigning role `super_admin` (shop owner — this is the standard role for a registered shop, matching the project's role hierarchy).
+- **Inserts a `shop_settings` row** with default values (`shop_name = 'Cool Store Sbz'`, `country = 'TN'`, etc.) so the owner has a working shop context.
 
-### 4) Align the rest of the app with the chosen owner role model
-Because the app still assumes owners are `super_admin` in several places, update role checks if you truly want owners to use `admin` going forward:
-- `src/hooks/useTeam.ts` (`useIsOwner`)
-- `src/components/verification/VerificationBanner.tsx`
-- any onboarding/auth guards that treat only `super_admin` as owner
+No changes to `team_members` — owners are not their own team members.
 
-Without this alignment, changing create-employee alone could make employee creation work while other owner-only features still break for `admin` owners.
+### 2. Test the employee creation end-to-end
 
-### 5) Verify against real cases
-Test these cases after implementation:
-- `super_admin` owner can create employees
-- `admin` owner can create employees
-- delegated team `manager`/`admin` behavior matches intended policy
-- regular employee is denied with the updated message
-- created employee is attached to the correct `owner_id`
+Once the data is repaired, run the `create-employee` edge function as this user with a sample payload:
 
-## Technical details
-
-### Current issue in practice
-The current failure is not just a missing `admin` branch in code; the logged caller has no recognized ownership or team membership record at all. That means one of these is also true:
-- the caller is the wrong account/session,
-- the expected role row is missing,
-- the owner model changed in UI assumptions but not in backend data.
-
-### Recommended implementation detail
-Use a role set instead of a single-role check, e.g.:
-```ts
-const roles = new Set((ownerRoles ?? []).map((r) => r.role));
-const isPlatformAdmin = roles.has("platform_admin");
-const isOwner = roles.has("super_admin") || roles.has("admin");
+```json
+{
+  "fullName": "Test Employé",
+  "username": "test_emp_coolstoresbz",
+  "password": "TempPass1234",
+  "role": "employee",
+  "allowedPages": ["/dashboard", "/pos"]
+}
 ```
-Then derive `ownerId` only from trusted backend lookups.
 
-### Scope note
-No database migration is strictly required for the function change itself unless you also want to migrate shop owners from `super_admin` to `admin` across the project.
+Expected outcomes:
 
-## Expected result
-- Shop owners with role `admin` can create employees for their own shop.
-- Unauthorized users still get a 403.
-- Employee creation remains tenant-safe because ownership is resolved server-side.
-- Owner behavior stays consistent across team management, onboarding, and verification screens.
+- HTTP **200** with `{ userId, username, member: {...} }`
+- A new `auth.users` row for `test_emp_coolstoresbz`
+- A `profiles` row (verified, unlocked)
+- A `user_roles` row with role = `employee`
+- A `team_members` row with `owner_id = 26c3f824-a3a7-44f4-8664-9c7d15116e9a`, role `employee`, status `active`
+
+### 3. Verify and report
+
+Query the database after the test to confirm all four rows were created and tied to the correct owner. If anything fails, capture the edge function logs and the exact response, then iterate.
+
+### 4. Cleanup (optional)
+
+Delete the test employee account at the end so we leave a clean state. Ask before deleting if preferred.
+
+## Files & operations
+
+- **New migration**: backfill profile + role + shop_settings for the affected user.
+- **Edge function call**: `supabase--curl_edge_functions` to `/create-employee` (no code changes required).
+- **Verification**: SQL `SELECT` queries against `profiles`, `user_roles`, `team_members`.
+- **No application code changes** — the 403 logic is correct and stays as-is.
+
+## Out of scope
+
+- Investigating why the original signup flow left this account orphaned (separate root-cause investigation).
+- Touching `useTeam.ts` / `VerificationBanner.tsx` — already aligned in the prior change.

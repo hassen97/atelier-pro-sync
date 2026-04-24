@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { AlertTriangle, ShieldCheck, Clock, Loader2, MessageCircle, CheckCircle, PartyPopper } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Clock, Loader2, MessageCircle, CheckCircle } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -18,17 +17,9 @@ export function VerificationBanner() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
   const confettiFired = useRef(false);
 
-  // Form fields
+  // Form fields (minimal)
   const [shopName, setShopName] = useState("");
-  const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
-  const [address, setAddress] = useState("");
-  const [googleMapsUrl, setGoogleMapsUrl] = useState("");
-  const [facebookUrl, setFacebookUrl] = useState("");
-  const [instagramUrl, setInstagramUrl] = useState("");
-  const [shopDescription, setShopDescription] = useState("");
-  const [messageToAdmin, setMessageToAdmin] = useState("");
 
   const fetchProfile = useCallback(async () => {
     if (!user) return;
@@ -116,8 +107,8 @@ export function VerificationBanner() {
 
   const handleSubmit = async () => {
     if (!user) return;
-    if (!shopName.trim() || !ownerName.trim() || !phone.trim() || !city.trim() || !address.trim()) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
+    if (!shopName.trim() || !phone.trim()) {
+      toast.error("Veuillez renseigner le nom de la boutique et le numéro de téléphone");
       return;
     }
 
@@ -128,15 +119,7 @@ export function VerificationBanner() {
         .insert({
           user_id: user.id,
           shop_name: shopName.trim(),
-          owner_name: ownerName.trim(),
           phone: phone.trim(),
-          city: city.trim(),
-          address: address.trim(),
-          google_maps_url: googleMapsUrl.trim() || null,
-          facebook_url: facebookUrl.trim() || null,
-          instagram_url: instagramUrl.trim() || null,
-          shop_description: shopDescription.trim() || null,
-          message_to_admin: messageToAdmin.trim() || null,
         } as any);
 
       if (error) throw error;
@@ -157,8 +140,6 @@ export function VerificationBanner() {
       const settingsPayload = {
         shop_name: shopName.trim(),
         phone: phone.trim(),
-        address: address.trim(),
-        google_maps_url: googleMapsUrl.trim() || null,
       };
 
       if (existingSettings?.id) {
@@ -202,15 +183,7 @@ export function VerificationBanner() {
     return <VerificationPopup
       timeLeft={timeLeft}
       shopName={shopName} setShopName={setShopName}
-      ownerName={ownerName} setOwnerName={setOwnerName}
       phone={phone} setPhone={setPhone}
-      city={city} setCity={setCity}
-      address={address} setAddress={setAddress}
-      googleMapsUrl={googleMapsUrl} setGoogleMapsUrl={setGoogleMapsUrl}
-      facebookUrl={facebookUrl} setFacebookUrl={setFacebookUrl}
-      instagramUrl={instagramUrl} setInstagramUrl={setInstagramUrl}
-      shopDescription={shopDescription} setShopDescription={setShopDescription}
-      messageToAdmin={messageToAdmin} setMessageToAdmin={setMessageToAdmin}
       loading={loading}
       adminWhatsapp={adminWhatsapp}
       onSubmit={handleSubmit}
@@ -248,25 +221,14 @@ export function VerificationBanner() {
 interface VerificationPopupProps {
   timeLeft: string;
   shopName: string; setShopName: (v: string) => void;
-  ownerName: string; setOwnerName: (v: string) => void;
   phone: string; setPhone: (v: string) => void;
-  city: string; setCity: (v: string) => void;
-  address: string; setAddress: (v: string) => void;
-  googleMapsUrl: string; setGoogleMapsUrl: (v: string) => void;
-  facebookUrl: string; setFacebookUrl: (v: string) => void;
-  instagramUrl: string; setInstagramUrl: (v: string) => void;
-  shopDescription: string; setShopDescription: (v: string) => void;
-  messageToAdmin: string; setMessageToAdmin: (v: string) => void;
   loading: boolean;
   adminWhatsapp: string;
   onSubmit: () => void;
 }
 
 function VerificationPopup({
-  timeLeft, shopName, setShopName, ownerName, setOwnerName, phone, setPhone,
-  city, setCity, address, setAddress, googleMapsUrl, setGoogleMapsUrl,
-  facebookUrl, setFacebookUrl, instagramUrl, setInstagramUrl,
-  shopDescription, setShopDescription, messageToAdmin, setMessageToAdmin,
+  timeLeft, shopName, setShopName, phone, setPhone,
   loading, adminWhatsapp, onSubmit,
 }: VerificationPopupProps) {
   // Lock body scroll while popup is open
@@ -282,9 +244,9 @@ function VerificationPopup({
       role="dialog"
       aria-modal="true"
     >
-      <div className="relative w-full max-w-lg sm:max-w-2xl max-h-[92vh] flex flex-col rounded-2xl border border-red-900/50 bg-zinc-900/95 shadow-2xl overflow-hidden animate-scale-in">
-        {/* Sticky Header */}
-        <div className="sticky top-0 z-10 bg-gradient-to-b from-red-950/95 to-zinc-900/95 backdrop-blur-sm border-b border-red-900/40 px-4 py-3 sm:px-6 sm:py-4">
+      <div className="relative w-full max-w-md flex flex-col rounded-2xl border border-red-900/50 bg-zinc-900/95 shadow-2xl overflow-hidden animate-scale-in max-h-[92vh]">
+        {/* Header */}
+        <div className="bg-gradient-to-b from-red-950/95 to-zinc-900/95 backdrop-blur-sm border-b border-red-900/40 px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-3">
             <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-red-500/20 border border-red-500/40 shrink-0">
               <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
@@ -302,71 +264,42 @@ function VerificationPopup({
           </div>
         </div>
 
-        {/* Scrollable Body */}
+        {/* Body (scrollable if needed) */}
         <div
-          className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 space-y-3 sm:space-y-4"
+          className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 space-y-4"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           <p className="text-xs sm:text-sm text-zinc-400">
-            Votre compte doit être vérifié avant de pouvoir accéder à la plateforme. Remplissez le formulaire ci-dessous.
+            Votre compte doit être vérifié avant d'accéder à la plateforme. Renseignez ces deux informations pour soumettre votre demande.
           </p>
 
-          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-100 pt-1">
+          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
             Informations de la boutique
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-zinc-300">Nom du magasin *</Label>
-              <Input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Mon Atelier" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-zinc-300">Nom du propriétaire *</Label>
-              <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Ahmed Ben Ali" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-300">Nom du magasin *</Label>
+            <Input
+              value={shopName}
+              onChange={(e) => setShopName(e.target.value)}
+              placeholder="Mon Atelier"
+              className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-10 text-sm"
+              autoComplete="organization"
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-zinc-300">Téléphone *</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+216 XX XXX XXX" type="tel" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-zinc-300">Ville *</Label>
-              <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Tunis" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs text-zinc-300">Adresse du magasin *</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Rue de la République" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs text-zinc-300">Lien Google Maps (optionnel)</Label>
-            <Input value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-zinc-300">Facebook (optionnel)</Label>
-              <Input value={facebookUrl} onChange={(e) => setFacebookUrl(e.target.value)} placeholder="https://facebook.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-zinc-300">Instagram (optionnel)</Label>
-              <Input value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs text-zinc-300">Description du magasin (optionnel)</Label>
-            <Textarea value={shopDescription} onChange={(e) => setShopDescription(e.target.value)} placeholder="Décrivez votre activité..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 text-sm resize-none" />
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs text-zinc-300">Message pour l'administration</Label>
-            <Textarea value={messageToAdmin} onChange={(e) => setMessageToAdmin(e.target.value)} placeholder="Un message pour l'admin..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 text-sm resize-none" />
+          <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-300">Numéro de téléphone *</Label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+216 XX XXX XXX"
+              type="tel"
+              inputMode="tel"
+              className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-10 text-sm"
+              autoComplete="tel"
+            />
           </div>
 
           {adminWhatsapp && (
@@ -382,8 +315,8 @@ function VerificationPopup({
           )}
         </div>
 
-        {/* Sticky Footer */}
-        <div className="sticky bottom-0 z-10 bg-zinc-900/95 backdrop-blur-sm border-t border-red-900/40 px-4 py-3 sm:px-6 sm:py-4">
+        {/* Footer */}
+        <div className="bg-zinc-900/95 backdrop-blur-sm border-t border-red-900/40 px-4 py-3 sm:px-6 sm:py-4">
           <Button
             onClick={onSubmit}
             disabled={loading}

@@ -467,11 +467,17 @@ export function AdminVerificationView() {
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div><span className="text-slate-500 text-xs">Magasin</span><p className="text-white">{requestData.shop_name}</p></div>
-                <div><span className="text-slate-500 text-xs">Propriétaire</span><p className="text-white">{requestData.owner_name}</p></div>
                 <div><span className="text-slate-500 text-xs">Téléphone</span><p className="text-white">{requestData.phone}</p></div>
-                <div><span className="text-slate-500 text-xs">Ville</span><p className="text-white">{requestData.city}</p></div>
+                {requestData.owner_name && (
+                  <div><span className="text-slate-500 text-xs">Propriétaire</span><p className="text-white">{requestData.owner_name}</p></div>
+                )}
+                {requestData.city && (
+                  <div><span className="text-slate-500 text-xs">Ville</span><p className="text-white">{requestData.city}</p></div>
+                )}
               </div>
-              <div><span className="text-slate-500 text-xs">Adresse</span><p className="text-white">{requestData.address}</p></div>
+              {requestData.address && (
+                <div><span className="text-slate-500 text-xs">Adresse</span><p className="text-white">{requestData.address}</p></div>
+              )}
               {requestData.google_maps_url && (
                 <div><span className="text-slate-500 text-xs">Google Maps</span><a href={requestData.google_maps_url} target="_blank" rel="noopener noreferrer" className="text-[#00D4FF] text-xs hover:underline block truncate">{requestData.google_maps_url}</a></div>
               )}

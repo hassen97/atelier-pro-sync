@@ -1,60 +1,54 @@
-# Redesign Verification Gate as Hovering Popup
+## Plan
 
-## Problem
-The current full-screen red overlay in `VerificationBanner.tsx` takes over the entire viewport and traps scroll on mobile (384px viewport), making the form fields and submit button unreachable. Previous scroll fixes did not solve it because the wrapper height + nested flex `min-h-full` still wins on mobile Chrome/Safari.
+1. Stop competing modals while verification is required
+- Update the announcement modal flow so it does not open on top of a required verification gate.
+- Keep the verification popup as the only focus-trapping layer for pending owners who have not yet submitted.
+- This should restore typing in inputs and clicking the submit button on mobile.
 
-## New Approach
-Replace the full-screen takeover with a **hovering popup card** that floats over a **blurred, dimmed dashboard**. The dashboard stays mounted underneath (visible but inaccessible), and the popup itself is a properly-sized modal that scrolls internally on mobile.
+2. Simplify the verification popup UI
+- Reduce the popup form to only 2 fields:
+  - Shop name
+  - Phone number
+- Remove the extra fields from the popup state, validation, labels, and submit payload.
+- Keep the same floating modal style with blurred background, internal scrolling, and one clear submit action.
 
-### Visual concept
-```text
-┌─────────────────────────────┐
-│ ░░ blurred dashboard ░░░░░░ │
-│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
-│   ┌───────────────────┐     │
-│   │ 🛡 Vérification    │     │
-│   │   Requise         │     │
-│   │  ⏱ 47:59:23       │     │
-│   │ ─────────────     │     │
-│   │ [shop name]       │     │
-│   │ [owner] [phone]   │     │
-│   │ [city] [address]  │     │
-│   │ ...               │     │
-│   │ [Soumettre]       │     │
-│   └───────────────────┘     │
-│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
-└─────────────────────────────┘
-```
+3. Align backend storage with the new minimal form
+- Add a database migration so `verification_requests` no longer requires the removed fields (`owner_name`, `city`, `address`).
+- Preserve existing records and make the removed fields optional rather than breaking past data.
+- Keep RLS policies unchanged since users still only submit their own request and admins still review all requests.
 
-## Changes
+4. Keep shop data prefill working
+- Continue prefilling `shop_settings` from the popup submission, but only with values that still exist:
+  - `shop_name`
+  - `phone`
+- Remove the old address/maps prefill from this flow.
 
-### 1. `src/components/verification/VerificationBanner.tsx` — STATE 1 redesign
-Replace the full-screen wrapper with a fixed overlay that:
-- Uses `backdrop-blur-md` + `bg-black/70` so the dashboard shows through, blurred
-- Centers a constrained card (`max-w-lg` on mobile, `max-w-2xl` on desktop)
-- Card has its own `max-h-[90vh]` with internal `overflow-y-auto` — guarantees the form scrolls within the card on any viewport
-- Sticky header (timer + title) stays visible while user scrolls form
-- Sticky footer with the submit button so it's always reachable without scrolling to the bottom
-- Body padding adjusted so 384px viewport shows full card with margin
-- Adds `document.body` overflow lock while the popup is open (via `useEffect`) to prevent background scroll bleeding
+5. Update admin verification views
+- Adjust the admin request detail dialog so it cleanly shows the smaller dataset.
+- Remove or hide empty fields that are no longer collected.
+- Keep admin verification actions unchanged.
 
-### 2. Apply blur to the page underneath
-Two options considered. We'll do the simplest: the overlay itself uses `backdrop-blur-md` on a semi-transparent background. The dashboard underneath remains rendered normally — the blur is achieved entirely by the overlay's backdrop filter. No changes needed to `MainLayout` or other components.
-
-### 3. Keep STATE 2 (post-submission amber banner) unchanged
-The non-blocking banner already works fine.
+6. Verify the flow end-to-end
+- Confirm a pending owner can:
+  - log in
+  - type into both fields
+  - tap submit
+  - see the waiting state after submission
+- Confirm the announcement modal still works for normal users who are not blocked by verification.
 
 ## Technical details
+- Files likely involved:
+  - `src/components/verification/VerificationBanner.tsx`
+  - `src/components/announcements/WhatsNewModal.tsx`
+  - `src/hooks/useAnnouncements.ts` or the modal caller logic in layout
+  - `src/components/admin/AdminVerificationView.tsx`
+  - `supabase/migrations/...` for `verification_requests`
+- Root cause to address first: a second dialog layer is still mounting during the verification state, which can make the visible verification popup appear unclickable because focus and pointer handling belong to the other modal.
+- Database change should be non-destructive: alter existing columns to nullable instead of removing them.
+- No auth or RLS redesign is needed for this change.
 
-- `fixed inset-0 z-[100] bg-black/70 backdrop-blur-md` for the backdrop
-- Card: `relative w-full max-w-lg sm:max-w-2xl mx-auto my-auto max-h-[92vh] flex flex-col rounded-2xl border border-red-900/50 bg-zinc-900/95 shadow-2xl`
-- Sticky header: `sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-sm border-b border-red-900/30 p-4`
-- Scrollable body: `flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-3` with `WebkitOverflowScrolling: "touch"`
-- Sticky footer: `sticky bottom-0 z-10 bg-zinc-900/95 backdrop-blur-sm border-t border-red-900/30 p-4` containing the submit button + WhatsApp link
-- `useEffect` adds `document.body.style.overflow = "hidden"` on mount, restores on unmount
-- All form fields, validation, and submit logic stay identical — only the wrapper structure changes
-
-## Files
-- Edit: `src/components/verification/VerificationBanner.tsx` (STATE 1 block only, ~lines 180-285)
-
-No DB changes, no auth changes, no other components touched.
+## Expected result
+- The verification popup becomes usable on mobile.
+- Users only see two required fields.
+- Submission succeeds without asking for city, address, owner name, or social links.
+- Admins can still review and approve requests without losing existing historical data.

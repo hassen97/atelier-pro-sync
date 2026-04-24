@@ -1740,15 +1740,15 @@ export type Database = {
       }
       verification_requests: {
         Row: {
-          address: string
-          city: string
+          address: string | null
+          city: string | null
           created_at: string
           facebook_url: string | null
           google_maps_url: string | null
           id: string
           instagram_url: string | null
           message_to_admin: string | null
-          owner_name: string
+          owner_name: string | null
           phone: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -1758,15 +1758,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          address: string
-          city: string
+          address?: string | null
+          city?: string | null
           created_at?: string
           facebook_url?: string | null
           google_maps_url?: string | null
           id?: string
           instagram_url?: string | null
           message_to_admin?: string | null
-          owner_name: string
+          owner_name?: string | null
           phone: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1776,15 +1776,15 @@ export type Database = {
           user_id: string
         }
         Update: {
-          address?: string
-          city?: string
+          address?: string | null
+          city?: string | null
           created_at?: string
           facebook_url?: string | null
           google_maps_url?: string | null
           id?: string
           instagram_url?: string | null
           message_to_admin?: string | null
-          owner_name?: string
+          owner_name?: string | null
           phone?: string
           reviewed_at?: string | null
           reviewed_by?: string | null

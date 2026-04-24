@@ -108,12 +108,11 @@ Deno.serve(async (req) => {
 
     const ownerId = userData.user.id;
 
-    const { data: ownerRole, error: ownerRoleError } = await adminClient
+    const { data: ownerRoles, error: ownerRoleError } = await adminClient
       .from("user_roles")
-      .select("id")
+      .select("role")
       .eq("user_id", ownerId)
-      .eq("role", "super_admin")
-      .maybeSingle();
+      .in("role", ["super_admin", "platform_admin"]);
 
     if (ownerRoleError) {
       console.error("Owner role lookup error:", ownerRoleError);
@@ -123,7 +122,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!ownerRole) {
+    if (!ownerRoles || ownerRoles.length === 0) {
       return new Response(
         JSON.stringify({ error: "Seul un super admin peut créer des employés" }),
         {

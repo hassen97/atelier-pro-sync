@@ -53,13 +53,9 @@ Deno.serve(async (req) => {
         console.error("hCaptcha verification error:", err);
         // Fail open if hCaptcha API is unreachable
       }
-    } else if (hcaptchaSecret && !captchaToken) {
-      // Secret configured but no token provided — block
-      return new Response(
-        JSON.stringify({ allowed: false, reason: "captcha_required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
+    // Note: if no captchaToken provided, we fail open and rely on rate limiting + uniqueness checks below.
+    // hCaptcha is only enforced when the client has the site key configured and sends a token.
 
     // (Math challenge removed)
 

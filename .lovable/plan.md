@@ -1,124 +1,79 @@
-
-# Finalize Thermal Receipt Template
+# Fix 403 on Employee Creation for Owner Admins
 
 ## Goal
-Improve receipt readability and control the thank-you footer by:
-- forcing all thermal print text to bold black,
-- removing the printed tracking link/URL text,
-- adding a shop setting to show/hide “Merci de votre confiance !”,
-- preserving compact thermal spacing with a safe bottom margin.
+Allow shop owners using the `admin` role to create employee accounts for their own shop, while preserving tenant isolation and updating the denial message for unauthorized callers.
 
-## Implementation Plan
+## What I found
+- The current `create-employee` function does **not** check `role === 'super_admin'` exactly; it currently allows `super_admin` and `platform_admin`, then falls back to active `team_members` with role `manager` or `admin`.
+- In the current database, there are **no** `user_roles = 'admin'` users at all. Shop owners are still stored as `super_admin`.
+- The user ID from the function logs (`26c3f824-a3a7-44f4-8664-9c7d15116e9a`) has **no** `user_roles` row and **no** `team_members` row, so the 403 is expected with the current data.
+- Tenant isolation is already modeled by `team_members.owner_id`. The function does **not** accept a `shop_id` or `owner_id` in the request body today, so there is no current request-body tenant injection path.
 
-### 1. Add a receipt footer toggle setting
-Add a new boolean field to `shop_settings`:
+## Plan
 
-```sql
-show_receipt_note boolean not null default true
-```
+### 1) Update `create-employee` authorization logic
+Refactor the authorization block in `supabase/functions/create-employee/index.ts` to support three valid caller types:
+- `platform_admin` for platform-level actions,
+- `super_admin` for existing shop owners,
+- `admin` for shop owners if the project is transitioning to that role model.
 
-Defaulting to `true` preserves the current receipt behavior for existing shops.
+Implementation shape:
+- Read **all** roles for the caller from `user_roles`.
+- Treat callers with `platform_admin` as privileged platform admins.
+- Treat callers with `super_admin` or `admin` as shop owners.
+- Keep the fallback for active `team_members` with role `manager` or `admin` only if that delegation is still desired.
 
-Update the settings data flow:
-- `src/hooks/useShopSettings.ts`
-  - Add `show_receipt_note` to `ShopSettings`
-  - Set default to `true`
-  - Read it from `shop_settings`
-  - Save it when settings are updated
-- `src/pages/Settings.tsx`
-  - Add local state for the toggle
-  - Add a switch in “Paramètres Reçus” labeled:
-    - `Afficher le message de remerciement`
-  - Description:
-    - `Affiche “Merci de votre confiance !” en bas des reçus.`
-  - Include the value in `handleSaveGeneralSettings`
+### 2) Preserve tenant isolation explicitly
+Keep ownership resolution server-side only:
+- For `admin` or `super_admin` shop owners, force `ownerId = callerId`.
+- For delegated team managers/admins, force `ownerId = managerMembership.owner_id`.
+- For `platform_admin`, allow an optional explicit owner/shop target only if the function is intentionally extended to support that. Otherwise keep current owner resolution behavior.
+- Ignore any client-provided tenant identifier unless the caller is a platform admin and the schema is explicitly expanded for it.
 
-### 2. Force all thermal receipt text to bold
-Update the shared thermal print CSS in `src/lib/receiptPdf.ts`:
+### 3) Update the forbidden message
+Replace the current 403 message with:
+- `Erreur : Seuls les gérants (admin) et super admins peuvent créer des comptes employés.`
 
-```css
-* {
-  font-weight: bold !important;
-  color: #000000 !important;
-  background: #FFFFFF !important;
-}
-```
+If delegated managers remain allowed, adjust the copy to match the actual rule so the message does not contradict the code.
 
-This will apply globally to:
-- POS receipts
-- repair receipts
-- phone labels
-- invoices
-- supplier payment receipts
+### 4) Align the rest of the app with the chosen owner role model
+Because the app still assumes owners are `super_admin` in several places, update role checks if you truly want owners to use `admin` going forward:
+- `src/hooks/useTeam.ts` (`useIsOwner`)
+- `src/components/verification/VerificationBanner.tsx`
+- any onboarding/auth guards that treat only `super_admin` as owner
 
-Also mirror the same rule in the safe global print rules in `src/index.css` for any `.thermal-print-root` / `.thermal-print-container` content.
+Without this alignment, changing create-employee alone could make employee creation work while other owner-only features still break for `admin` owners.
 
-### 3. Remove the printed tracking link text
-In `src/lib/receiptPdf.ts`, remove the visible URL output from the repair receipt QR section.
+### 5) Verify against real cases
+Test these cases after implementation:
+- `super_admin` owner can create employees
+- `admin` owner can create employees
+- delegated team `manager`/`admin` behavior matches intended policy
+- regular employee is denied with the updated message
+- created employee is attached to the correct `owner_id`
 
-Currently the template prints a shortened tracking URL under the QR code. That line will be removed entirely:
+## Technical details
 
-```html
-<p class="qr-url">...</p>
-```
+### Current issue in practice
+The current failure is not just a missing `admin` branch in code; the logged caller has no recognized ownership or team membership record at all. That means one of these is also true:
+- the caller is the wrong account/session,
+- the expected role row is missing,
+- the owner model changed in UI assumptions but not in backend data.
 
-The receipt will no longer show a clickable/readable tracking link at the bottom.
-
-The QR image can remain available for repair tracking, but the printed text URL/link will be gone and its space collapsed.
-
-### 4. Make the thank-you footer conditional
-Separate the built-in thank-you note from the receipt terms.
-
-Current default terms include:
-
-```text
-Merci pour votre confiance !
-```
-
-I will remove that line from the default terms array and render it separately only when:
-
+### Recommended implementation detail
+Use a role set instead of a single-role check, e.g.:
 ```ts
-settings.show_receipt_note === true
+const roles = new Set((ownerRoles ?? []).map((r) => r.role));
+const isPlatformAdmin = roles.has("platform_admin");
+const isOwner = roles.has("super_admin") || roles.has("admin");
 ```
+Then derive `ownerId` only from trusted backend lookups.
 
-Receipt behavior:
-- Toggle ON: prints `Merci de votre confiance !`
-- Toggle OFF: no thank-you line is printed, and no blank space remains
+### Scope note
+No database migration is strictly required for the function change itself unless you also want to migrate shop owners from `super_admin` to `admin` across the project.
 
-The existing warranty/condition text remains controlled by `receipt_terms`.
-
-### 5. Preserve thermal spacing and prevent tear-bar clipping
-Update the thermal print layout so receipts have a safe bottom margin:
-
-```css
-.thermal-print-container {
-  padding-bottom: 5mm;
-}
-```
-
-This ensures the final line, QR code, barcode, or footer is not cut by the printer’s tear bar.
-
-### 6. Keep prominent repair headers
-Keep the existing receipt hierarchy:
-- `BON DE RÉPARATION`
-- ticket number / reference
-- barcode where available
-
-But because the global bold rule applies everywhere, headers and regular fields will all print with maximum ink visibility.
-
-## Files to Modify
-
-| File | Change |
-|---|---|
-| `supabase/migrations/...sql` | Add `shop_settings.show_receipt_note boolean not null default true` |
-| `src/hooks/useShopSettings.ts` | Add/read/save `show_receipt_note` |
-| `src/pages/Settings.tsx` | Add “Afficher le message de remerciement” toggle in receipt settings |
-| `src/lib/receiptPdf.ts` | Force bold thermal CSS, remove printed tracking URL text, conditionally render thank-you note, add bottom padding |
-| `src/index.css` | Add bold/high-visibility print fallback for thermal containers |
-
-## Expected Result
-- Every thermal print uses bold pure-black text for better Epson TM-T20X readability.
-- The printed tracking URL/link is removed from receipts.
-- Shop owners can enable or disable the thank-you message from Settings.
-- Turning the footer note off saves paper by collapsing the space.
-- Receipts keep a 5mm bottom safety margin to avoid cut-off text.
+## Expected result
+- Shop owners with role `admin` can create employees for their own shop.
+- Unauthorized users still get a 403.
+- Employee creation remains tenant-safe because ownership is resolved server-side.
+- Owner behavior stays consistent across team management, onboarding, and verification screens.

@@ -106,29 +106,42 @@ Deno.serve(async (req) => {
       });
     }
 
-    let ownerId = userData.user.id;
+    const callerId = userData.user.id;
+    let ownerId = callerId;
 
-    const { data: ownerRoles, error: ownerRoleError } = await adminClient
+    // Load ALL roles for the caller (a user may have several rows in user_roles)
+    const { data: callerRoleRows, error: callerRoleError } = await adminClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", ownerId)
-      .in("role", ["super_admin", "platform_admin"]);
+      .eq("user_id", callerId);
 
-    if (ownerRoleError) {
-      console.error("Owner role lookup error:", ownerRoleError);
-      return new Response(JSON.stringify({ error: "Erreur lors de la vérification des permissions" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (callerRoleError) {
+      console.error("Caller role lookup error:", callerRoleError);
+      return new Response(
+        JSON.stringify({ error: "Erreur lors de la vérification des permissions" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
-    // If caller is not an admin/owner, check if they are a manager team member
-    // and use their team owner as the ownerId for the new employee
-    if (!ownerRoles || ownerRoles.length === 0) {
+    const roles = new Set((callerRoleRows ?? []).map((r: any) => r.role as string));
+    const isPlatformAdmin = roles.has("platform_admin");
+    const isShopOwner = roles.has("super_admin") || roles.has("admin");
+
+    if (isPlatformAdmin || isShopOwner) {
+      // Tenant isolation: shop owners (super_admin / admin) always create
+      // employees under their OWN account. Any client-supplied owner/shop id
+      // is intentionally ignored.
+      ownerId = callerId;
+    } else {
+      // Delegated path: an active team manager/admin may create employees on
+      // behalf of their shop owner. The owner_id is resolved server-side.
       const { data: managerMembership, error: managerError } = await adminClient
         .from("team_members")
         .select("owner_id, role, status")
-        .eq("member_user_id", ownerId)
+        .eq("member_user_id", callerId)
         .eq("status", "active")
         .in("role", ["manager", "admin"])
         .maybeSingle();
@@ -138,9 +151,12 @@ Deno.serve(async (req) => {
       }
 
       if (!managerMembership) {
-        console.error("Permission denied for user:", ownerId);
+        console.error("Permission denied for user:", callerId);
         return new Response(
-          JSON.stringify({ error: "Seul un super admin peut créer des employés" }),
+          JSON.stringify({
+            error:
+              "Erreur : Seuls les gérants (admin) et super admins peuvent créer des comptes employés.",
+          }),
           {
             status: 403,
             headers: { ...corsHeaders, "Content-Type": "application/json" },

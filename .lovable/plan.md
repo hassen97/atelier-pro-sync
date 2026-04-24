@@ -1,52 +1,39 @@
-# Fix: New shop owners get kicked back to login
+# Fix: Verification overlay traps scroll on mobile
 
-## Root cause
+## Problem
 
-I checked `fire1` in the database and the signup is now perfect:
-- `profile` ✅ created
-- `user_roles.role = super_admin` ✅
-- `shop_settings` ✅ initialized
-- `verification_status = pending_verification` (expected — this is the default for every new owner, set by the `handle_new_user()` trigger)
+On mobile (Chrome Android), the full-screen "Vérification Requise" overlay in `src/components/verification/VerificationBanner.tsx` shows the header and the top of the form, but the user can't scroll down to fill in the lower fields or reach the submit button.
 
-The flicker you saw ("Vérification Requise" page → redirect to login) is caused by **`src/pages/Auth.tsx` lines 168–173**:
+## Cause
 
-```ts
-} else if (profile?.is_locked || vs === "pending_verification") {
-  await supabase.auth.signOut();
-  setError("Votre compte est en attente de validation par l'administrateur.");
-  ...
-}
+The overlay uses:
+```tsx
+<div className="fixed inset-0 z-[100] ... overflow-y-auto">
+  <div className="min-h-full flex items-start sm:items-center ...">
 ```
 
-This **signs out every new shop owner immediately after login**, because every new account starts with `pending_verification`. That contradicts the intended onboarding funnel:
+Two issues on mobile:
+1. `items-center` on `sm:` is fine, but the inner `min-h-full` combined with vertically-centered content can prevent the container from growing tall enough to scroll on small viewports when the form is taller than the viewport.
+2. Mobile Safari/Chrome need `-webkit-overflow-scrolling: touch` and `overscroll-behavior: contain` to scroll smoothly inside a `fixed` overlay; without them touch scrolling is sometimes swallowed by the page underneath.
 
-- `ProtectedRoute` already lets pending users into `/dashboard`
-- `VerificationBanner` is designed to show a full-screen blocking overlay where the owner fills out the verification form (shop name, address, phone, etc.) and submits it to admin
+## Fix (single file, ~2 lines)
 
-So the user briefly sees the verification overlay (correct behavior), then `Auth.tsx` forcibly signs them out 200 ms later (bug).
+In `src/components/verification/VerificationBanner.tsx`, update the two outer wrapper divs of the State 1 overlay (lines 203–204):
 
-## Fix
-
-In `src/pages/Auth.tsx`, change the post-login check so that `pending_verification` no longer triggers a sign-out. Only `is_locked` (admin kill-switch) and `suspended` (after 48h timeout, already handled above) should sign the user out.
-
-Replace the `else if` block (lines 168–173) with:
-
-```ts
-} else if (profile?.is_locked) {
-  // Admin kill-switch only
-  await supabase.auth.signOut();
-  setError("Votre compte est verrouillé par l'administrateur. Veuillez le contacter.");
-  setLoading(false);
-  return;
-}
-// pending_verification users are allowed in — VerificationBanner handles the overlay
+```tsx
+<div
+  className="fixed inset-0 z-[100] bg-gradient-to-b from-red-950 via-red-900/98 to-zinc-950 overflow-y-auto overscroll-contain"
+  style={{ WebkitOverflowScrolling: "touch" }}
+>
+  <div className="flex items-start justify-center px-3 py-4 sm:p-6 min-h-full">
 ```
+
+Changes:
+- Add `overscroll-contain` and `-webkit-overflow-scrolling: touch` so mobile touch scrolling works inside the fixed overlay.
+- Always align content to the top (`items-start`) instead of vertically centering on tablets — vertical centering inside a scroll container can shrink the scrollable area on short viewports. The form will still look fine on desktop because it's capped at `max-w-2xl` and naturally sits near the top.
+
+No DB changes, no other files touched.
 
 ## Result
 
-After this change:
-1. `fire1` (and every future shop-owner signup) logs in normally
-2. They land on `/dashboard` and immediately see the full-screen "Vérification Requise" form
-3. They fill it out → request goes to admin → admin verifies → onboarding setup → checkout → dashboard
-
-No DB changes, no migration — single client-side edit.
+User can scroll the entire verification form on mobile, fill out every field, and tap the "Soumettre la demande" button.

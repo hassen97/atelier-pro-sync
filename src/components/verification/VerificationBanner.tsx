@@ -197,120 +197,24 @@ export function VerificationBanner() {
 
   const hasSubmitted = !!profile.verification_requested_at;
 
-  // STATE 1: Full-screen blocking overlay (before submission)
+  // STATE 1: Hovering popup over blurred dashboard (before submission)
   if (profile.verification_status === "pending_verification" && !hasSubmitted) {
-    return (
-      <div
-        className="fixed inset-0 z-[100] bg-gradient-to-b from-red-950 via-red-900/98 to-zinc-950 overflow-y-auto overscroll-contain"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        <div className="flex items-start justify-center px-3 py-4 sm:p-6 min-h-full">
-          <div className="w-full max-w-2xl">
-            {/* Header */}
-            <div className="text-center mb-4 sm:mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-red-500/20 border-2 border-red-500/40 mb-3 sm:mb-4">
-                <ShieldCheck className="h-6 w-6 sm:h-8 sm:w-8 text-red-400" />
-              </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-red-400">
-                Vérification Requise
-              </h1>
-              <p className="text-red-300/80 mt-1.5 sm:mt-2 text-xs sm:text-sm md:text-base">
-                Votre compte doit être vérifié avant de pouvoir accéder à la plateforme.
-              </p>
-              <div className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-red-500/15 border border-red-500/30">
-                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-400" />
-                <span className="text-xs sm:text-sm text-red-300">Suspension dans :</span>
-                <span className="font-mono font-bold text-red-200 text-sm sm:text-lg">{timeLeft}</span>
-              </div>
-            </div>
-
-            {/* Form Card */}
-            <div className="bg-zinc-900/80 backdrop-blur-sm border border-red-900/50 rounded-xl p-4 sm:p-6 md:p-8 space-y-3 sm:space-y-4">
-              <h2 className="text-base sm:text-lg font-semibold text-zinc-100 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400 shrink-0" />
-                Remplissez le formulaire de vérification
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs sm:text-sm text-zinc-300">Nom du magasin *</Label>
-                  <Input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Mon Atelier" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs sm:text-sm text-zinc-300">Nom du propriétaire *</Label>
-                  <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Ahmed Ben Ali" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs sm:text-sm text-zinc-300">Numéro de téléphone *</Label>
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+216 XX XXX XXX" type="tel" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs sm:text-sm text-zinc-300">Ville *</Label>
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Tunis" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm text-zinc-300">Adresse du magasin *</Label>
-                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Rue de la République" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm text-zinc-300">Lien Google Maps (optionnel)</Label>
-                <Input value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs sm:text-sm text-zinc-300">Page Facebook (optionnel)</Label>
-                  <Input value={facebookUrl} onChange={(e) => setFacebookUrl(e.target.value)} placeholder="https://facebook.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs sm:text-sm text-zinc-300">Page Instagram (optionnel)</Label>
-                  <Input value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 sm:h-10 text-sm" />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm text-zinc-300">Description du magasin (optionnel)</Label>
-                <Textarea value={shopDescription} onChange={(e) => setShopDescription(e.target.value)} placeholder="Décrivez votre activité..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 text-sm" />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm text-zinc-300">Message pour l'administration</Label>
-                <Textarea value={messageToAdmin} onChange={(e) => setMessageToAdmin(e.target.value)} placeholder="Un message pour l'admin..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 text-sm" />
-              </div>
-
-              <Button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 text-sm sm:text-base"
-                size="lg"
-              >
-                {loading ? <><Loader2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 animate-spin" />Envoi en cours...</> : (
-                  <><ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />Soumettre la demande</>
-                )}
-              </Button>
-
-              {adminWhatsapp && (
-                <a
-                  href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent("Bonjour, je souhaite vérifier mon compte RepairPro.")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
-                >
-                  <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  Contacter via WhatsApp
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <VerificationPopup
+      timeLeft={timeLeft}
+      shopName={shopName} setShopName={setShopName}
+      ownerName={ownerName} setOwnerName={setOwnerName}
+      phone={phone} setPhone={setPhone}
+      city={city} setCity={setCity}
+      address={address} setAddress={setAddress}
+      googleMapsUrl={googleMapsUrl} setGoogleMapsUrl={setGoogleMapsUrl}
+      facebookUrl={facebookUrl} setFacebookUrl={setFacebookUrl}
+      instagramUrl={instagramUrl} setInstagramUrl={setInstagramUrl}
+      shopDescription={shopDescription} setShopDescription={setShopDescription}
+      messageToAdmin={messageToAdmin} setMessageToAdmin={setMessageToAdmin}
+      loading={loading}
+      adminWhatsapp={adminWhatsapp}
+      onSubmit={handleSubmit}
+    />;
   }
 
   // STATE 2: Non-blocking amber banner (after submission, waiting for admin)
@@ -339,4 +243,159 @@ export function VerificationBanner() {
   }
 
   return null;
+}
+
+interface VerificationPopupProps {
+  timeLeft: string;
+  shopName: string; setShopName: (v: string) => void;
+  ownerName: string; setOwnerName: (v: string) => void;
+  phone: string; setPhone: (v: string) => void;
+  city: string; setCity: (v: string) => void;
+  address: string; setAddress: (v: string) => void;
+  googleMapsUrl: string; setGoogleMapsUrl: (v: string) => void;
+  facebookUrl: string; setFacebookUrl: (v: string) => void;
+  instagramUrl: string; setInstagramUrl: (v: string) => void;
+  shopDescription: string; setShopDescription: (v: string) => void;
+  messageToAdmin: string; setMessageToAdmin: (v: string) => void;
+  loading: boolean;
+  adminWhatsapp: string;
+  onSubmit: () => void;
+}
+
+function VerificationPopup({
+  timeLeft, shopName, setShopName, ownerName, setOwnerName, phone, setPhone,
+  city, setCity, address, setAddress, googleMapsUrl, setGoogleMapsUrl,
+  facebookUrl, setFacebookUrl, instagramUrl, setInstagramUrl,
+  shopDescription, setShopDescription, messageToAdmin, setMessageToAdmin,
+  loading, adminWhatsapp, onSubmit,
+}: VerificationPopupProps) {
+  // Lock body scroll while popup is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative w-full max-w-lg sm:max-w-2xl max-h-[92vh] flex flex-col rounded-2xl border border-red-900/50 bg-zinc-900/95 shadow-2xl overflow-hidden animate-scale-in">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 bg-gradient-to-b from-red-950/95 to-zinc-900/95 backdrop-blur-sm border-b border-red-900/40 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-red-500/20 border border-red-500/40 shrink-0">
+              <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base sm:text-lg font-bold text-red-300 leading-tight">
+                Vérification Requise
+              </h1>
+              <div className="mt-1 inline-flex items-center gap-1.5 text-xs text-red-300/90">
+                <Clock className="h-3 w-3 shrink-0" />
+                <span>Suspension dans :</span>
+                <span className="font-mono font-bold text-red-200">{timeLeft}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable Body */}
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 space-y-3 sm:space-y-4"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <p className="text-xs sm:text-sm text-zinc-400">
+            Votre compte doit être vérifié avant de pouvoir accéder à la plateforme. Remplissez le formulaire ci-dessous.
+          </p>
+
+          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-100 pt-1">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+            Informations de la boutique
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-300">Nom du magasin *</Label>
+              <Input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Mon Atelier" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-300">Nom du propriétaire *</Label>
+              <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Ahmed Ben Ali" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-300">Téléphone *</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+216 XX XXX XXX" type="tel" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-300">Ville *</Label>
+              <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Tunis" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-zinc-300">Adresse du magasin *</Label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Rue de la République" className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-zinc-300">Lien Google Maps (optionnel)</Label>
+            <Input value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-300">Facebook (optionnel)</Label>
+              <Input value={facebookUrl} onChange={(e) => setFacebookUrl(e.target.value)} placeholder="https://facebook.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-zinc-300">Instagram (optionnel)</Label>
+              <Input value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/..." className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 h-9 text-sm" />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-zinc-300">Description du magasin (optionnel)</Label>
+            <Textarea value={shopDescription} onChange={(e) => setShopDescription(e.target.value)} placeholder="Décrivez votre activité..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 text-sm resize-none" />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-zinc-300">Message pour l'administration</Label>
+            <Textarea value={messageToAdmin} onChange={(e) => setMessageToAdmin(e.target.value)} placeholder="Un message pour l'admin..." rows={2} className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 text-sm resize-none" />
+          </div>
+
+          {adminWhatsapp && (
+            <a
+              href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent("Bonjour, je souhaite vérifier mon compte RepairPro.")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Contacter via WhatsApp
+            </a>
+          )}
+        </div>
+
+        {/* Sticky Footer */}
+        <div className="sticky bottom-0 z-10 bg-zinc-900/95 backdrop-blur-sm border-t border-red-900/40 px-4 py-3 sm:px-6 sm:py-4">
+          <Button
+            onClick={onSubmit}
+            disabled={loading}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 text-sm sm:text-base"
+            size="lg"
+          >
+            {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Envoi en cours...</> : (
+              <><ShieldCheck className="h-4 w-4 mr-2" />Soumettre la demande</>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }

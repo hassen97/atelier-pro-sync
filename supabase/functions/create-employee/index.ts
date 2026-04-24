@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const ownerId = userData.user.id;
+    let ownerId = userData.user.id;
 
     const { data: ownerRoles, error: ownerRoleError } = await adminClient
       .from("user_roles")
@@ -122,14 +122,33 @@ Deno.serve(async (req) => {
       });
     }
 
+    // If caller is not an admin/owner, check if they are a manager team member
+    // and use their team owner as the ownerId for the new employee
     if (!ownerRoles || ownerRoles.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Seul un super admin peut créer des employés" }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      const { data: managerMembership, error: managerError } = await adminClient
+        .from("team_members")
+        .select("owner_id, role, status")
+        .eq("member_user_id", ownerId)
+        .eq("status", "active")
+        .in("role", ["manager", "admin"])
+        .maybeSingle();
+
+      if (managerError) {
+        console.error("Manager membership lookup error:", managerError);
+      }
+
+      if (!managerMembership) {
+        console.error("Permission denied for user:", ownerId);
+        return new Response(
+          JSON.stringify({ error: "Seul un super admin peut créer des employés" }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      ownerId = managerMembership.owner_id as string;
     }
 
     const rawBody = await req.json();

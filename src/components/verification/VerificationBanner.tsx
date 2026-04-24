@@ -200,8 +200,11 @@ export function VerificationBanner() {
   // STATE 1: Full-screen blocking overlay (before submission)
   if (profile.verification_status === "pending_verification" && !hasSubmitted) {
     return (
-      <div className="fixed inset-0 z-[100] bg-gradient-to-b from-red-950 via-red-900/98 to-zinc-950 overflow-y-auto">
-        <div className="min-h-full flex items-start sm:items-center justify-center px-3 py-4 sm:p-6">
+      <div
+        className="fixed inset-0 z-[100] bg-gradient-to-b from-red-950 via-red-900/98 to-zinc-950 overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        <div className="flex items-start justify-center px-3 py-4 sm:p-6 min-h-full">
           <div className="w-full max-w-2xl">
             {/* Header */}
             <div className="text-center mb-4 sm:mb-6">

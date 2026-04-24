@@ -165,12 +165,16 @@ export default function Auth() {
           setError("Votre compte a été suspendu car il n'a pas été vérifié dans les 48 heures. Veuillez contacter l'administration pour réactiver votre compte.");
           setLoading(false);
           return;
-        } else if (profile?.is_locked || vs === "pending_verification") {
+        } else if (profile?.is_locked) {
+          // Admin kill-switch: account explicitly locked by an admin
           await supabase.auth.signOut();
-          setError("Votre compte est en attente de validation par l'administrateur.");
+          setError("Votre compte est verrouillé par l'administrateur. Veuillez le contacter.");
           setLoading(false);
           return;
         }
+        // Note: pending_verification users are allowed to log in.
+        // The VerificationBanner overlay will block the dashboard until they
+        // submit the verification form and an admin approves them.
       }
       // Invalidate onboarding cache to force fresh fetch
       queryClient.invalidateQueries({ queryKey: ["onboarding-status"] });

@@ -1,67 +1,52 @@
-## Diagnostic — pourquoi les nouvelles inscriptions sont cassées
+# Fix: New shop owners get kicked back to login
 
-J'ai vérifié la base : la fonction PostgreSQL `handle_new_user()` existe (elle crée correctement profil + rôle `super_admin` + `shop_settings`), **mais le trigger qui devait l'attacher à `auth.users` n'existe plus**.
+## Root cause
 
-Requête exécutée :
-```
-SELECT tgname FROM pg_trigger WHERE tgname ILIKE '%user%' OR tgname ILIKE '%handle%';
-→ 0 lignes
-```
+I checked `fire1` in the database and the signup is now perfect:
+- `profile` ✅ created
+- `user_roles.role = super_admin` ✅
+- `shop_settings` ✅ initialized
+- `verification_status = pending_verification` (expected — this is the default for every new owner, set by the `handle_new_user()` trigger)
 
-**Conséquence** : à chaque nouvelle inscription, un utilisateur est créé dans `auth.users`, mais aucun profil/rôle/paramètre n'est inséré dans le schéma public. C'est exactement ce qui s'est passé pour `coolstoresbz` hier — d'où le 403 sur la création d'employé.
+The flicker you saw ("Vérification Requise" page → redirect to login) is caused by **`src/pages/Auth.tsx` lines 168–173**:
 
-Comptes actuels : 338 profils / 338 rôles / 330 shop_settings → **8 boutiques** ont aussi un `shop_settings` manquant (mêmes symptômes potentiels que coolstoresbz).
-
-## Plan — réparer le flux de signup
-
-### 1. Recréer le trigger sur `auth.users`
-
-Migration SQL qui attache `handle_new_user()` à l'événement `AFTER INSERT` sur `auth.users` :
-
-```sql
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+```ts
+} else if (profile?.is_locked || vs === "pending_verification") {
+  await supabase.auth.signOut();
+  setError("Votre compte est en attente de validation par l'administrateur.");
+  ...
+}
 ```
 
-La fonction `handle_new_user()` est déjà correcte et fait exactement ce qu'on veut :
-- Crée la ligne `profiles` (avec `verification_status = 'pending_verification'`, `is_locked = true`)
-- Insère le rôle `super_admin` dans `user_roles`
-- Crée `shop_settings` avec `country` + `currency` issus du formulaire d'inscription, et `onboarding_completed = false` par défaut
+This **signs out every new shop owner immediately after login**, because every new account starts with `pending_verification`. That contradicts the intended onboarding funnel:
 
-→ Résultat : tout futur propriétaire qui s'inscrit aura automatiquement le rôle `super_admin`, sera placé en attente de validation (Kill Switch + vérification 48 h respectés), puis après validation suivra le funnel normal (onboarding setup → checkout → dashboard).
+- `ProtectedRoute` already lets pending users into `/dashboard`
+- `VerificationBanner` is designed to show a full-screen blocking overlay where the owner fills out the verification form (shop name, address, phone, etc.) and submits it to admin
 
-### 2. Sauvegarde de filet (optionnelle mais recommandée)
+So the user briefly sees the verification overlay (correct behavior), then `Auth.tsx` forcibly signs them out 200 ms later (bug).
 
-Ajouter un garde-fou côté `AuthContext.signUp` (côté client) : juste après le `supabase.auth.signUp` réussi, faire un `select` rapide sur `user_roles` pour le user créé ; si vide après ~1s, appeler une edge function `bootstrap-profile` (à créer) qui rejoue la logique de `handle_new_user()` via le service-role. Cela protège contre une éventuelle nouvelle disparition du trigger ou un échec silencieux.
+## Fix
 
-Si vous trouvez ça trop défensif, on peut sauter cette étape — le trigger seul devrait suffire.
+In `src/pages/Auth.tsx`, change the post-login check so that `pending_verification` no longer triggers a sign-out. Only `is_locked` (admin kill-switch) and `suspended` (after 48h timeout, already handled above) should sign the user out.
 
-### 3. Nettoyage des 8 boutiques actuellement sans `shop_settings`
+Replace the `else if` block (lines 168–173) with:
 
-Identifier ces utilisateurs et leur insérer une ligne `shop_settings` par défaut (`shop_name = 'Mon Atelier'`, `country = 'TN'`, `currency = 'TND'`, `onboarding_completed = false`) pour qu'elles soient propres. Sans ça, à leur prochaine connexion elles iront sur `/onboarding/setup` mais pourraient avoir d'autres bizarreries.
+```ts
+} else if (profile?.is_locked) {
+  // Admin kill-switch only
+  await supabase.auth.signOut();
+  setError("Votre compte est verrouillé par l'administrateur. Veuillez le contacter.");
+  setLoading(false);
+  return;
+}
+// pending_verification users are allowed in — VerificationBanner handles the overlay
+```
 
-### 4. Test end-to-end
+## Result
 
-Faire un signup test (par exemple `test_signup_check`) via l'UI, puis vérifier en SQL que profil + rôle `super_admin` + shop_settings sont bien créés. Supprimer le compte test après.
+After this change:
+1. `fire1` (and every future shop-owner signup) logs in normally
+2. They land on `/dashboard` and immediately see the full-screen "Vérification Requise" form
+3. They fill it out → request goes to admin → admin verifies → onboarding setup → checkout → dashboard
 
-## Détails techniques
-
-- **Migration uniquement** (pas de changement de code applicatif sauf si vous voulez l'étape 2 défensive).
-- Le trigger doit être attaché sur `auth.users`, schéma protégé. Lovable Cloud autorise ce type d'attachement spécifique car la fonction `handle_new_user()` est dans `public` (pratique standard Supabase).
-- `handle_new_user()` est déjà `SECURITY DEFINER`, donc elle a les droits nécessaires pour écrire dans `public`.
-- Aucun impact sur les comptes existants (le trigger ne s'exécute qu'aux futurs `INSERT`).
-
-## Hors scope
-
-- Modifications à l'UI d'inscription `Auth.tsx` ou au funnel `ProtectedRoute.tsx` — déjà corrects.
-- Modifications à la fonction `handle_new_user()` elle-même — son contenu est correct.
-
-## Confirmez avant que je passe en mode build
-
-1. **OK pour recréer le trigger** sur `auth.users` ? (étape 1, indispensable)
-2. **Voulez-vous le filet de sécurité** côté client (étape 2) ? — Je recommande "non" sauf si vous voulez être ceinture + bretelles.
-3. **OK pour réparer les 8 boutiques orphelines** sans `shop_settings` (étape 3) ?
+No DB changes, no migration — single client-side edit.

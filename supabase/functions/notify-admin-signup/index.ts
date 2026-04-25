@@ -94,18 +94,51 @@ Deno.serve(async (req) => {
           </div>
         </div>
       `;
+      const text = [
+        isTest ? "E-mail de test RepairPro" : "Nouvelle inscription RepairPro",
+        "",
+        `Nom complet: ${full_name ?? "—"}`,
+        `Username: @${username ?? "—"}`,
+        `Email: ${email ?? "—"}`,
+        `Téléphone: ${phone ?? "—"}`,
+        `Pays: ${country ?? "—"}`,
+      ].join("\n");
 
       try {
-        await admin.rpc("enqueue_email", {
-          queue_name: "transactional_email_queue",
+        const messageId = crypto.randomUUID();
+        const label = isTest ? "admin-signup-test" : "admin-signup-alert";
+
+        // Generate + persist an unsubscribe token (required by Lovable email API for transactional)
+        const unsubscribeToken = crypto.randomUUID().replace(/-/g, "");
+        const { error: tokenError } = await admin
+          .from("email_unsubscribe_tokens")
+          .insert({ token: unsubscribeToken, email: adminEmail });
+        if (tokenError) {
+          console.error("[notify-admin-signup] unsubscribe token insert error:", tokenError);
+        }
+
+        const { error: enqueueError } = await admin.rpc("enqueue_email", {
+          queue_name: "transactional_emails",
           payload: {
             to: adminEmail,
+            from: "RepairPro <noreply@getheavencoin.com>",
+            sender_domain: "notify.getheavencoin.com",
             subject,
             html,
-            template: isTest ? "admin-signup-test" : "admin-signup-alert",
+            text,
+            label,
+            purpose: "transactional",
+            message_id: messageId,
+            queued_at: new Date().toISOString(),
+            idempotency_key: messageId,
+            unsubscribe_token: unsubscribeToken,
           },
         });
-        emailQueued = true;
+        if (enqueueError) {
+          console.error("[notify-admin-signup] enqueue rpc error:", enqueueError);
+        } else {
+          emailQueued = true;
+        }
       } catch (e) {
         console.error("[notify-admin-signup] enqueue email error:", e);
       }

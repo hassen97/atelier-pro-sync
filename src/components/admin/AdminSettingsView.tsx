@@ -219,17 +219,32 @@ export function AdminSettingsView() {
             />
           </div>
 
-          {browserPermission !== "granted" && browserPermission !== "unsupported" && (
+          <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
+            {browserPermission !== "granted" && browserPermission !== "unsupported" && (
+              <Button
+                onClick={requestBrowserPermission}
+                variant="outline"
+                size="sm"
+                className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
+              >
+                <BellRing className="h-4 w-4 mr-2" />
+                Activer dans ce navigateur
+              </Button>
+            )}
             <Button
-              onClick={requestBrowserPermission}
-              variant="outline"
+              onClick={sendTestAlert}
+              disabled={testingAlert}
               size="sm"
-              className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
             >
-              <BellRing className="h-4 w-4 mr-2" />
-              Activer dans ce navigateur
+              {testingAlert ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Tester maintenant
             </Button>
-          )}
+          </div>
         </CardContent>
       </Card>
 

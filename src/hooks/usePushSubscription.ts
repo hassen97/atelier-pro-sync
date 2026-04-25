@@ -98,9 +98,13 @@ export function usePushSubscription() {
 
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
+        const keyArr = urlBase64ToUint8Array(publicKey);
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
+          applicationServerKey: keyArr.buffer.slice(
+            keyArr.byteOffset,
+            keyArr.byteOffset + keyArr.byteLength
+          ) as ArrayBuffer,
         });
       }
 

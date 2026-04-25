@@ -192,19 +192,22 @@ export function AdminSettingsView() {
             <div className="pr-3">
               <p className="font-medium text-white">Notifications navigateur (push)</p>
               <p className="text-sm text-slate-400">
-                {browserPermission === "granted"
-                  ? "✅ Activées dans ce navigateur"
-                  : browserPermission === "denied"
+                {push.status === "subscribed"
+                  ? "✅ Abonné — vous recevrez les alertes même si l'onglet est fermé (après installation)"
+                  : push.status === "denied"
                   ? "❌ Bloquées — autorisez-les dans les paramètres du navigateur"
-                  : browserPermission === "unsupported"
+                  : push.status === "unsupported"
                   ? "Non supportées par ce navigateur"
                   : "Cliquez pour activer dans ce navigateur"}
               </p>
               {isIOS && (
                 <p className="mt-2 text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-1.5">
-                  ⚠️ Sur iPhone, Safari ne supporte pas les notifications push web. Pour recevoir des alertes en temps réel, utilisez un ordinateur (Chrome/Firefox/Edge) ou installez l'app comme PWA. Les e-mails fonctionnent normalement.
+                  ⚠️ Sur iPhone (Safari), les notifications push nécessitent d'installer l'app via « Sur l'écran d'accueil » (iOS 16.4+).
                 </p>
               )}
+              <p className="mt-2 text-xs text-cyan-300/80 bg-cyan-500/5 border border-cyan-500/20 rounded-md px-2 py-1.5">
+                💡 Pour recevoir les notifications quand l'app est <b>fermée</b> (Android), installez d'abord l'application avec le bouton ci-dessous.
+              </p>
             </div>
             <Switch
               checked={notifyBrowserEnabled}
@@ -217,17 +220,34 @@ export function AdminSettingsView() {
           </div>
 
           <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
-            {browserPermission !== "granted" && browserPermission !== "unsupported" && (
+            {push.status !== "subscribed" && push.status !== "unsupported" && push.status !== "denied" && (
               <Button
-                onClick={requestBrowserPermission}
+                onClick={() => push.subscribe()}
+                disabled={push.busy}
                 variant="outline"
                 size="sm"
                 className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
               >
-                <BellRing className="h-4 w-4 mr-2" />
+                {push.busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <BellRing className="h-4 w-4 mr-2" />}
                 Activer dans ce navigateur
               </Button>
             )}
+            {push.status === "subscribed" && (
+              <Button
+                onClick={() => push.unsubscribe()}
+                disabled={push.busy}
+                variant="outline"
+                size="sm"
+                className="border-slate-500/30 text-slate-300 hover:bg-slate-500/10"
+              >
+                {push.busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <BellOff className="h-4 w-4 mr-2" />}
+                Désactiver
+              </Button>
+            )}
+            <InstallAppButton
+              variant="outline"
+              className="border-violet-500/30 text-violet-300 hover:bg-violet-500/10"
+            />
             <Button
               onClick={sendTestAlert}
               disabled={testingAlert}

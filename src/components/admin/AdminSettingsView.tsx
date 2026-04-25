@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { OnboardingRemindersAdminCard } from "./OnboardingRemindersAdminCard";
+import { VerificationRemindersAdminCard } from "./VerificationRemindersAdminCard";
 
 export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
@@ -142,6 +143,8 @@ export function AdminSettingsView() {
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-lg font-semibold text-white">Paramètres de la plateforme</h2>
+
+      <VerificationRemindersAdminCard />
 
       <OnboardingRemindersAdminCard />
 

@@ -34,13 +34,6 @@ function useOnboardingStatus(userId: string | undefined) {
         return { skip: true } as const;
       }
 
-      // Fetch verification status
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("verification_status, is_locked, verification_requested_at")
-        .eq("user_id", userId)
-        .maybeSingle();
-
       // Fetch onboarding_completed
       const { data: settings } = await supabase
         .from("shop_settings")
@@ -58,11 +51,6 @@ function useOnboardingStatus(userId: string | undefined) {
         .limit(1)
         .maybeSingle();
 
-      const verificationStatus = profile?.verification_status || "pending_verification";
-      const isVerified = verificationStatus === "verified";
-      const isPendingVerification = verificationStatus === "pending_verification";
-      const isSuspended = verificationStatus === "suspended";
-      const hasSubmittedVerification = !!profile?.verification_requested_at;
       const onboardingCompleted = (settings as any)?.onboarding_completed === true;
 
       // Check subscription: expired if exists but past expiry date
@@ -75,10 +63,10 @@ function useOnboardingStatus(userId: string | undefined) {
 
       return {
         skip: false,
-        isVerified,
-        isPendingVerification,
-        isSuspended,
-        hasSubmittedVerification,
+        isVerified: true,
+        isPendingVerification: false,
+        isSuspended: false,
+        hasSubmittedVerification: true,
         onboardingCompleted,
         hasActiveSubscription,
         hasNoSubscription,
@@ -144,14 +132,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     // Allow funnel routes to pass through
     const funnelRoutes = ["/onboarding/setup", "/checkout"];
     const isOnFunnelRoute = funnelRoutes.some(r => path.startsWith(r));
-
-    // Stage 1: Pending verification or suspended → block funnel routes
-    if (onboardingStatus.isPendingVerification || onboardingStatus.isSuspended) {
-      if (isOnFunnelRoute) {
-        return <Navigate to="/dashboard" replace />;
-      }
-      // Allow through — VerificationBanner overlay handles blocking
-    }
 
     // Stage 2: Verified but onboarding not completed → force to /onboarding/setup
     if (onboardingStatus.isVerified && !onboardingStatus.onboardingCompleted) {

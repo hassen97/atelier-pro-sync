@@ -148,33 +148,17 @@ export default function Auth() {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("is_locked, verification_status")
+          .select("is_locked")
           .eq("user_id", userId)
           .single();
 
-        const vs = profile?.verification_status;
-
-        // Verified users pass through even if is_locked was stale
-        if (vs === "verified") {
-          if (profile?.is_locked) {
-            await supabase.from("profiles").update({ is_locked: false }).eq("user_id", userId);
-          }
-          // Proceed — ProtectedRoute handles the rest of the funnel
-        } else if (vs === "suspended") {
-          await supabase.auth.signOut();
-          setError("Votre compte a été suspendu car il n'a pas été vérifié dans les 48 heures. Veuillez contacter l'administration pour réactiver votre compte.");
-          setLoading(false);
-          return;
-        } else if (profile?.is_locked) {
+        if (profile?.is_locked) {
           // Admin kill-switch: account explicitly locked by an admin
           await supabase.auth.signOut();
           setError("Votre compte est verrouillé par l'administrateur. Veuillez le contacter.");
           setLoading(false);
           return;
         }
-        // Note: pending_verification users are allowed to log in.
-        // The VerificationBanner overlay will block the dashboard until they
-        // submit the verification form and an admin approves them.
       }
       // Invalidate onboarding cache to force fresh fetch
       queryClient.invalidateQueries({ queryKey: ["onboarding-status"] });

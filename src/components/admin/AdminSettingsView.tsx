@@ -96,6 +96,89 @@ export function AdminSettingsView() {
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-lg font-semibold text-white">Paramètres de la plateforme</h2>
 
+      <Card className="admin-glass-card border-cyan-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <BellRing className="h-5 w-5 text-cyan-400" />
+            Alertes d'inscription
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Recevez une notification (e-mail et navigateur) à chaque nouvelle inscription d'une boutique.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-slate-300">E-mail destinataire des alertes</Label>
+            <Input
+              type="email"
+              placeholder="admin@example.com"
+              value={notifyEmail}
+              onChange={(e) => setNotifyEmail(e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+            />
+            <Button
+              onClick={() => saveSetting("admin_notify_email", notifyEmail.trim(), setSavingNotifyEmail)}
+              disabled={savingNotifyEmail}
+              size="sm"
+              className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30"
+            >
+              {savingNotifyEmail ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Enregistrer
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-white/5 pt-4">
+            <div>
+              <p className="font-medium text-white">Notifications par e-mail</p>
+              <p className="text-sm text-slate-400">Envoyer un e-mail à l'adresse ci-dessus à chaque inscription.</p>
+            </div>
+            <Switch
+              checked={notifyEmailEnabled}
+              onCheckedChange={(checked) => {
+                setNotifyEmailEnabled(checked);
+                saveSetting("admin_notify_email_enabled", checked ? "true" : "false", setSavingNotifyEmailToggle);
+              }}
+              disabled={savingNotifyEmailToggle}
+            />
+          </div>
+
+          <div className="flex items-center justify-between border-t border-white/5 pt-4">
+            <div>
+              <p className="font-medium text-white">Notifications navigateur (push)</p>
+              <p className="text-sm text-slate-400">
+                {browserPermission === "granted"
+                  ? "✅ Activées dans ce navigateur"
+                  : browserPermission === "denied"
+                  ? "❌ Bloquées — autorisez-les dans les paramètres du navigateur"
+                  : browserPermission === "unsupported"
+                  ? "Non supportées par ce navigateur"
+                  : "Cliquez pour activer dans ce navigateur"}
+              </p>
+            </div>
+            <Switch
+              checked={notifyBrowserEnabled}
+              onCheckedChange={(checked) => {
+                setNotifyBrowserEnabled(checked);
+                saveSetting("admin_notify_browser_enabled", checked ? "true" : "false", setSavingNotifyBrowser);
+              }}
+              disabled={savingNotifyBrowser}
+            />
+          </div>
+
+          {browserPermission !== "granted" && browserPermission !== "unsupported" && (
+            <Button
+              onClick={requestBrowserPermission}
+              variant="outline"
+              size="sm"
+              className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
+            >
+              <BellRing className="h-4 w-4 mr-2" />
+              Activer dans ce navigateur
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="admin-glass-card border-white/10">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">

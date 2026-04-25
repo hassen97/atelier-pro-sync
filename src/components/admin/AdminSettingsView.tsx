@@ -4,9 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert, BellRing, Send } from "lucide-react";
+import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert, BellRing, Send, BellOff, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 
 export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
@@ -16,11 +18,8 @@ export function AdminSettingsView() {
   const [notifyEmail, setNotifyEmail] = useState("");
   const [notifyEmailEnabled, setNotifyEmailEnabled] = useState(true);
   const [notifyBrowserEnabled, setNotifyBrowserEnabled] = useState(true);
+  const push = usePushSubscription();
   const isIOS = typeof window !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const supportsNotifications = typeof window !== "undefined" && "Notification" in window;
-  const [browserPermission, setBrowserPermission] = useState<NotificationPermission | "unsupported">(
-    supportsNotifications ? Notification.permission : "unsupported"
-  );
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);

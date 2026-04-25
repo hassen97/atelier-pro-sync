@@ -1,98 +1,75 @@
-# Rappels de complétion de la boutique
+# Notifier la liste d'attente + cadeau d'essai Pro 3 jours
 
-Objectif : pousser les ~30 propriétaires existants (et tous les futurs) qui n'ont pas terminé `onboarding_completed = true` à finaliser la configuration de leur atelier — via l'app **et** par email.
+39 emails sont actuellement enregistrés dans la table `waitlist`. On va leur envoyer un email "Bonne nouvelle, RepairPro est ouvert", et leur offrir automatiquement **3 jours d'essai du plan Pro** dès leur inscription.
 
-## Ce qui sera ajouté
+## Ce que voit l'utilisateur final
 
-### 1. Rappel in-app (combiné)
+1. Reçoit un email "🎉 Votre place est confirmée — 3 jours d'essai Pro offerts"
+2. Clique sur le bouton → arrive sur la page d'inscription pré-remplie avec son email
+3. Crée son compte normalement (username + mot de passe + boutique)
+4. Le système détecte que son email est dans la waitlist → **active automatiquement un abonnement Pro pendant 3 jours**
+5. Voit une bannière de bienvenue "Votre cadeau : 3 jours Pro offerts (expire le …)"
 
-- **Modal au premier login du jour** sur `/dashboard` si la config est incomplète. Fermable (`localStorage` clé du jour). Bouton « Compléter ma boutique » → `/onboarding/setup`.
-- **Bannière persistante** en haut du dashboard tant que `onboarding_completed = false`, non fermable, avec bouton d'action.
-- Aujourd'hui, `ProtectedRoute` redirige déjà vers `/onboarding/setup` si non complété — mais l'utilisateur peut quitter en cours de route, donc le rappel reste utile au retour.
+## Ce que voit l'admin
 
-### 2. Email manuel (rattrapage existants)
+Dans **Admin → Paramètres**, nouvelle carte :
 
-Bouton **« Envoyer rappel à tous les comptes incomplets »** dans **Admin → Paramètres** :
-
-- Liste les `super_admin` avec `onboarding_completed = false` ET email valide.
-- Affiche le compteur (ex : « 27 propriétaires concernés »).
-- Confirmation avant envoi.
-- Anti-doublon : champ `last_onboarding_reminder_sent_at` sur `shop_settings` — n'envoie pas si rappel < 3 jours.
-
-### 3. Email automatique (futurs inscrits)
-
-- Cron quotidien (`pg_cron` à 10h) qui envoie un email aux comptes :
-  - `super_admin`, email présent, `onboarding_completed = false`
-  - inscrits depuis ≥ 2 jours (premier rappel) ou ≥ 7 jours (deuxième rappel)
-  - dernier rappel envoyé > 3 jours
-- Limite : max 2 rappels par compte (champ `onboarding_reminders_sent` int).
-
-### 4. Email template
-
-Nouveau template React Email **« Terminez la configuration de votre boutique »** :
-
-- Branding RepairPro (cohérent avec les templates auth existants).
-- Texte court : « Votre compte est actif mais votre atelier n'est pas configuré. Ajoutez votre logo, contact et horaires en 2 minutes pour que vos clients voient une page de suivi professionnelle. »
-- CTA → `https://www.getheavencoin.com/onboarding/setup`.
-- Lien désinscription standard.
+- Compteur live : "39 inscrits sur la waitlist · 39 jamais notifiés"
+- Bouton "Envoyer l'invitation à 39 personnes" (avec confirmation)
+- Compteur après envoi : combien ont déjà créé un compte / combien ont activé leur trial
 
 ## Détails techniques
 
-**Migration DB**
+### Base de données
+Sur la table `waitlist`, ajouter :
+- `notified_at` (timestamptz) — date d'envoi de l'email d'invitation
+- `signed_up_user_id` (uuid) — ID du compte créé une fois inscrit
+- `trial_granted_at` (timestamptz) — date d'activation de l'essai Pro
 
-```sql
-ALTER TABLE shop_settings 
-  ADD COLUMN last_onboarding_reminder_sent_at timestamptz,
-  ADD COLUMN onboarding_reminders_sent int NOT NULL DEFAULT 0;
-```
+### Edge function `notify-waitlist`
+- Mode `manual` (déclenché par l'admin) — itère sur les entrées `notified_at IS NULL`
+- Génère un token unique → URL d'inscription `/auth?invite={token}&email={email}`
+- Enqueue dans `transactional_emails` via le système d'emails existant
+- Marque `notified_at = now()`
+- Anti-spam : ne renvoie jamais 2 fois à la même adresse
 
-**Nouvelle Edge Function : `send-onboarding-reminder**`
+### Email
+Nouveau template `waitlist-invitation.tsx` :
+- Sujet : "🎉 Votre place est confirmée — 3 jours Pro offerts"
+- Message : remerciement, annonce du lancement, mention du cadeau (3 jours Pro), bouton CTA "Créer mon compte maintenant"
+- Lien de désabonnement standard
 
-- POST `{ mode: "manual" | "auto" }`
-- `manual` : auth platform_admin requis, traite tous les éligibles immédiatement.
-- `auto` : appelée par cron avec service role, applique la règle J+2 / J+7.
-- Pour chaque destinataire :
-  - Crée un `email_unsubscribe_tokens`.
-  - `enqueue_email` dans `transactional_emails` avec template `onboarding-reminder`.
-  - Met à jour `last_onboarding_reminder_sent_at` + incrémente `onboarding_reminders_sent`.
-  - Log dans `email_send_log`.
-- Retourne `{ queued: N, skipped: M }`.
+### Activation automatique du trial
+Dans `handle_new_user` (trigger Supabase), après création de la boutique :
+- Si l'email du nouvel utilisateur existe dans `waitlist` → créer une ligne dans `shop_subscriptions` avec :
+  - `plan_id` = ID du plan "🔥 Pro"
+  - `status = 'active'`
+  - `started_at = now()`
+  - `expires_at = now() + 3 days`
+- Lier `waitlist.signed_up_user_id` et `waitlist.trial_granted_at`
 
-**Cron** (via SQL insert tool, pas migration) :
+### Bannière in-app
+Composant `WaitlistTrialBanner` sur le Dashboard (visible uniquement pendant les 3 jours d'essai issus du cadeau) :
+- "🎁 Cadeau de bienvenue : 3 jours Pro offerts — expire dans X heures"
+- Bouton "Voir les plans" pour passer à un abonnement payant avant expiration
 
-```sql
-SELECT cron.schedule(
-  'onboarding-reminder-daily', '0 10 * * *',
-  $$ SELECT net.http_post(
-    url := 'https://rgikflkocotkljbajzrb.supabase.co/functions/v1/send-onboarding-reminder',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer <SERVICE_KEY>"}'::jsonb,
-    body := '{"mode":"auto"}'::jsonb
-  ); $$
-);
-```
+### Composant Admin
+`WaitlistInvitationsAdminCard` placée au-dessus des autres cartes de rappel dans `AdminSettingsView.tsx` :
+- 4 stats : total waitlist, jamais notifiés, déjà notifiés, ont créé leur compte
+- Bouton manuel d'envoi avec dialogue de confirmation
 
-**Template email** : `supabase/functions/_shared/email-templates/onboarding-reminder.tsx` + dispatch dans `process-email-queue` (label `onboarding-reminder`).
+## Fichiers créés / modifiés
 
-**UI** :
+- `supabase/migrations/...sql` — colonnes waitlist + trigger d'activation trial
+- `supabase/functions/notify-waitlist/index.ts` — nouvelle edge function
+- `supabase/functions/_shared/email-templates/waitlist-invitation.tsx` — template email
+- `src/components/admin/WaitlistInvitationsAdminCard.tsx` — carte admin
+- `src/components/dashboard/WaitlistTrialBanner.tsx` — bannière in-app
+- `src/components/admin/AdminSettingsView.tsx` — intégration carte
+- `src/pages/Dashboard.tsx` — intégration bannière
+- `src/pages/Auth.tsx` — pré-remplissage email depuis `?email=` query param
 
-- `src/components/onboarding/OnboardingReminderBanner.tsx` — bannière dashboard.
-- `src/components/onboarding/OnboardingReminderModal.tsx` — modal au login (clé `onboarding-reminder-dismissed-YYYY-MM-DD`).
-- Intégration dans `src/pages/Dashboard.tsx` (montés conditionnellement si `super_admin` + `!onboarding_completed`).
-- `src/components/admin/AdminSettingsView.tsx` — nouvelle carte « Rappels de configuration » avec compteur live + bouton d'envoi.
+## Hors scope
 
-## Fichiers touchés
-
-- `supabase/migrations/<new>.sql` (2 colonnes)
-- `supabase/functions/send-onboarding-reminder/index.ts` (nouveau)
-- `supabase/functions/_shared/email-templates/onboarding-reminder.tsx` (nouveau)
-- `supabase/functions/process-email-queue/index.ts` (ajout du label)
-- `src/components/onboarding/OnboardingReminderBanner.tsx` (nouveau)
-- `src/components/onboarding/OnboardingReminderModal.tsx` (nouveau)
-- `src/pages/Dashboard.tsx` (montage conditionnel)
-- `src/components/admin/AdminSettingsView.tsx` (carte admin + bouton)
-- Insert SQL pour le cron `pg_cron`
-
-## Hors périmètre
-
-- Pas de rappel SMS/WhatsApp (peut être ajouté plus tard).
-- Pas de rappel pour les comptes sans email enregistré (~5 comptes) — ils verront seulement le rappel in-app.
+- Pas de cron automatique (envoi manuel uniquement, déclenché par l'admin)
+- Pas de modification du système de paiement existant — le trial expire et bascule simplement en compte gratuit

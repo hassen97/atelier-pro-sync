@@ -27,6 +27,7 @@ export function AdminSettingsView() {
   const [savingNotifyEmail, setSavingNotifyEmail] = useState(false);
   const [savingNotifyEmailToggle, setSavingNotifyEmailToggle] = useState(false);
   const [savingNotifyBrowser, setSavingNotifyBrowser] = useState(false);
+  const [testingAlert, setTestingAlert] = useState(false);
 
   useEffect(() => {
     loadSettings();

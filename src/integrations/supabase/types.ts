@@ -1824,19 +1824,28 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          notified_at: string | null
+          signed_up_user_id: string | null
           source: string | null
+          trial_granted_at: string | null
         }
         Insert: {
           created_at?: string
           email: string
           id?: string
+          notified_at?: string | null
+          signed_up_user_id?: string | null
           source?: string | null
+          trial_granted_at?: string | null
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
+          notified_at?: string | null
+          signed_up_user_id?: string | null
           source?: string | null
+          trial_granted_at?: string | null
         }
         Relationships: []
       }

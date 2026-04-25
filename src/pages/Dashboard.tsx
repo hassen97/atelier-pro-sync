@@ -36,6 +36,7 @@ import { MyTasks } from "@/components/dashboard/MyTasks";
 import { useMyTeamInfo } from "@/hooks/useTeam";
 import { SubscriptionBadge } from "@/components/dashboard/SubscriptionBadge";
 import { OnboardingReminderBanner } from "@/components/onboarding/OnboardingReminderBanner";
+import { WaitlistTrialBanner } from "@/components/dashboard/WaitlistTrialBanner";
 import { OnboardingReminderModal } from "@/components/onboarding/OnboardingReminderModal";
 import { useOnboardingReminder } from "@/hooks/useOnboardingReminder";
 
@@ -118,6 +119,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <WaitlistTrialBanner />
       {onboardingReminder.show && onboardingReminder.userId && (
         <>
           <OnboardingReminderBanner shopName={onboardingReminder.shopName} />

@@ -96,16 +96,26 @@ Deno.serve(async (req) => {
       `;
 
       try {
-        await admin.rpc("enqueue_email", {
-          queue_name: "transactional_email_queue",
+        const messageId = crypto.randomUUID();
+        const label = isTest ? "admin-signup-test" : "admin-signup-alert";
+        const { error: enqueueError } = await admin.rpc("enqueue_email", {
+          queue_name: "transactional_emails",
           payload: {
             to: adminEmail,
             subject,
             html,
-            template: isTest ? "admin-signup-test" : "admin-signup-alert",
+            label,
+            purpose: "transactional",
+            message_id: messageId,
+            queued_at: new Date().toISOString(),
+            idempotency_key: messageId,
           },
         });
-        emailQueued = true;
+        if (enqueueError) {
+          console.error("[notify-admin-signup] enqueue rpc error:", enqueueError);
+        } else {
+          emailQueued = true;
+        }
       } catch (e) {
         console.error("[notify-admin-signup] enqueue email error:", e);
       }

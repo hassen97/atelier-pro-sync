@@ -94,6 +94,15 @@ Deno.serve(async (req) => {
           </div>
         </div>
       `;
+      const text = [
+        isTest ? "E-mail de test RepairPro" : "Nouvelle inscription RepairPro",
+        "",
+        `Nom complet: ${full_name ?? "—"}`,
+        `Username: @${username ?? "—"}`,
+        `Email: ${email ?? "—"}`,
+        `Téléphone: ${phone ?? "—"}`,
+        `Pays: ${country ?? "—"}`,
+      ].join("\n");
 
       try {
         const messageId = crypto.randomUUID();

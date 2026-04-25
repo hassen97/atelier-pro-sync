@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert } from "lucide-react";
+import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert, BellRing } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -13,11 +13,20 @@ export function AdminSettingsView() {
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [publicDomain, setPublicDomain] = useState("");
   const [safeMode, setSafeMode] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyEmailEnabled, setNotifyEmailEnabled] = useState(true);
+  const [notifyBrowserEnabled, setNotifyBrowserEnabled] = useState(true);
+  const [browserPermission, setBrowserPermission] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
+  );
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);
   const [savingDomain, setSavingDomain] = useState(false);
   const [savingSafeMode, setSavingSafeMode] = useState(false);
+  const [savingNotifyEmail, setSavingNotifyEmail] = useState(false);
+  const [savingNotifyEmailToggle, setSavingNotifyEmailToggle] = useState(false);
+  const [savingNotifyBrowser, setSavingNotifyBrowser] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -35,9 +44,29 @@ export function AdminSettingsView() {
         if (row.key === "auto_confirm_signups") setAutoConfirm(row.value === "true");
         if (row.key === "public_site_domain") setPublicDomain(row.value || "");
         if (row.key === "safe_mode_enabled") setSafeMode(row.value === "true");
+        if (row.key === "admin_notify_email") setNotifyEmail(row.value || "");
+        if (row.key === "admin_notify_email_enabled") setNotifyEmailEnabled(row.value !== "false");
+        if (row.key === "admin_notify_browser_enabled") setNotifyBrowserEnabled(row.value !== "false");
       });
     }
     setLoading(false);
+  };
+
+  const requestBrowserPermission = async () => {
+    if (!("Notification" in window)) {
+      toast.error("Ce navigateur ne supporte pas les notifications");
+      return;
+    }
+    const result = await Notification.requestPermission();
+    setBrowserPermission(result);
+    if (result === "granted") {
+      toast.success("Notifications navigateur activées");
+      try {
+        new Notification("RepairPro", { body: "Notifications activées avec succès ✅" });
+      } catch {}
+    } else {
+      toast.error("Permission refusée");
+    }
   };
 
   const saveSetting = async (key: string, value: string, setSaving: (v: boolean) => void) => {

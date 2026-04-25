@@ -102,6 +102,8 @@ Deno.serve(async (req) => {
           queue_name: "transactional_emails",
           payload: {
             to: adminEmail,
+            from: "RepairPro <noreply@getheavencoin.com>",
+            sender_domain: "notify.getheavencoin.com",
             subject,
             html,
             label,

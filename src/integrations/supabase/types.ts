@@ -936,12 +936,14 @@ export type Database = {
           id: string
           is_locked: boolean
           last_online_at: string | null
+          last_verification_reminder_sent_at: string | null
           phone: string | null
           registration_ip: string | null
           updated_at: string
           user_id: string
           username: string | null
           verification_deadline: string | null
+          verification_reminders_sent: number
           verification_requested_at: string | null
           verification_status: string
           verified_at: string | null
@@ -958,12 +960,14 @@ export type Database = {
           id?: string
           is_locked?: boolean
           last_online_at?: string | null
+          last_verification_reminder_sent_at?: string | null
           phone?: string | null
           registration_ip?: string | null
           updated_at?: string
           user_id: string
           username?: string | null
           verification_deadline?: string | null
+          verification_reminders_sent?: number
           verification_requested_at?: string | null
           verification_status?: string
           verified_at?: string | null
@@ -980,12 +984,14 @@ export type Database = {
           id?: string
           is_locked?: boolean
           last_online_at?: string | null
+          last_verification_reminder_sent_at?: string | null
           phone?: string | null
           registration_ip?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null
           verification_deadline?: string | null
+          verification_reminders_sent?: number
           verification_requested_at?: string | null
           verification_status?: string
           verified_at?: string | null

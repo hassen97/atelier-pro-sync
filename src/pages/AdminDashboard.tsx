@@ -19,7 +19,6 @@ import { AdminOrdersView } from "@/components/admin/AdminOrdersView";
 import { AdminCommunityView } from "@/components/admin/AdminCommunityView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { motion, AnimatePresence } from "framer-motion";
 import { useAdminSignupNotifier } from "@/hooks/useAdminSignupNotifier";
 
 type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "orders" | "community";
@@ -85,8 +84,7 @@ const AdminDashboard = () => {
 
       {/* Mobile header */}
       {isMobile && (
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] shrink-0"
-          style={{ background: "hsla(215, 28%, 10%, 0.8)", backdropFilter: "blur(12px)" }}>
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] shrink-0 bg-[#0B1120]">
           <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <Menu className="h-5 w-5 text-slate-400" />
           </button>
@@ -138,9 +136,7 @@ const AdminDashboard = () => {
         <main className="flex-1 overflow-auto">
           {/* Top bar */}
           {!isMobile && (
-            <div
-              className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-white/[0.05]"
-              style={{ background: "hsla(215, 28%, 9%, 0.85)", backdropFilter: "blur(12px)" }}
+            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-white/[0.05] bg-[#0B1120]/95"
             >
               <div>
                 <h2 className="text-sm font-semibold text-white">{viewLabels[activeView]}</h2>
@@ -158,32 +154,22 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* View content with animation */}
+          {/* View content */}
           <div className="p-4 sm:p-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeView}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-              >
-                {activeView === "overview" && <AdminOverview />}
-                {activeView === "shops" && <AdminShopsView />}
-                {activeView === "reset_requests" && <AdminResetRequests />}
-                {activeView === "announcements" && <AdminAnnouncementsView />}
-                {activeView === "feedback" && <AdminFeedbackInbox />}
-                {activeView === "settings" && <AdminSettingsView />}
-                {activeView === "employees" && <AdminEmployeesView />}
-                {activeView === "plans" && <AdminPlansView />}
-                {activeView === "gateways" && <AdminPaymentGatewaysView />}
-                {activeView === "feature_flags" && <AdminFeatureFlagsView />}
-                {activeView === "waitlist" && <AdminWaitlistView />}
-                {activeView === "signup_attempts" && <AdminSignupAttemptsView />}
-                {activeView === "orders" && <AdminOrdersView />}
-                {activeView === "community" && <AdminCommunityView />}
-              </motion.div>
-            </AnimatePresence>
+            {activeView === "overview" && <AdminOverview />}
+            {activeView === "shops" && <AdminShopsView />}
+            {activeView === "reset_requests" && <AdminResetRequests />}
+            {activeView === "announcements" && <AdminAnnouncementsView />}
+            {activeView === "feedback" && <AdminFeedbackInbox />}
+            {activeView === "settings" && <AdminSettingsView />}
+            {activeView === "employees" && <AdminEmployeesView />}
+            {activeView === "plans" && <AdminPlansView />}
+            {activeView === "gateways" && <AdminPaymentGatewaysView />}
+            {activeView === "feature_flags" && <AdminFeatureFlagsView />}
+            {activeView === "waitlist" && <AdminWaitlistView />}
+            {activeView === "signup_attempts" && <AdminSignupAttemptsView />}
+            {activeView === "orders" && <AdminOrdersView />}
+            {activeView === "community" && <AdminCommunityView />}
           </div>
         </main>
       </div>

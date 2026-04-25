@@ -1,95 +1,56 @@
-## Goal
+# Make the Ultra Admin UI smooth
 
-Two things, in one cohesive setup:
+The admin dashboard feels laggy because the UI is doing **too much GPU/CPU work on every paint and every navigation**, especially on Android Chrome. The biggest offenders are:
 
-1. **Installable on Android** — your Chrome shows "Add to Home screen as shortcut" instead of "Install app" because the project is missing a valid `manifest.json` (the `<link rel="manifest">` tag points to a file that doesn't exist) and has no service worker. Once both exist, Chrome on Android will offer **"Install app"** which creates a true standalone app icon (no Chrome chrome around it).
+1. **Heavy `backdrop-filter: blur(12–32px)` stacked on 6+ elements** (sidebar, header, top bar, every KPI card, every panel, command palette). Backdrop blur is one of the most expensive CSS effects on mobile GPUs and is repainted on every scroll/animation.
+2. **Framer-motion animating `width` on the sidebar** (64 ↔ 256). Animating `width` triggers layout on every frame for the entire main content area.
+3. **`AnimatePresence` + per-item `motion.div` everywhere** (sidebar labels, sidebar buttons with `whileHover`/`whileTap`, every KPI card, every activity row with staggered delays, view transitions). Each navigation re-runs all these animations.
+4. **Always-on `animate-ping` pulses** in 2 spots — continuous repaints in the background.
+5. **The signup notifier** is fine, but stats are not invalidated, so no extra cost there. We will leave it alone.
 
-2. **Background push notifications** — your current code uses `new Notification(...)` which only fires when the admin tab is **open and focused**. To get alerts when the app is **closed or in the background**, we need a Service Worker + Web Push API + a server-side trigger. This works on Android Chrome, desktop Chrome/Firefox/Edge — and on iOS only if installed as PWA (16.4+).
+## What we'll change
 
-Both share the same Service Worker, so it's one integrated build.
+### Visual effects
+- Remove `backdrop-filter: blur(...)` from KPI cards, panels, sidebar, header, top bar. Replace with **solid (or near-solid) dark backgrounds** matching the current palette so the look stays the same but paints are cheap.
+- Keep blur **only** on the command palette overlay (it's modal, opens on demand).
+- Replace the heavy `shadow-[0_0_24px_...]` glows on KPI cards with a single thin border + subtle inset highlight (kept for active sidebar item only).
+- Remove the two ambient `animate-ping` pulses, or downgrade them to a static dot.
 
----
+### Sidebar
+- Stop animating `width` with framer-motion. Switch to two fixed widths via CSS `transition: width 200ms` on a plain `div` (or just toggle a class). Browsers handle width transitions much faster than JS-driven motion when there are many children.
+- Remove `whileHover`/`whileTap` scale on every nav button. Use a CSS `:hover` background change instead (cheaper, no JS frame work).
+- Remove the `AnimatePresence` wrapping each label `<span>` and section title — just conditionally render text. The collapsed/expanded swap will be instant.
+- Keep the active-item highlight (border + cyan tint) — that's static, no cost.
 
-## What I'll build
+### Dashboard view (AdminOverview)
+- Remove `motion.div` wrappers and staggered `delay` on the 6 KPI cards. Replace with one CSS `animate-fade-in` (already in the project).
+- Same for the activity feed rows: drop per-row `motion.div` with `delay: i * 0.04`. The list will appear instantly instead of cascading over ~600ms.
+- Keep the revenue bar fill animation (it's only 2 elements, runs once).
 
-### A. Make the app installable (PWA basics)
+### Page transitions
+- Remove the `AnimatePresence mode="wait"` view-switcher in `AdminDashboard.tsx`. Switching tabs currently waits for an exit animation, then plays an enter animation — that's the main "lag" feeling when clicking sidebar items. We'll render the active view directly so navigation is instant.
 
-1. Create `public/manifest.json` with proper PWA fields (name, icons 192/512, theme color, `display: "standalone"`, `start_url`, `scope`). Reuse your existing `android-chrome-192x192.png` and `android-chrome-512x512.png`.
-2. Add a small set of mobile meta tags to `index.html` (`apple-mobile-web-app-capable`, status-bar style).
-3. Install `vite-plugin-pwa` (only enabled in production builds, **disabled in the editor preview** to avoid stale-cache issues — Lovable's preview iframe will skip the SW).
-4. Add an iframe/preview-host guard in `main.tsx` so the SW never registers in the Lovable editor.
-5. Add a small "Install app" prompt button on the admin dashboard that captures `beforeinstallprompt` and lets you tap "Installer l'application" once Chrome considers it installable.
+### Data fetching
+- `useAdminData`, `useAdminRevenue`, `useAdminActivity`, `useAdminFeedback`, `useWaitlistCount` each call edge functions on mount. Add `staleTime: 60_000` and `refetchOnWindowFocus: false` so re-entering the dashboard or switching tabs doesn't re-trigger network spinners.
 
-### B. Background push notifications (Web Push)
+## Files to edit
 
-The hard requirement for background push: your edge function must send a push payload signed with **VAPID keys** to the browser's push service (FCM on Android Chrome). The browser wakes up the SW and shows the notification — even if the tab is closed.
+- `src/pages/AdminDashboard.tsx` — drop `AnimatePresence`/`motion.div` view switcher, drop blur on header/top bar.
+- `src/components/admin/AdminSidebar.tsx` — remove framer-motion width animation, remove per-item `whileHover/whileTap`, remove `AnimatePresence` text/label wrappers, use plain conditional render + CSS transitions.
+- `src/components/admin/AdminOverview.tsx` — remove `motion.div` wrappers, drop blur + heavy glow on stat cards and panels, remove `animate-ping` pulses (keep single static dot).
+- `src/components/admin/AdminActivityFeed.tsx` — remove per-row `motion.div` stagger, render rows directly.
+- `src/hooks/useAdmin.ts` — add `staleTime` + `refetchOnWindowFocus: false` to the four admin queries.
 
-**Database** (one new table via migration):
-- `push_subscriptions` — stores per-user `endpoint`, `p256dh`, `auth` keys, `user_id`, `user_agent`. RLS: a user can only see/insert/delete their own.
+## What stays the same
 
-**Secrets** (I'll request via `add_secret` once you approve):
-- `VAPID_PUBLIC_KEY` (also added to `.env` as `VITE_VAPID_PUBLIC_KEY` for the browser to subscribe)
-- `VAPID_PRIVATE_KEY`
-- `VAPID_SUBJECT` (e.g. `mailto:hassen.brg97@gmail.com`)
+- Visual identity: same dark navy palette, same cyan accents, same layout, same sidebar collapse behavior, same command palette (⌘K), same realtime signup toasts and Web Push.
+- The command palette keeps its blur (modal, opens on demand only).
 
-I'll generate the keypair for you and give you the values to paste — it's a 30-second copy/paste.
+## Expected result
 
-**Service Worker** (`public/sw.js` written by `vite-plugin-pwa` + a custom `push` handler):
-- Listens for `push` events
-- Shows a native OS notification with title, body, icon, click-action URL
+- Sidebar collapse/expand: instant, no width animation jank.
+- Tab switching in admin: instant, no fade-out delay.
+- Scrolling the dashboard on Android Chrome: smooth (no per-frame backdrop-blur recompositing).
+- KPI cards and activity list appear at once instead of staggering in over half a second.
 
-**Frontend**:
-- New hook `usePushSubscription` that registers the SW, asks for permission, subscribes via VAPID, and upserts the subscription into `push_subscriptions`
-- "Activer dans ce navigateur" button in your admin settings will use it — works on Android Chrome **without PWA install** (regular tab), and after PWA install it works in the background too
-- Updated test button that triggers a real server-side push (not just a local `Notification`)
-
-**Edge function** (`send-web-push`):
-- Reads all subscriptions for the admin user(s)
-- For each, sends a Web Push request signed with VAPID via `npm:web-push`
-- Cleans up dead subscriptions (410/404 responses)
-
-**Wire-up**:
-- `notify-admin-signup` (existing) gets one extra step at the end: invoke `send-web-push` with the signup payload. So real shop signups deliver email + browser push + background push.
-- The "Tester maintenant" button calls `send-web-push` with `test: true`.
-
-### C. Document the constraints honestly
-
-I'll add a small note in the admin settings explaining:
-- Push works on **Android Chrome** even before installing the app
-- For **closed-tab / background** delivery, install the app via the new "Installer l'application" button
-- iOS still requires PWA install (Safari, iOS 16.4+)
-
----
-
-## Files & changes
-
-**New files**
-- `public/manifest.json`
-- `public/sw-push.js` (custom push handler — merged into the workbox SW)
-- `src/hooks/usePushSubscription.ts`
-- `src/components/pwa/InstallAppButton.tsx`
-- `supabase/functions/send-web-push/index.ts`
-
-**Modified files**
-- `vite.config.ts` — add `vite-plugin-pwa` (production only, with iframe denylist + injectManifest mode for the custom push handler)
-- `index.html` — add `apple-mobile-web-app-capable` + manifest is already linked
-- `src/main.tsx` — guard SW registration against iframes / lovableproject.com hosts
-- `src/components/admin/AdminSettingsView.tsx` — replace the local-only `Notification` test with a real server push trigger; add "Installer l'application" entry
-- `supabase/functions/notify-admin-signup/index.ts` — fanout to `send-web-push` after enqueuing email
-- `package.json` — add `vite-plugin-pwa`, `workbox-window`
-
-**Database migration**
-- `push_subscriptions` table + RLS policies
-
-**Secrets to add** (after plan approval, via `add_secret`)
-- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
-
----
-
-## Important caveats (so there are no surprises)
-
-1. **Push only works on the published/deployed URL**, not in the Lovable editor preview iframe. After I implement, you'll need to click **Publish → Update** so the new SW + manifest go live, then open `https://atelier-pro-sync.lovable.app` in your phone's Chrome.
-2. **HTTPS is required** — your `lovable.app` URL is already HTTPS, so that's fine.
-3. **First time on your phone**: open the published URL in Chrome → click "Activer dans ce navigateur" → accept the OS permission prompt → click "Tester maintenant". You should see a real Android push at the top of your screen.
-4. **For background delivery (app closed)**: tap the new "Installer l'application" button (Android Chrome will now offer it because the manifest is valid). After installing, push works even if you fully close the app.
-5. **Battery optimizations** on some Android skins (Xiaomi, Huawei, Samsung) can throttle push delivery for installed PWAs. If you ever notice misses, I can document the per-vendor settings to disable battery optimization for Chrome.
+No database changes, no edge function changes, no new dependencies.

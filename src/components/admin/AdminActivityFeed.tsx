@@ -1,9 +1,8 @@
-import { useAdminActivity, type ActivityItem } from "@/hooks/useAdmin";
+import { useAdminActivity } from "@/hooks/useAdmin";
 import { Wrench, ShoppingCart, ArrowUpRight } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 
 const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
   completed: { bg: "bg-emerald-500/10", text: "text-emerald-400", label: "Complété" },
@@ -60,12 +59,9 @@ export function AdminActivityFeed() {
       <div className="absolute left-[15px] top-0 bottom-0 w-px bg-gradient-to-b from-[#00D4FF]/20 via-white/5 to-transparent" />
 
       <div className="space-y-1">
-        {activities.map((item, i) => (
-          <motion.div
+        {activities.map((item) => (
+          <div
             key={item.id}
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.04, duration: 0.2 }}
             className="relative flex items-start gap-3 py-2.5 pl-1 pr-2 rounded-lg hover:bg-white/[0.03] transition-colors group cursor-pointer"
           >
             {/* Timeline dot */}
@@ -102,7 +98,7 @@ export function AdminActivityFeed() {
             <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-white/10 shrink-0">
               <ArrowUpRight className="h-3 w-3 text-slate-500" />
             </button>
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>

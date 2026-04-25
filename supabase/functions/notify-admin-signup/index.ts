@@ -102,18 +102,27 @@ Deno.serve(async (req) => {
             to: adminEmail,
             subject,
             html,
-            template: "admin-signup-alert",
+            template: isTest ? "admin-signup-test" : "admin-signup-alert",
           },
         });
+        emailQueued = true;
       } catch (e) {
         console.error("[notify-admin-signup] enqueue email error:", e);
       }
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        test: isTest,
+        emailQueued,
+        emailRecipient: emailQueued ? adminEmail : null,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
   } catch (err) {
     console.error("[notify-admin-signup] fatal:", err);
     return new Response(

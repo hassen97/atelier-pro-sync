@@ -70,6 +70,59 @@ export function AdminSettingsView() {
     }
   };
 
+  const sendTestAlert = async () => {
+    setTestingAlert(true);
+    try {
+      // 1) Browser notification (immediate, local)
+      if (notifyBrowserEnabled) {
+        if (!("Notification" in window)) {
+          toast.error("Notifications navigateur non supportées");
+        } else if (Notification.permission === "granted") {
+          try {
+            new Notification("🧪 Test RepairPro", {
+              body: "Ceci est une notification de test des alertes d'inscription.",
+              icon: "/favicon.ico",
+              tag: "signup-test",
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          toast.warning("Autorisez d'abord les notifications navigateur");
+        }
+      }
+
+      // 2) Trigger edge function for test email + realtime event
+      const { data, error } = await supabase.functions.invoke("notify-admin-signup", {
+        body: {
+          test: true,
+          username: "test_alert",
+          full_name: "🧪 Test d'alerte",
+          email: notifyEmail || "test@example.com",
+          phone: "+216 00 000 000",
+          country: "TN",
+        },
+      });
+
+      if (error) throw error;
+
+      if ((data as any)?.emailQueued) {
+        toast.success(`E-mail de test envoyé à ${(data as any).emailRecipient}`);
+      } else if (!notifyEmail) {
+        toast.warning("Configurez d'abord l'e-mail destinataire");
+      } else if (!notifyEmailEnabled) {
+        toast.info("Test envoyé — e-mail désactivé dans les paramètres");
+      } else {
+        toast.success("Test envoyé");
+      }
+    } catch (e: any) {
+      console.error("[sendTestAlert]", e);
+      toast.error("Échec du test : " + (e?.message ?? "inconnu"));
+    } finally {
+      setTestingAlert(false);
+    }
+  };
+
   const saveSetting = async (key: string, value: string, setSaving: (v: boolean) => void) => {
     setSaving(true);
     const { error } = await supabase

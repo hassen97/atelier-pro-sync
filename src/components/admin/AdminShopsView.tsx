@@ -380,15 +380,6 @@ export function AdminShopsView() {
       {someSelected && (
         <div className="flex items-center gap-2 flex-wrap bg-white/5 border border-white/10 rounded-lg px-3 py-2">
           <span className="text-xs text-slate-300 mr-1">{selectedIds.size} sélectionné(s)</span>
-          <Button size="sm" variant="ghost" className="text-emerald-400 hover:bg-emerald-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-verify")} disabled={bulkAction.isPending}>
-            <CheckCircle className="h-3 w-3 mr-1" /> Vérifier
-          </Button>
-          <Button size="sm" variant="ghost" className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-revert-to-pending")} disabled={bulkAction.isPending}>
-            <Clock className="h-3 w-3 mr-1" /> En attente
-          </Button>
-          <Button size="sm" variant="ghost" className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-suspend")} disabled={bulkAction.isPending}>
-            <Ban className="h-3 w-3 mr-1" /> Suspendre
-          </Button>
           <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-delete")} disabled={bulkAction.isPending}>
             <Trash2 className="h-3 w-3 mr-1" /> Supprimer
           </Button>

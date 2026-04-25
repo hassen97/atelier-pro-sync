@@ -12,6 +12,7 @@ interface SignupPayload {
   email?: string | null;
   phone?: string;
   country?: string;
+  test?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -21,7 +22,12 @@ Deno.serve(async (req) => {
 
   try {
     const body = (await req.json().catch(() => ({}))) as SignupPayload;
-    const { username, full_name, email, phone, country } = body;
+    const isTest = body.test === true;
+    const username = isTest ? (body.username ?? "test_user") : body.username;
+    const full_name = isTest ? (body.full_name ?? "Test d'alerte") : body.full_name;
+    const email = isTest ? (body.email ?? "test@example.com") : body.email;
+    const phone = isTest ? (body.phone ?? "+216 00 000 000") : body.phone;
+    const country = isTest ? (body.country ?? "TN") : body.country;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -68,13 +74,16 @@ Deno.serve(async (req) => {
     const emailEnabled = settingsMap["admin_notify_email_enabled"] === "true";
     const adminEmail = settingsMap["admin_notify_email"]?.trim();
 
+    let emailQueued = false;
     if (emailEnabled && adminEmail) {
-      const subject = `🔔 Nouvelle inscription : ${username ?? "Nouveau compte"}`;
+      const subject = isTest
+        ? `🧪 [TEST] Alerte d'inscription RepairPro`
+        : `🔔 Nouvelle inscription : ${username ?? "Nouveau compte"}`;
       const html = `
         <div style="font-family:Inter,Arial,sans-serif;background:#f5f7fb;padding:24px;">
           <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;">
-            <h2 style="margin:0 0 12px;color:#0f172a;">Nouvelle inscription RepairPro</h2>
-            <p style="color:#475569;margin:0 0 16px;">Un nouveau propriétaire vient de créer un compte.</p>
+            <h2 style="margin:0 0 12px;color:#0f172a;">${isTest ? "🧪 E-mail de test" : "Nouvelle inscription RepairPro"}</h2>
+            <p style="color:#475569;margin:0 0 16px;">${isTest ? "Cet e-mail confirme que vos alertes d'inscription sont correctement configurées." : "Un nouveau propriétaire vient de créer un compte."}</p>
             <table style="width:100%;border-collapse:collapse;font-size:14px;color:#0f172a;">
               <tr><td style="padding:6px 0;color:#64748b;">Nom complet</td><td style="padding:6px 0;text-align:right;">${full_name ?? "—"}</td></tr>
               <tr><td style="padding:6px 0;color:#64748b;">Username</td><td style="padding:6px 0;text-align:right;">@${username ?? "—"}</td></tr>
@@ -93,18 +102,27 @@ Deno.serve(async (req) => {
             to: adminEmail,
             subject,
             html,
-            template: "admin-signup-alert",
+            template: isTest ? "admin-signup-test" : "admin-signup-alert",
           },
         });
+        emailQueued = true;
       } catch (e) {
         console.error("[notify-admin-signup] enqueue email error:", e);
       }
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        test: isTest,
+        emailQueued,
+        emailRecipient: emailQueued ? adminEmail : null,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
   } catch (err) {
     console.error("[notify-admin-signup] fatal:", err);
     return new Response(

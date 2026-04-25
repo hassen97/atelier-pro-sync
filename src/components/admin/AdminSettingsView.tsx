@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert, BellRing } from "lucide-react";
+import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert, BellRing, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ export function AdminSettingsView() {
   const [savingNotifyEmail, setSavingNotifyEmail] = useState(false);
   const [savingNotifyEmailToggle, setSavingNotifyEmailToggle] = useState(false);
   const [savingNotifyBrowser, setSavingNotifyBrowser] = useState(false);
+  const [testingAlert, setTestingAlert] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -66,6 +67,59 @@ export function AdminSettingsView() {
       } catch {}
     } else {
       toast.error("Permission refusée");
+    }
+  };
+
+  const sendTestAlert = async () => {
+    setTestingAlert(true);
+    try {
+      // 1) Browser notification (immediate, local)
+      if (notifyBrowserEnabled) {
+        if (!("Notification" in window)) {
+          toast.error("Notifications navigateur non supportées");
+        } else if (Notification.permission === "granted") {
+          try {
+            new Notification("🧪 Test RepairPro", {
+              body: "Ceci est une notification de test des alertes d'inscription.",
+              icon: "/favicon.ico",
+              tag: "signup-test",
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          toast.warning("Autorisez d'abord les notifications navigateur");
+        }
+      }
+
+      // 2) Trigger edge function for test email + realtime event
+      const { data, error } = await supabase.functions.invoke("notify-admin-signup", {
+        body: {
+          test: true,
+          username: "test_alert",
+          full_name: "🧪 Test d'alerte",
+          email: notifyEmail || "test@example.com",
+          phone: "+216 00 000 000",
+          country: "TN",
+        },
+      });
+
+      if (error) throw error;
+
+      if ((data as any)?.emailQueued) {
+        toast.success(`E-mail de test envoyé à ${(data as any).emailRecipient}`);
+      } else if (!notifyEmail) {
+        toast.warning("Configurez d'abord l'e-mail destinataire");
+      } else if (!notifyEmailEnabled) {
+        toast.info("Test envoyé — e-mail désactivé dans les paramètres");
+      } else {
+        toast.success("Test envoyé");
+      }
+    } catch (e: any) {
+      console.error("[sendTestAlert]", e);
+      toast.error("Échec du test : " + (e?.message ?? "inconnu"));
+    } finally {
+      setTestingAlert(false);
     }
   };
 
@@ -165,17 +219,32 @@ export function AdminSettingsView() {
             />
           </div>
 
-          {browserPermission !== "granted" && browserPermission !== "unsupported" && (
+          <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
+            {browserPermission !== "granted" && browserPermission !== "unsupported" && (
+              <Button
+                onClick={requestBrowserPermission}
+                variant="outline"
+                size="sm"
+                className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
+              >
+                <BellRing className="h-4 w-4 mr-2" />
+                Activer dans ce navigateur
+              </Button>
+            )}
             <Button
-              onClick={requestBrowserPermission}
-              variant="outline"
+              onClick={sendTestAlert}
+              disabled={testingAlert}
               size="sm"
-              className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
             >
-              <BellRing className="h-4 w-4 mr-2" />
-              Activer dans ce navigateur
+              {testingAlert ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Tester maintenant
             </Button>
-          )}
+          </div>
         </CardContent>
       </Card>
 

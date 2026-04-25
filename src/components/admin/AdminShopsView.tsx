@@ -236,6 +236,8 @@ export function AdminShopsView() {
     if (filter !== "all") {
       if (filter === "setup_incomplete") {
         result = result.filter((o: any) => o._display.isIncomplete);
+      } else if (filter === "online") {
+        result = result.filter((o: any) => isOwnerOnline(o.last_online_at));
       } else {
         result = result.filter((o: any) => o._status.key === filter);
       }
@@ -281,22 +283,20 @@ export function AdminShopsView() {
     const all = owners.map((o: any) => ({ ...o, _status: getUnifiedStatus(o, subMap.get(o.user_id)), _display: getDisplayName(o) }));
     return {
       all: all.length,
-      pending_verification: all.filter((o: any) => o._status.key === "pending").length,
+      online: all.filter((o: any) => isOwnerOnline(o.last_online_at)).length,
       verified: all.filter((o: any) => o._status.key === "verified").length,
       trialing: all.filter((o: any) => o._status.key === "trialing").length,
       pro: all.filter((o: any) => o._status.key === "pro").length,
-      suspended: all.filter((o: any) => o._status.key === "suspended").length,
       setup_incomplete: all.filter((o: any) => o._display.isIncomplete).length,
     };
   }, [owners, subMap]);
 
   const filters: { key: FilterType; label: string; color?: string }[] = [
     { key: "all", label: `Tous (${counts.all})` },
-    { key: "pending_verification", label: `En attente (${counts.pending_verification})`, color: "text-amber-400" },
+    { key: "online", label: `En ligne (${counts.online})`, color: "text-emerald-400" },
     { key: "verified", label: `Vérifiés (${counts.verified})`, color: "text-emerald-400" },
     { key: "trialing", label: `Essai (${counts.trialing})`, color: "text-violet-400" },
     { key: "pro", label: `Pro (${counts.pro})`, color: "text-amber-300" },
-    { key: "suspended", label: `Suspendus (${counts.suspended})`, color: "text-red-400" },
     { key: "setup_incomplete", label: `Setup ⚠️ (${counts.setup_incomplete})` },
   ];
 

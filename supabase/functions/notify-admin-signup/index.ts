@@ -115,6 +115,7 @@ Deno.serve(async (req) => {
             sender_domain: "notify.getheavencoin.com",
             subject,
             html,
+            text,
             label,
             purpose: "transactional",
             message_id: messageId,

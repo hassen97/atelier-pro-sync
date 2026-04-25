@@ -54,42 +54,28 @@ export function AdminSettingsView() {
     setLoading(false);
   };
 
-  const requestBrowserPermission = async () => {
-    if (!("Notification" in window)) {
-      toast.error("Ce navigateur ne supporte pas les notifications");
-      return;
-    }
-    const result = await Notification.requestPermission();
-    setBrowserPermission(result);
-    if (result === "granted") {
-      toast.success("Notifications navigateur activées");
-      try {
-        new Notification("RepairPro", { body: "Notifications activées avec succès ✅" });
-      } catch {}
-    } else {
-      toast.error("Permission refusée");
-    }
-  };
-
   const sendTestAlert = async () => {
     setTestingAlert(true);
     try {
-      // 1) Browser notification (immediate, local)
-      if (notifyBrowserEnabled) {
-        if (!("Notification" in window)) {
-          toast.error("Notifications navigateur non supportées");
-        } else if (Notification.permission === "granted") {
-          try {
-            new Notification("🧪 Test RepairPro", {
-              body: "Ceci est une notification de test des alertes d'inscription.",
-              icon: "/favicon.ico",
+      // 1) Real Web Push (works in background, even if tab closed — when subscribed)
+      let pushSent = 0;
+      if (notifyBrowserEnabled && push.status === "subscribed") {
+        const { data: pushData, error: pushErr } = await supabase.functions.invoke(
+          "send-web-push",
+          {
+            body: {
+              test: true,
+              title: "🧪 Test RepairPro",
+              body: "Notification push de test reçue. Tout fonctionne !",
+              url: "/admin",
               tag: "signup-test",
-            });
-          } catch (e) {
-            console.error(e);
+            },
           }
+        );
+        if (pushErr) {
+          console.warn("[sendTestAlert] push error:", pushErr);
         } else {
-          toast.warning("Autorisez d'abord les notifications navigateur");
+          pushSent = (pushData as any)?.sent ?? 0;
         }
       }
 
@@ -107,15 +93,20 @@ export function AdminSettingsView() {
 
       if (error) throw error;
 
-      if ((data as any)?.emailQueued) {
-        toast.success(`E-mail de test envoyé à ${(data as any).emailRecipient}`);
-      } else if (!notifyEmail) {
-        toast.warning("Configurez d'abord l'e-mail destinataire");
-      } else if (!notifyEmailEnabled) {
-        toast.info("Test envoyé — e-mail désactivé dans les paramètres");
-      } else {
-        toast.success("Test envoyé");
+      const messages: string[] = [];
+      if (pushSent > 0) {
+        messages.push(`Push envoyé à ${pushSent} appareil${pushSent > 1 ? "s" : ""}`);
+      } else if (notifyBrowserEnabled && push.status !== "subscribed") {
+        messages.push("Activez d'abord les notifications push ci-dessous");
       }
+      if ((data as any)?.emailQueued) {
+        messages.push(`E-mail envoyé à ${(data as any).emailRecipient}`);
+      } else if (!notifyEmail) {
+        messages.push("Configurez l'e-mail destinataire");
+      } else if (!notifyEmailEnabled) {
+        messages.push("E-mail désactivé");
+      }
+      toast.success(messages.join(" · ") || "Test envoyé");
     } catch (e: any) {
       console.error("[sendTestAlert]", e);
       toast.error("Échec du test : " + (e?.message ?? "inconnu"));

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert } from "lucide-react";
+import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert, BellRing } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -13,11 +13,20 @@ export function AdminSettingsView() {
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [publicDomain, setPublicDomain] = useState("");
   const [safeMode, setSafeMode] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyEmailEnabled, setNotifyEmailEnabled] = useState(true);
+  const [notifyBrowserEnabled, setNotifyBrowserEnabled] = useState(true);
+  const [browserPermission, setBrowserPermission] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
+  );
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);
   const [savingDomain, setSavingDomain] = useState(false);
   const [savingSafeMode, setSavingSafeMode] = useState(false);
+  const [savingNotifyEmail, setSavingNotifyEmail] = useState(false);
+  const [savingNotifyEmailToggle, setSavingNotifyEmailToggle] = useState(false);
+  const [savingNotifyBrowser, setSavingNotifyBrowser] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -35,9 +44,29 @@ export function AdminSettingsView() {
         if (row.key === "auto_confirm_signups") setAutoConfirm(row.value === "true");
         if (row.key === "public_site_domain") setPublicDomain(row.value || "");
         if (row.key === "safe_mode_enabled") setSafeMode(row.value === "true");
+        if (row.key === "admin_notify_email") setNotifyEmail(row.value || "");
+        if (row.key === "admin_notify_email_enabled") setNotifyEmailEnabled(row.value !== "false");
+        if (row.key === "admin_notify_browser_enabled") setNotifyBrowserEnabled(row.value !== "false");
       });
     }
     setLoading(false);
+  };
+
+  const requestBrowserPermission = async () => {
+    if (!("Notification" in window)) {
+      toast.error("Ce navigateur ne supporte pas les notifications");
+      return;
+    }
+    const result = await Notification.requestPermission();
+    setBrowserPermission(result);
+    if (result === "granted") {
+      toast.success("Notifications navigateur activées");
+      try {
+        new Notification("RepairPro", { body: "Notifications activées avec succès ✅" });
+      } catch {}
+    } else {
+      toast.error("Permission refusée");
+    }
   };
 
   const saveSetting = async (key: string, value: string, setSaving: (v: boolean) => void) => {
@@ -66,6 +95,89 @@ export function AdminSettingsView() {
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-lg font-semibold text-white">Paramètres de la plateforme</h2>
+
+      <Card className="admin-glass-card border-cyan-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <BellRing className="h-5 w-5 text-cyan-400" />
+            Alertes d'inscription
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Recevez une notification (e-mail et navigateur) à chaque nouvelle inscription d'une boutique.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-slate-300">E-mail destinataire des alertes</Label>
+            <Input
+              type="email"
+              placeholder="admin@example.com"
+              value={notifyEmail}
+              onChange={(e) => setNotifyEmail(e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+            />
+            <Button
+              onClick={() => saveSetting("admin_notify_email", notifyEmail.trim(), setSavingNotifyEmail)}
+              disabled={savingNotifyEmail}
+              size="sm"
+              className="bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/30"
+            >
+              {savingNotifyEmail ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Enregistrer
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-white/5 pt-4">
+            <div>
+              <p className="font-medium text-white">Notifications par e-mail</p>
+              <p className="text-sm text-slate-400">Envoyer un e-mail à l'adresse ci-dessus à chaque inscription.</p>
+            </div>
+            <Switch
+              checked={notifyEmailEnabled}
+              onCheckedChange={(checked) => {
+                setNotifyEmailEnabled(checked);
+                saveSetting("admin_notify_email_enabled", checked ? "true" : "false", setSavingNotifyEmailToggle);
+              }}
+              disabled={savingNotifyEmailToggle}
+            />
+          </div>
+
+          <div className="flex items-center justify-between border-t border-white/5 pt-4">
+            <div>
+              <p className="font-medium text-white">Notifications navigateur (push)</p>
+              <p className="text-sm text-slate-400">
+                {browserPermission === "granted"
+                  ? "✅ Activées dans ce navigateur"
+                  : browserPermission === "denied"
+                  ? "❌ Bloquées — autorisez-les dans les paramètres du navigateur"
+                  : browserPermission === "unsupported"
+                  ? "Non supportées par ce navigateur"
+                  : "Cliquez pour activer dans ce navigateur"}
+              </p>
+            </div>
+            <Switch
+              checked={notifyBrowserEnabled}
+              onCheckedChange={(checked) => {
+                setNotifyBrowserEnabled(checked);
+                saveSetting("admin_notify_browser_enabled", checked ? "true" : "false", setSavingNotifyBrowser);
+              }}
+              disabled={savingNotifyBrowser}
+            />
+          </div>
+
+          {browserPermission !== "granted" && browserPermission !== "unsupported" && (
+            <Button
+              onClick={requestBrowserPermission}
+              variant="outline"
+              size="sm"
+              className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
+            >
+              <BellRing className="h-4 w-4 mr-2" />
+              Activer dans ce navigateur
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="admin-glass-card border-white/10">
         <CardHeader>

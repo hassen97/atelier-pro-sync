@@ -20,6 +20,7 @@ import { AdminCommunityView } from "@/components/admin/AdminCommunityView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAdminSignupNotifier } from "@/hooks/useAdminSignupNotifier";
 
 type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "orders" | "community";
 
@@ -47,6 +48,7 @@ const AdminDashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const isMobile = useIsMobile();
+  useAdminSignupNotifier();
 
   // Cmd+K shortcut
   useEffect(() => {

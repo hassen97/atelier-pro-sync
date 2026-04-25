@@ -267,7 +267,21 @@ export default function Auth() {
         setError(error.message);
       }
     } else {
-      setSuccess("Votre compte a été créé avec succès ! Il est en attente de validation par l'administrateur.");
+      setSuccess("Votre compte a été créé avec succès ! Vous pouvez maintenant vous connecter.");
+      // Notify the platform admin (best-effort, never blocks)
+      try {
+        await supabase.functions.invoke("notify-admin-signup", {
+          body: {
+            username: registerUsername,
+            full_name: registerFullName,
+            email: registerEmail.trim() || null,
+            phone: registerPhone.trim(),
+            country: registerCountry,
+          },
+        });
+      } catch (notifyErr) {
+        console.error("[Auth] notify-admin-signup error:", notifyErr);
+      }
       await supabase.auth.signOut();
       setRegisterUsername(""); setRegisterPassword(""); setRegisterFullName("");
       setRegisterCountry("TN"); setRegisterCurrency("TND"); setConfirmPassword("");

@@ -95,8 +95,15 @@ function ShopAnnouncementDialog({
   );
 }
 
-type FilterType = "all" | "pending_verification" | "verified" | "trialing" | "pro" | "suspended" | "setup_incomplete";
+type FilterType = "all" | "online" | "verified" | "trialing" | "pro" | "setup_incomplete";
 type SortKey = "name" | "status" | "created_at" | null;
+
+const ONLINE_THRESHOLD_MS = 10 * 60 * 1000; // matches header / employees view
+
+function isOwnerOnline(lastOnline: string | null) {
+  if (!lastOnline) return false;
+  return Date.now() - new Date(lastOnline).getTime() < ONLINE_THRESHOLD_MS;
+}
 
 function getOnlineStatus(lastOnline: string | null) {
   if (!lastOnline) return "offline";
@@ -113,13 +120,7 @@ const statusDot: Record<string, string> = {
 };
 
 function getUnifiedStatus(owner: any, sub: any): { key: string; label: string; color: string; icon: any } {
-  if (owner.verification_status === "suspended") {
-    return { key: "suspended", label: "Suspendu", color: "border-red-500/30 text-red-400 bg-red-500/10", icon: Ban };
-  }
-  if (owner.verification_status === "pending_verification") {
-    return { key: "pending", label: "En attente", color: "border-amber-500/30 text-amber-400 bg-amber-500/10", icon: Clock };
-  }
-  // Verified — check subscription
+  // Verification gate removed — every owner is treated as verified.
   if (sub) {
     const isExpired = sub.expires_at && new Date(sub.expires_at) < new Date();
     if (!isExpired && sub.status === "trialing") {

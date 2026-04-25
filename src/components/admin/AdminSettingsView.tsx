@@ -4,9 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert, BellRing, Send } from "lucide-react";
+import { Loader2, Save, MessageCircle, UserCheck, Globe, ShieldAlert, BellRing, Send, BellOff, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 
 export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
@@ -16,11 +18,8 @@ export function AdminSettingsView() {
   const [notifyEmail, setNotifyEmail] = useState("");
   const [notifyEmailEnabled, setNotifyEmailEnabled] = useState(true);
   const [notifyBrowserEnabled, setNotifyBrowserEnabled] = useState(true);
+  const push = usePushSubscription();
   const isIOS = typeof window !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const supportsNotifications = typeof window !== "undefined" && "Notification" in window;
-  const [browserPermission, setBrowserPermission] = useState<NotificationPermission | "unsupported">(
-    supportsNotifications ? Notification.permission : "unsupported"
-  );
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);
@@ -55,42 +54,28 @@ export function AdminSettingsView() {
     setLoading(false);
   };
 
-  const requestBrowserPermission = async () => {
-    if (!("Notification" in window)) {
-      toast.error("Ce navigateur ne supporte pas les notifications");
-      return;
-    }
-    const result = await Notification.requestPermission();
-    setBrowserPermission(result);
-    if (result === "granted") {
-      toast.success("Notifications navigateur activées");
-      try {
-        new Notification("RepairPro", { body: "Notifications activées avec succès ✅" });
-      } catch {}
-    } else {
-      toast.error("Permission refusée");
-    }
-  };
-
   const sendTestAlert = async () => {
     setTestingAlert(true);
     try {
-      // 1) Browser notification (immediate, local)
-      if (notifyBrowserEnabled) {
-        if (!("Notification" in window)) {
-          toast.error("Notifications navigateur non supportées");
-        } else if (Notification.permission === "granted") {
-          try {
-            new Notification("🧪 Test RepairPro", {
-              body: "Ceci est une notification de test des alertes d'inscription.",
-              icon: "/favicon.ico",
+      // 1) Real Web Push (works in background, even if tab closed — when subscribed)
+      let pushSent = 0;
+      if (notifyBrowserEnabled && push.status === "subscribed") {
+        const { data: pushData, error: pushErr } = await supabase.functions.invoke(
+          "send-web-push",
+          {
+            body: {
+              test: true,
+              title: "🧪 Test RepairPro",
+              body: "Notification push de test reçue. Tout fonctionne !",
+              url: "/admin",
               tag: "signup-test",
-            });
-          } catch (e) {
-            console.error(e);
+            },
           }
+        );
+        if (pushErr) {
+          console.warn("[sendTestAlert] push error:", pushErr);
         } else {
-          toast.warning("Autorisez d'abord les notifications navigateur");
+          pushSent = (pushData as any)?.sent ?? 0;
         }
       }
 
@@ -108,15 +93,20 @@ export function AdminSettingsView() {
 
       if (error) throw error;
 
-      if ((data as any)?.emailQueued) {
-        toast.success(`E-mail de test envoyé à ${(data as any).emailRecipient}`);
-      } else if (!notifyEmail) {
-        toast.warning("Configurez d'abord l'e-mail destinataire");
-      } else if (!notifyEmailEnabled) {
-        toast.info("Test envoyé — e-mail désactivé dans les paramètres");
-      } else {
-        toast.success("Test envoyé");
+      const messages: string[] = [];
+      if (pushSent > 0) {
+        messages.push(`Push envoyé à ${pushSent} appareil${pushSent > 1 ? "s" : ""}`);
+      } else if (notifyBrowserEnabled && push.status !== "subscribed") {
+        messages.push("Activez d'abord les notifications push ci-dessous");
       }
+      if ((data as any)?.emailQueued) {
+        messages.push(`E-mail envoyé à ${(data as any).emailRecipient}`);
+      } else if (!notifyEmail) {
+        messages.push("Configurez l'e-mail destinataire");
+      } else if (!notifyEmailEnabled) {
+        messages.push("E-mail désactivé");
+      }
+      toast.success(messages.join(" · ") || "Test envoyé");
     } catch (e: any) {
       console.error("[sendTestAlert]", e);
       toast.error("Échec du test : " + (e?.message ?? "inconnu"));
@@ -202,19 +192,22 @@ export function AdminSettingsView() {
             <div className="pr-3">
               <p className="font-medium text-white">Notifications navigateur (push)</p>
               <p className="text-sm text-slate-400">
-                {browserPermission === "granted"
-                  ? "✅ Activées dans ce navigateur"
-                  : browserPermission === "denied"
+                {push.status === "subscribed"
+                  ? "✅ Abonné — vous recevrez les alertes même si l'onglet est fermé (après installation)"
+                  : push.status === "denied"
                   ? "❌ Bloquées — autorisez-les dans les paramètres du navigateur"
-                  : browserPermission === "unsupported"
+                  : push.status === "unsupported"
                   ? "Non supportées par ce navigateur"
                   : "Cliquez pour activer dans ce navigateur"}
               </p>
               {isIOS && (
                 <p className="mt-2 text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-1.5">
-                  ⚠️ Sur iPhone, Safari ne supporte pas les notifications push web. Pour recevoir des alertes en temps réel, utilisez un ordinateur (Chrome/Firefox/Edge) ou installez l'app comme PWA. Les e-mails fonctionnent normalement.
+                  ⚠️ Sur iPhone (Safari), les notifications push nécessitent d'installer l'app via « Sur l'écran d'accueil » (iOS 16.4+).
                 </p>
               )}
+              <p className="mt-2 text-xs text-cyan-300/80 bg-cyan-500/5 border border-cyan-500/20 rounded-md px-2 py-1.5">
+                💡 Pour recevoir les notifications quand l'app est <b>fermée</b> (Android), installez d'abord l'application avec le bouton ci-dessous.
+              </p>
             </div>
             <Switch
               checked={notifyBrowserEnabled}
@@ -227,17 +220,34 @@ export function AdminSettingsView() {
           </div>
 
           <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
-            {browserPermission !== "granted" && browserPermission !== "unsupported" && (
+            {push.status !== "subscribed" && push.status !== "unsupported" && push.status !== "denied" && (
               <Button
-                onClick={requestBrowserPermission}
+                onClick={() => push.subscribe()}
+                disabled={push.busy}
                 variant="outline"
                 size="sm"
                 className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
               >
-                <BellRing className="h-4 w-4 mr-2" />
+                {push.busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <BellRing className="h-4 w-4 mr-2" />}
                 Activer dans ce navigateur
               </Button>
             )}
+            {push.status === "subscribed" && (
+              <Button
+                onClick={() => push.unsubscribe()}
+                disabled={push.busy}
+                variant="outline"
+                size="sm"
+                className="border-slate-500/30 text-slate-300 hover:bg-slate-500/10"
+              >
+                {push.busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <BellOff className="h-4 w-4 mr-2" />}
+                Désactiver
+              </Button>
+            )}
+            <InstallAppButton
+              variant="outline"
+              className="border-violet-500/30 text-violet-300 hover:bg-violet-500/10"
+            />
             <Button
               onClick={sendTestAlert}
               disabled={testingAlert}

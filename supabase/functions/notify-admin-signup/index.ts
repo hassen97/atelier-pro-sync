@@ -144,12 +144,46 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fan-out: send Web Push to all platform admins (background-capable).
+    // Skip for test calls — the client invokes send-web-push directly for tests
+    // to also exercise the test=true path.
+    let pushSent = 0;
+    if (!isTest) {
+      try {
+        const pushUrl = `${supabaseUrl}/functions/v1/send-web-push`;
+        const pushRes = await fetch(pushUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+          },
+          body: JSON.stringify({
+            to_all_admins: true,
+            title: "🔔 Nouvelle inscription",
+            body: `${full_name ?? username ?? "Nouveau compte"} vient de s'inscrire`,
+            url: "/admin",
+            tag: "signup-new",
+          }),
+        });
+        if (pushRes.ok) {
+          const pushJson = await pushRes.json().catch(() => ({}));
+          pushSent = pushJson?.sent ?? 0;
+        } else {
+          console.warn("[notify-admin-signup] push fanout failed:", pushRes.status);
+        }
+      } catch (e) {
+        console.warn("[notify-admin-signup] push fanout error:", e);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
         test: isTest,
         emailQueued,
         emailRecipient: emailQueued ? adminEmail : null,
+        pushSent,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

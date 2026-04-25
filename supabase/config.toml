@@ -7,3 +7,5 @@ project_id = "rgikflkocotkljbajzrb"
     verify_jwt = true
   [functions.notify-admin-signup]
     verify_jwt = false
+  [functions.send-web-push]
+    verify_jwt = false

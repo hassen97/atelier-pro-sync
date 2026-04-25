@@ -41,7 +41,7 @@ export function WaitlistInvitationsAdminCard() {
         .select("id, notified_at, signed_up_user_id");
 
       if (error) throw error;
-      const rows = (data ?? []) as Array<{
+      const rows = ((data ?? []) as unknown) as Array<{
         id: string;
         notified_at: string | null;
         signed_up_user_id: string | null;

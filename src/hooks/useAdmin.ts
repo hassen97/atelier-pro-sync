@@ -93,6 +93,8 @@ export function useAdminData() {
       return data as { owners: ShopOwner[]; stats: AdminStats };
     },
     enabled: !!user,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -108,6 +110,8 @@ export function useAdminRevenue() {
       return data as AdminRevenue;
     },
     enabled: !!user,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -123,6 +127,8 @@ export function useAdminActivity() {
       return data as { activity: ActivityItem[] };
     },
     enabled: !!user,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 

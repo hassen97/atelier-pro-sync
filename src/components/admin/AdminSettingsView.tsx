@@ -145,6 +145,8 @@ export function AdminSettingsView() {
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-lg font-semibold text-white">Paramètres de la plateforme</h2>
 
+      <WaitlistInvitationsAdminCard />
+
       <VerificationRemindersAdminCard />
 
       <OnboardingRemindersAdminCard />

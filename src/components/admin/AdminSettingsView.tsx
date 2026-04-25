@@ -16,8 +16,10 @@ export function AdminSettingsView() {
   const [notifyEmail, setNotifyEmail] = useState("");
   const [notifyEmailEnabled, setNotifyEmailEnabled] = useState(true);
   const [notifyBrowserEnabled, setNotifyBrowserEnabled] = useState(true);
+  const isIOS = typeof window !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const supportsNotifications = typeof window !== "undefined" && "Notification" in window;
   const [browserPermission, setBrowserPermission] = useState<NotificationPermission | "unsupported">(
-    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
+    supportsNotifications ? Notification.permission : "unsupported"
   );
   const [loading, setLoading] = useState(true);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
@@ -197,7 +199,7 @@ export function AdminSettingsView() {
           </div>
 
           <div className="flex items-center justify-between border-t border-white/5 pt-4">
-            <div>
+            <div className="pr-3">
               <p className="font-medium text-white">Notifications navigateur (push)</p>
               <p className="text-sm text-slate-400">
                 {browserPermission === "granted"
@@ -208,6 +210,11 @@ export function AdminSettingsView() {
                   ? "Non supportées par ce navigateur"
                   : "Cliquez pour activer dans ce navigateur"}
               </p>
+              {isIOS && (
+                <p className="mt-2 text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-1.5">
+                  ⚠️ Sur iPhone, Safari ne supporte pas les notifications push web. Pour recevoir des alertes en temps réel, utilisez un ordinateur (Chrome/Firefox/Edge) ou installez l'app comme PWA. Les e-mails fonctionnent normalement.
+                </p>
+              )}
             </div>
             <Switch
               checked={notifyBrowserEnabled}

@@ -200,7 +200,6 @@ export function AdminShopsView() {
   const { data } = useAdminData();
   const deleteOwner = useDeleteOwner();
   const lockOwner = useLockOwner();
-  const verifyOwner = useVerifyOwner();
   const bulkAction = useBulkAction();
   const { data: shopSubs } = useAdminShopSubscriptions();
   const [createOpen, setCreateOpen] = useState(false);
@@ -507,18 +506,6 @@ export function AdminShopsView() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {/* Quick verification actions */}
-                        {owner.verification_status !== "verified" && (
-                          <DropdownMenuItem className="text-emerald-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "verify" })}>
-                            <CheckCircle className="h-4 w-4 mr-2" /> Approuver
-                          </DropdownMenuItem>
-                        )}
-                        {owner.verification_status === "verified" && (
-                          <DropdownMenuItem className="text-amber-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "revert-to-pending" })}>
-                            <Clock className="h-4 w-4 mr-2" /> Remettre en attente
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-[#00D4FF]" onClick={() => setGodModeTarget({ userId: owner.user_id, shopName: display.name })}>
                           <Zap className="h-4 w-4 mr-2" /> God Mode — Abonnement
                         </DropdownMenuItem>
@@ -558,11 +545,6 @@ export function AdminShopsView() {
                           <LogIn className="h-4 w-4 mr-2" /> Accéder à la boutique
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        {owner.verification_status !== "suspended" && (
-                          <DropdownMenuItem className="text-amber-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "suspend" })}>
-                            <Ban className="h-4 w-4 mr-2" /> Suspendre
-                          </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem className="text-red-400" onClick={() => { if (confirm(`Supprimer ${owner.full_name || owner.username} ?`)) deleteOwner.mutate(owner.user_id); }}>
                           <Trash2 className="h-4 w-4 mr-2" /> Supprimer
                         </DropdownMenuItem>

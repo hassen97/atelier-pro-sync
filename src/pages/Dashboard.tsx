@@ -35,6 +35,9 @@ import { RepairDialog } from "@/components/repairs/RepairDialog";
 import { MyTasks } from "@/components/dashboard/MyTasks";
 import { useMyTeamInfo } from "@/hooks/useTeam";
 import { SubscriptionBadge } from "@/components/dashboard/SubscriptionBadge";
+import { OnboardingReminderBanner } from "@/components/onboarding/OnboardingReminderBanner";
+import { OnboardingReminderModal } from "@/components/onboarding/OnboardingReminderModal";
+import { useOnboardingReminder } from "@/hooks/useOnboardingReminder";
 
 const statusConfig = {
   pending: { label: "En attente", icon: Clock, className: "bg-warning/10 text-warning border-warning/20" },
@@ -111,8 +114,16 @@ export default function Dashboard() {
     toast.success("Rapport exporté avec succès");
   };
 
+  const onboardingReminder = useOnboardingReminder();
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {onboardingReminder.show && onboardingReminder.userId && (
+        <>
+          <OnboardingReminderBanner shopName={onboardingReminder.shopName} />
+          <OnboardingReminderModal userId={onboardingReminder.userId} />
+        </>
+      )}
       <PageHeader
         title="Tableau de bord"
         description="Vue d'ensemble de votre activité"

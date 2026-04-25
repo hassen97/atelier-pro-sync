@@ -1311,8 +1311,10 @@ export type Database = {
           id: string
           inventory_locked: boolean
           language: string | null
+          last_onboarding_reminder_sent_at: string | null
           logo_url: string | null
           onboarding_completed: boolean
+          onboarding_reminders_sent: number
           phone: string | null
           receipt_mode: string
           receipt_terms: string | null
@@ -1339,8 +1341,10 @@ export type Database = {
           id?: string
           inventory_locked?: boolean
           language?: string | null
+          last_onboarding_reminder_sent_at?: string | null
           logo_url?: string | null
           onboarding_completed?: boolean
+          onboarding_reminders_sent?: number
           phone?: string | null
           receipt_mode?: string
           receipt_terms?: string | null
@@ -1367,8 +1371,10 @@ export type Database = {
           id?: string
           inventory_locked?: boolean
           language?: string | null
+          last_onboarding_reminder_sent_at?: string | null
           logo_url?: string | null
           onboarding_completed?: boolean
+          onboarding_reminders_sent?: number
           phone?: string | null
           receipt_mode?: string
           receipt_terms?: string | null

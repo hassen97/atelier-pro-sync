@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
+import { OnboardingRemindersAdminCard } from "./OnboardingRemindersAdminCard";
 
 export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");
@@ -141,6 +142,8 @@ export function AdminSettingsView() {
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-lg font-semibold text-white">Paramètres de la plateforme</h2>
+
+      <OnboardingRemindersAdminCard />
 
       <Card className="admin-glass-card border-cyan-500/20">
         <CardHeader>

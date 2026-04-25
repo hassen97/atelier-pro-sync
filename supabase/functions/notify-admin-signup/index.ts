@@ -12,6 +12,7 @@ interface SignupPayload {
   email?: string | null;
   phone?: string;
   country?: string;
+  test?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -21,7 +22,12 @@ Deno.serve(async (req) => {
 
   try {
     const body = (await req.json().catch(() => ({}))) as SignupPayload;
-    const { username, full_name, email, phone, country } = body;
+    const isTest = body.test === true;
+    const username = isTest ? (body.username ?? "test_user") : body.username;
+    const full_name = isTest ? (body.full_name ?? "Test d'alerte") : body.full_name;
+    const email = isTest ? (body.email ?? "test@example.com") : body.email;
+    const phone = isTest ? (body.phone ?? "+216 00 000 000") : body.phone;
+    const country = isTest ? (body.country ?? "TN") : body.country;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

@@ -465,7 +465,7 @@ export function AdminEmployeesView() {
             ) : paginated.map((emp) => {
                const rc = roleConfig[emp.role] || roleConfig.employee;
               const isLocked = emp.is_locked;
-              const isVerified = emp.verification_status === "verified";
+              const isVerified = true;
               const isOnline = emp.last_online_at && new Date(emp.last_online_at) > new Date(now - 10 * 60 * 1000);
 
               return (

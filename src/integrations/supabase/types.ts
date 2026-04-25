@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_signup_events: {
+        Row: {
+          country: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          seen_at: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          seen_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          seen_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -1734,63 +1770,6 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      verification_requests: {
-        Row: {
-          address: string | null
-          city: string | null
-          created_at: string
-          facebook_url: string | null
-          google_maps_url: string | null
-          id: string
-          instagram_url: string | null
-          message_to_admin: string | null
-          owner_name: string | null
-          phone: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          shop_description: string | null
-          shop_name: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          address?: string | null
-          city?: string | null
-          created_at?: string
-          facebook_url?: string | null
-          google_maps_url?: string | null
-          id?: string
-          instagram_url?: string | null
-          message_to_admin?: string | null
-          owner_name?: string | null
-          phone: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          shop_description?: string | null
-          shop_name: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          address?: string | null
-          city?: string | null
-          created_at?: string
-          facebook_url?: string | null
-          google_maps_url?: string | null
-          id?: string
-          instagram_url?: string | null
-          message_to_admin?: string | null
-          owner_name?: string | null
-          phone?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          shop_description?: string | null
-          shop_name?: string
-          status?: string
           user_id?: string
         }
         Relationships: []

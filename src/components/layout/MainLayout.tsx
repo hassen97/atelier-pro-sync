@@ -7,7 +7,6 @@ import { AppSidebar } from "./AppSidebar";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { ReadOnlyBanner } from "./ReadOnlyBanner";
 import { WhatsNewModal } from "@/components/announcements/WhatsNewModal";
-import { VerificationBanner } from "@/components/verification/VerificationBanner";
 import { TrialBanner } from "@/components/dashboard/TrialBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,9 +67,6 @@ export function MainLayout() {
           </div>
         </>
       )}
-
-      {/* Full-screen verification overlay (renders on top of everything) */}
-      <VerificationBanner />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

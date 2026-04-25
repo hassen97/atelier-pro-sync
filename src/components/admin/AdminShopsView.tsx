@@ -95,8 +95,15 @@ function ShopAnnouncementDialog({
   );
 }
 
-type FilterType = "all" | "pending_verification" | "verified" | "trialing" | "pro" | "suspended" | "setup_incomplete";
+type FilterType = "all" | "online" | "verified" | "trialing" | "pro" | "setup_incomplete";
 type SortKey = "name" | "status" | "created_at" | null;
+
+const ONLINE_THRESHOLD_MS = 10 * 60 * 1000; // matches header / employees view
+
+function isOwnerOnline(lastOnline: string | null) {
+  if (!lastOnline) return false;
+  return Date.now() - new Date(lastOnline).getTime() < ONLINE_THRESHOLD_MS;
+}
 
 function getOnlineStatus(lastOnline: string | null) {
   if (!lastOnline) return "offline";
@@ -113,13 +120,7 @@ const statusDot: Record<string, string> = {
 };
 
 function getUnifiedStatus(owner: any, sub: any): { key: string; label: string; color: string; icon: any } {
-  if (owner.verification_status === "suspended") {
-    return { key: "suspended", label: "Suspendu", color: "border-red-500/30 text-red-400 bg-red-500/10", icon: Ban };
-  }
-  if (owner.verification_status === "pending_verification") {
-    return { key: "pending", label: "En attente", color: "border-amber-500/30 text-amber-400 bg-amber-500/10", icon: Clock };
-  }
-  // Verified — check subscription
+  // Verification gate removed — every owner is treated as verified.
   if (sub) {
     const isExpired = sub.expires_at && new Date(sub.expires_at) < new Date();
     if (!isExpired && sub.status === "trialing") {
@@ -173,33 +174,12 @@ function useBulkAction() {
   });
 }
 
-function useVerifyOwner() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, action }: { userId: string; action: "verify" | "suspend" | "revert-to-pending" }) => {
-      const actionMap = { verify: "verify-owner", suspend: "suspend-owner", "revert-to-pending": "revert-to-pending" };
-      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
-        body: { action: actionMap[action], userId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-verification-data"] });
-      const msgs = { verify: "Propriétaire vérifié !", suspend: "Propriétaire suspendu", "revert-to-pending": "Remis en attente" };
-      toast.success(msgs[variables.action]);
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
-}
+
 
 export function AdminShopsView() {
   const { data } = useAdminData();
   const deleteOwner = useDeleteOwner();
   const lockOwner = useLockOwner();
-  const verifyOwner = useVerifyOwner();
   const bulkAction = useBulkAction();
   const { data: shopSubs } = useAdminShopSubscriptions();
   const [createOpen, setCreateOpen] = useState(false);
@@ -235,6 +215,8 @@ export function AdminShopsView() {
     if (filter !== "all") {
       if (filter === "setup_incomplete") {
         result = result.filter((o: any) => o._display.isIncomplete);
+      } else if (filter === "online") {
+        result = result.filter((o: any) => isOwnerOnline(o.last_online_at));
       } else {
         result = result.filter((o: any) => o._status.key === filter);
       }
@@ -280,22 +262,20 @@ export function AdminShopsView() {
     const all = owners.map((o: any) => ({ ...o, _status: getUnifiedStatus(o, subMap.get(o.user_id)), _display: getDisplayName(o) }));
     return {
       all: all.length,
-      pending_verification: all.filter((o: any) => o._status.key === "pending").length,
+      online: all.filter((o: any) => isOwnerOnline(o.last_online_at)).length,
       verified: all.filter((o: any) => o._status.key === "verified").length,
       trialing: all.filter((o: any) => o._status.key === "trialing").length,
       pro: all.filter((o: any) => o._status.key === "pro").length,
-      suspended: all.filter((o: any) => o._status.key === "suspended").length,
       setup_incomplete: all.filter((o: any) => o._display.isIncomplete).length,
     };
   }, [owners, subMap]);
 
   const filters: { key: FilterType; label: string; color?: string }[] = [
     { key: "all", label: `Tous (${counts.all})` },
-    { key: "pending_verification", label: `En attente (${counts.pending_verification})`, color: "text-amber-400" },
+    { key: "online", label: `En ligne (${counts.online})`, color: "text-emerald-400" },
     { key: "verified", label: `Vérifiés (${counts.verified})`, color: "text-emerald-400" },
     { key: "trialing", label: `Essai (${counts.trialing})`, color: "text-violet-400" },
     { key: "pro", label: `Pro (${counts.pro})`, color: "text-amber-300" },
-    { key: "suspended", label: `Suspendus (${counts.suspended})`, color: "text-red-400" },
     { key: "setup_incomplete", label: `Setup ⚠️ (${counts.setup_incomplete})` },
   ];
 
@@ -379,15 +359,6 @@ export function AdminShopsView() {
       {someSelected && (
         <div className="flex items-center gap-2 flex-wrap bg-white/5 border border-white/10 rounded-lg px-3 py-2">
           <span className="text-xs text-slate-300 mr-1">{selectedIds.size} sélectionné(s)</span>
-          <Button size="sm" variant="ghost" className="text-emerald-400 hover:bg-emerald-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-verify")} disabled={bulkAction.isPending}>
-            <CheckCircle className="h-3 w-3 mr-1" /> Vérifier
-          </Button>
-          <Button size="sm" variant="ghost" className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-revert-to-pending")} disabled={bulkAction.isPending}>
-            <Clock className="h-3 w-3 mr-1" /> En attente
-          </Button>
-          <Button size="sm" variant="ghost" className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-suspend")} disabled={bulkAction.isPending}>
-            <Ban className="h-3 w-3 mr-1" /> Suspendre
-          </Button>
           <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 h-7 text-xs" onClick={() => setConfirmAction("bulk-delete")} disabled={bulkAction.isPending}>
             <Trash2 className="h-3 w-3 mr-1" /> Supprimer
           </Button>
@@ -515,18 +486,6 @@ export function AdminShopsView() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {/* Quick verification actions */}
-                        {owner.verification_status !== "verified" && (
-                          <DropdownMenuItem className="text-emerald-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "verify" })}>
-                            <CheckCircle className="h-4 w-4 mr-2" /> Approuver
-                          </DropdownMenuItem>
-                        )}
-                        {owner.verification_status === "verified" && (
-                          <DropdownMenuItem className="text-amber-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "revert-to-pending" })}>
-                            <Clock className="h-4 w-4 mr-2" /> Remettre en attente
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-[#00D4FF]" onClick={() => setGodModeTarget({ userId: owner.user_id, shopName: display.name })}>
                           <Zap className="h-4 w-4 mr-2" /> God Mode — Abonnement
                         </DropdownMenuItem>
@@ -566,11 +525,6 @@ export function AdminShopsView() {
                           <LogIn className="h-4 w-4 mr-2" /> Accéder à la boutique
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        {owner.verification_status !== "suspended" && (
-                          <DropdownMenuItem className="text-amber-400" onClick={() => verifyOwner.mutate({ userId: owner.user_id, action: "suspend" })}>
-                            <Ban className="h-4 w-4 mr-2" /> Suspendre
-                          </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem className="text-red-400" onClick={() => { if (confirm(`Supprimer ${owner.full_name || owner.username} ?`)) deleteOwner.mutate(owner.user_id); }}>
                           <Trash2 className="h-4 w-4 mr-2" /> Supprimer
                         </DropdownMenuItem>

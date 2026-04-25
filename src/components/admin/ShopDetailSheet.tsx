@@ -33,34 +33,12 @@ function getOnlineStatus(lastOnline: string | null) {
 const statusLabel: Record<string, string> = { online: "En ligne", away: "Absent", offline: "Hors ligne" };
 const statusColor: Record<string, string> = { online: "bg-emerald-400", away: "bg-amber-400", offline: "bg-red-400" };
 
-function useVerifyAction() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, action }: { userId: string; action: string }) => {
-      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
-        body: { action, userId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-data"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-shop-details"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-verification-data"] });
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
-}
-
 export function ShopDetailSheet({ userId, onClose }: ShopDetailSheetProps) {
   const { data, isLoading } = useShopDetails(userId);
   const { data: shopSubs } = useAdminShopSubscriptions();
-  const verifyAction = useVerifyAction();
   const [godModeOpen, setGodModeOpen] = useState(false);
 
   const sub = (shopSubs || []).find((s: any) => s.user_id === userId);
-  const verificationStatus = data?.profile?.verification_status || "pending_verification";
 
   const shopName = data?.shop?.shop_name && data.shop.shop_name !== "Mon Atelier"
     ? data.shop.shop_name
@@ -110,61 +88,7 @@ export function ShopDetailSheet({ userId, onClose }: ShopDetailSheetProps) {
                 </div>
               </div>
 
-              {/* Verification Status + Quick Actions */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Vérification</h3>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {verificationStatus === "verified" && (
-                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
-                      <CheckCircle className="h-3 w-3 mr-1" /> Vérifié
-                    </Badge>
-                  )}
-                  {verificationStatus === "pending_verification" && (
-                    <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10">
-                      <Clock className="h-3 w-3 mr-1" /> En attente
-                    </Badge>
-                  )}
-                  {verificationStatus === "suspended" && (
-                    <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10">
-                      <Ban className="h-3 w-3 mr-1" /> Suspendu
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {verificationStatus !== "verified" && (
-                    <Button
-                      size="sm"
-                      className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 h-8 text-xs"
-                      onClick={() => { verifyAction.mutate({ userId: userId!, action: "verify-owner" }); toast.success("Propriétaire approuvé !"); }}
-                      disabled={verifyAction.isPending}
-                    >
-                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" /> Approuver
-                    </Button>
-                  )}
-                  {verificationStatus === "verified" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 h-8 text-xs"
-                      onClick={() => { verifyAction.mutate({ userId: userId!, action: "revert-to-pending" }); toast.success("Remis en attente"); }}
-                      disabled={verifyAction.isPending}
-                    >
-                      <Clock className="h-3.5 w-3.5 mr-1.5" /> Remettre en attente
-                    </Button>
-                  )}
-                  {verificationStatus !== "suspended" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-red-500/30 text-red-400 hover:bg-red-500/10 h-8 text-xs"
-                      onClick={() => { verifyAction.mutate({ userId: userId!, action: "suspend-owner" }); toast.success("Suspendu"); }}
-                      disabled={verifyAction.isPending}
-                    >
-                      <Ban className="h-3.5 w-3.5 mr-1.5" /> Suspendre
-                    </Button>
-                  )}
-                </div>
-              </div>
+              {/* Verification block removed — verification gate is no longer used. */}
 
               <Separator className="bg-white/10" />
 

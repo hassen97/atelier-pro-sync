@@ -11,6 +11,7 @@ import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { OnboardingRemindersAdminCard } from "./OnboardingRemindersAdminCard";
 import { VerificationRemindersAdminCard } from "./VerificationRemindersAdminCard";
+import { WaitlistInvitationsAdminCard } from "./WaitlistInvitationsAdminCard";
 
 export function AdminSettingsView() {
   const [adminWhatsapp, setAdminWhatsapp] = useState("");

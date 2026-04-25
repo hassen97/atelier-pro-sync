@@ -1,0 +1,118 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+interface SignupPayload {
+  username?: string;
+  full_name?: string;
+  email?: string | null;
+  phone?: string;
+  country?: string;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = (await req.json().catch(() => ({}))) as SignupPayload;
+    const { username, full_name, email, phone, country } = body;
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    // Try to find the freshly-created user_id by username
+    let userId: string | null = null;
+    if (username) {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("user_id")
+        .eq("username", username.toLowerCase())
+        .maybeSingle();
+      userId = profile?.user_id ?? null;
+    }
+
+    // Insert event row (drives realtime browser notifications)
+    const { error: insertError } = await admin
+      .from("admin_signup_events")
+      .insert({
+        user_id: userId,
+        username: username ?? null,
+        full_name: full_name ?? null,
+        email: email ?? null,
+        phone: phone ?? null,
+        country: country ?? null,
+      });
+
+    if (insertError) {
+      console.error("[notify-admin-signup] insert error:", insertError);
+    }
+
+    // Read settings
+    const { data: settings } = await admin
+      .from("platform_settings")
+      .select("key,value")
+      .in("key", ["admin_notify_email", "admin_notify_email_enabled"]);
+
+    const settingsMap: Record<string, string | null> = {};
+    (settings ?? []).forEach((s: any) => {
+      settingsMap[s.key] = s.value;
+    });
+
+    const emailEnabled = settingsMap["admin_notify_email_enabled"] === "true";
+    const adminEmail = settingsMap["admin_notify_email"]?.trim();
+
+    if (emailEnabled && adminEmail) {
+      const subject = `🔔 Nouvelle inscription : ${username ?? "Nouveau compte"}`;
+      const html = `
+        <div style="font-family:Inter,Arial,sans-serif;background:#f5f7fb;padding:24px;">
+          <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;">
+            <h2 style="margin:0 0 12px;color:#0f172a;">Nouvelle inscription RepairPro</h2>
+            <p style="color:#475569;margin:0 0 16px;">Un nouveau propriétaire vient de créer un compte.</p>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;color:#0f172a;">
+              <tr><td style="padding:6px 0;color:#64748b;">Nom complet</td><td style="padding:6px 0;text-align:right;">${full_name ?? "—"}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Username</td><td style="padding:6px 0;text-align:right;">@${username ?? "—"}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Email</td><td style="padding:6px 0;text-align:right;">${email ?? "—"}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Téléphone</td><td style="padding:6px 0;text-align:right;">${phone ?? "—"}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Pays</td><td style="padding:6px 0;text-align:right;">${country ?? "—"}</td></tr>
+            </table>
+          </div>
+        </div>
+      `;
+
+      try {
+        await admin.rpc("enqueue_email", {
+          queue_name: "transactional_email_queue",
+          payload: {
+            to: adminEmail,
+            subject,
+            html,
+            template: "admin-signup-alert",
+          },
+        });
+      } catch (e) {
+        console.error("[notify-admin-signup] enqueue email error:", e);
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+  } catch (err) {
+    console.error("[notify-admin-signup] fatal:", err);
+    return new Response(
+      JSON.stringify({ ok: false, error: (err as Error).message }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, // never block signup
+      }
+    );
+  }
+});

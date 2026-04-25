@@ -80,6 +80,22 @@ export default function Auth() {
       });
   }, []);
 
+  // Pre-fill from query params (e.g. coming from the landing-page waitlist form)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    const email = params.get("email");
+    const username = params.get("username");
+    if (tab === "register") {
+      setAuthTab("register");
+      setLoginRole("owner");
+    }
+    if (email) setRegisterEmail(email);
+    if (username) setRegisterUsername(username);
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (user) {
     const searchParams = new URLSearchParams(location.search);
     const redirect = searchParams.get("redirect");

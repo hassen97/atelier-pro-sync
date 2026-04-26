@@ -537,6 +537,72 @@ export default function Settings() {
                 </div>
               </div>
 
+              {/* Logo size on receipt — selector + live preview */}
+              {settings.logo_url && (
+                <div className="rounded-lg border border-border/50 p-4 bg-muted/20 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">Taille du logo sur le reçu</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Choisissez à quelle taille votre logo s'imprime en haut du reçu thermique.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {([
+                      { key: "small",  label: "S",  hint: "Petit" },
+                      { key: "medium", label: "M",  hint: "Moyen" },
+                      { key: "large",  label: "L",  hint: "Grand" },
+                      { key: "xlarge", label: "XL", hint: "Très grand" },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => handleLogoSizeChange(opt.key)}
+                        className={cn(
+                          "flex flex-col items-center justify-center rounded-md border-2 px-2 py-2 text-xs transition-all hover:border-primary/50",
+                          logoSize === opt.key
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border bg-background text-muted-foreground"
+                        )}
+                      >
+                        <span className="font-bold text-sm">{opt.label}</span>
+                        <span className="text-[10px] mt-0.5">{opt.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Live preview — mock thermal receipt header */}
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-2">Aperçu :</p>
+                    <div
+                      className="mx-auto rounded border border-dashed border-border bg-white text-black p-3 font-mono text-center"
+                      style={{ width: "220px" }}
+                    >
+                      <img
+                        src={settings.logo_url}
+                        alt="Aperçu logo"
+                        style={{
+                          maxWidth:
+                            logoSize === "small" ? "60px" :
+                            logoSize === "medium" ? "100px" :
+                            logoSize === "large" ? "140px" : "180px",
+                          maxHeight:
+                            logoSize === "small" ? "30px" :
+                            logoSize === "medium" ? "45px" :
+                            logoSize === "large" ? "70px" : "95px",
+                          width: "auto",
+                          height: "auto",
+                          display: "block",
+                          margin: "0 auto 4px",
+                        }}
+                      />
+                      <p className="text-[12px] font-bold leading-tight">{shopName || settings.shop_name}</p>
+                      <div className="border-t border-dashed border-black/40 my-1" />
+                      <p className="text-[9px] leading-tight">REÇU DE VENTE</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <Separator />
 
               {/* Brand Color */}

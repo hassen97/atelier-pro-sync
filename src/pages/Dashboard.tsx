@@ -62,6 +62,7 @@ export default function Dashboard() {
   const { data: teamInfo } = useMyTeamInfo();
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const onboardingReminder = useOnboardingReminder();
 
   const isLoading = statsLoading || repairsLoading || alertsLoading;
 

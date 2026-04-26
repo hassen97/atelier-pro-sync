@@ -1,37 +1,59 @@
-## Problem
+## Two issues to fix
 
-After clicking **"Démarrer l'essai de 3 jours"**, the trial subscription is correctly inserted (the user even sees the success toast "Essai de 3 jours activé !"), but they remain stuck on `/checkout` instead of landing on `/dashboard`.
+### 1. POS stock not refreshing after a sale (cashier sees old quantity until reload)
 
-## Root Cause
+**Root cause**
+- `POS.tsx` reads products from `useAllProducts()` (cache key `["products-all"]`) with a 2-minute `staleTime`.
+- `useCreateSale` only invalidates `["sales"]`, `["products"]`, `["dashboard-stats"]`, `["profit"]` — it never invalidates `["products-all"]`, so the POS grid keeps showing the stale `quantity` from cache.
+- There's also no realtime subscription on the POS page, so concurrent sales by another cashier (or by a teammate) don't update the quantity badges live.
 
-`ProtectedRoute` runs a query called `onboarding-status` that decides where to send shop owners:
+**Fix**
+- In `src/hooks/useSales.ts`, add `queryClient.invalidateQueries({ queryKey: ["products-all"] })` (and `["products-low-stock"]`, `["inventory-stats"]`) inside `useCreateSale.onSuccess`.
+- In `src/pages/POS.tsx`, attach a realtime subscription so the product grid live-refreshes when any teammate completes a sale or stock changes:
+  ```ts
+  useRealtimeSubscription({
+    tables: ["products", "sales"],
+    queryKeys: [["products-all"], ["products"], ["products-low-stock"]],
+  });
+  ```
+- As a defensive measure, also block `addToCart` from going past `product.quantity` (already done) and reduce `useAllProducts` `staleTime` from 2 min to 30 s so a manual refresh path exists if realtime ever drops.
 
-- If the user has **no active or trialing subscription** → it forces a redirect back to `/checkout?onboarding=true`.
+This guarantees that:
+- After the cashier confirms a sale, the grid card immediately reflects the new quantity (no reload).
+- If two cashiers / a teammate sell on different devices, both screens update within a second via realtime.
 
-When `handleStartTrial` in `src/pages/Checkout.tsx` inserts the new `trialing` row and calls `navigate("/dashboard")`, the `onboarding-status` query in React Query **still holds the previously cached result** (`hasNoSubscription: true`). The guard re-runs, sees "no subscription", and immediately sends the user back to `/checkout`. The trial is real — only the cache is stale.
+### 2. Logo on receipt looks too small — add size control + live preview
 
-The same bug affects the proof-upload checkout path (`handleSubmit`), but it's less visible there because that flow already requires admin verification.
+**Current behavior**
+`src/lib/receiptPdf.ts` hard-codes the receipt logo to `max-width:50mm; max-height:20mm`, which renders very small on 80mm thermal paper.
 
-## Fix
+**Fix — make logo size configurable per shop**
 
-In `src/pages/Checkout.tsx`, after a successful trial insert (and after the proof-upload `onSuccess`), invalidate the React Query caches that drive routing and subscription state, then navigate.
+1. **Database migration**: add a column to `shop_settings`:
+   - `logo_size` text NOT NULL DEFAULT `'medium'` (values: `small`, `medium`, `large`, `xlarge`)
 
-### Changes
+2. **Receipt rendering** (`src/lib/receiptPdf.ts`):
+   - Read `settings.logo_size` and map to dimensions:
+     - small → max-width 30mm, max-height 15mm
+     - medium → 50mm × 20mm (current)
+     - large → 65mm × 30mm
+     - xlarge → 72mm × 40mm (full width on 80mm paper)
+   - Apply to both `generateThermalReceipt` and (optionally) `generatePhoneLabel` for consistency.
 
-**`src/pages/Checkout.tsx`**
-1. Import `useQueryClient` from `@tanstack/react-query`.
-2. In `handleStartTrial`, after `insert` succeeds and before `navigate("/dashboard")`:
-   - `await queryClient.invalidateQueries({ queryKey: ["onboarding-status", user.id] })`
-   - Also invalidate `["subscription"]` / `["shop-subscription"]` (whatever `useSubscription` uses) so the dashboard's trial banner reflects reality immediately.
-3. Apply the same invalidation in the `createOrder.mutate` `onSuccess` callback for consistency.
+3. **Settings UI** (`src/pages/Settings.tsx`, Apparence section, just under the logo upload):
+   - New "Taille du logo sur le reçu" segmented control with 4 sizes (S / M / L / XL).
+   - **Live preview card** showing a mini thermal-receipt mock (white background, monospace, the shop name + the logo at the chosen size) so the owner instantly sees how it'll print.
+   - Save the chosen value via the existing `saveSettings({ logo_size })` flow.
 
-### Verification
+4. The `useShopSettings` types (auto-generated) will pick up the new column after the migration; just cast where needed.
 
-After the change:
-- Click "Démarrer l'essai de 3 jours" → toast appears → user lands on `/dashboard` with the trial banner visible.
-- Refresh `/dashboard` → still works (the guard now sees the trialing row).
+### Files touched
 
-### Files Touched
-- `src/pages/Checkout.tsx` (only)
+- `supabase/migrations/<new>.sql` — add `logo_size` column
+- `src/hooks/useSales.ts` — invalidate `products-all` + low-stock + inventory-stats
+- `src/pages/POS.tsx` — wire `useRealtimeSubscription` for products/sales
+- `src/hooks/useProducts.ts` — drop `useAllProducts` staleTime to 30 s
+- `src/lib/receiptPdf.ts` — use `settings.logo_size` to size the logo
+- `src/pages/Settings.tsx` — size selector + live receipt preview
 
-No database, edge function, or schema changes are needed.
+No breaking changes; existing shops default to `medium` (current behavior preserved).

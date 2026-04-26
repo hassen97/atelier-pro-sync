@@ -1318,6 +1318,7 @@ export type Database = {
           inventory_locked: boolean
           language: string | null
           last_onboarding_reminder_sent_at: string | null
+          logo_size: string
           logo_url: string | null
           onboarding_completed: boolean
           onboarding_reminders_sent: number
@@ -1348,6 +1349,7 @@ export type Database = {
           inventory_locked?: boolean
           language?: string | null
           last_onboarding_reminder_sent_at?: string | null
+          logo_size?: string
           logo_url?: string | null
           onboarding_completed?: boolean
           onboarding_reminders_sent?: number
@@ -1378,6 +1380,7 @@ export type Database = {
           inventory_locked?: boolean
           language?: string | null
           last_onboarding_reminder_sent_at?: string | null
+          logo_size?: string
           logo_url?: string | null
           onboarding_completed?: boolean
           onboarding_reminders_sent?: number

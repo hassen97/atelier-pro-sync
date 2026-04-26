@@ -143,6 +143,7 @@ export default function Settings() {
   const isMobile = useIsMobile();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoSize, setLogoSize] = useState<"small" | "medium" | "large" | "xlarge">("medium");
   const [brandColor, setBrandColor] = useState("blue");
   const [customHex, setCustomHex] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("boutique");
@@ -219,6 +220,7 @@ export default function Settings() {
       setWarrantyDays(String((settings as any).warranty_days ?? 30));
       setShowPaymentOnTracking((settings as any).show_payment_on_tracking ?? false);
       setStoreHours((settings as any).store_hours || "");
+      setLogoSize(((settings as any).logo_size as any) || "medium");
     }
   }, [loading, settings]);
 
@@ -316,7 +318,10 @@ export default function Settings() {
     toast.success("Logo supprimé");
   };
 
-  const handleBrandColorChange = async (color: string) => {
+  const handleLogoSizeChange = async (size: "small" | "medium" | "large" | "xlarge") => {
+    setLogoSize(size);
+    await saveSettings({ logo_size: size } as any);
+  };
     setBrandColor(color);
     applyColor(color);
     await saveSettings({ brand_color: color });

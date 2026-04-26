@@ -33,28 +33,29 @@ export function WaitlistInvitationsAdminCard() {
   });
   const [sending, setSending] = useState(false);
 
-  const loadStats = async () => {
+  const loadStats = async (showToast = false) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("waitlist" as any)
-        .select("id, notified_at, signed_up_user_id");
+      const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+        body: { action: "get-waitlist-detailed-stats" },
+      });
 
       if (error) throw error;
-      const rows = ((data ?? []) as unknown) as Array<{
-        id: string;
-        notified_at: string | null;
-        signed_up_user_id: string | null;
-      }>;
 
-      setStats({
-        total: rows.length,
-        pending: rows.filter((r) => !r.notified_at).length,
-        notified: rows.filter((r) => r.notified_at).length,
-        signedUp: rows.filter((r) => r.signed_up_user_id).length,
-      });
-    } catch (e) {
+      const next: Stats = {
+        total: (data as any)?.total ?? 0,
+        pending: (data as any)?.pending ?? 0,
+        notified: (data as any)?.notified ?? 0,
+        signedUp: (data as any)?.signedUp ?? 0,
+      };
+      setStats(next);
+
+      if (showToast) {
+        toast.success(`${next.total} inscrit${next.total > 1 ? "s" : ""} chargé${next.total > 1 ? "s" : ""}`);
+      }
+    } catch (e: any) {
       console.error("[WaitlistInvitations] loadStats:", e);
+      toast.error(e?.message ?? "Impossible de charger les statistiques");
     } finally {
       setLoading(false);
     }
@@ -137,7 +138,7 @@ export function WaitlistInvitationsAdminCard() {
           <Button
             variant="outline"
             size="sm"
-            onClick={loadStats}
+            onClick={() => loadStats(true)}
             disabled={loading}
             className="border-white/10 text-slate-300 hover:bg-white/5"
           >

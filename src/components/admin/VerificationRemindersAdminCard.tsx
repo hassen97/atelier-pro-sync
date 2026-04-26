@@ -120,6 +120,14 @@ export function VerificationRemindersAdminCard() {
           </div>
         </div>
 
+        {!loading && eligibleCount === 0 && (
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200/90">
+            Aucun propriétaire n'est actuellement en <b>attente de vérification</b>.
+            Les nouvelles inscriptions sont aujourd'hui auto-vérifiées : ce panneau
+            s'activera automatiquement si la vérification d'identité est ré-imposée.
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
           <Button
             variant="outline"

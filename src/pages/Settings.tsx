@@ -322,6 +322,8 @@ export default function Settings() {
     setLogoSize(size);
     await saveSettings({ logo_size: size } as any);
   };
+
+  const handleBrandColorChange = async (color: string) => {
     setBrandColor(color);
     applyColor(color);
     await saveSettings({ brand_color: color });

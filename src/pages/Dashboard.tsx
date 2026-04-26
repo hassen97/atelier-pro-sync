@@ -116,7 +116,6 @@ export default function Dashboard() {
     toast.success("Rapport exporté avec succès");
   };
 
-  const onboardingReminder = useOnboardingReminder();
 
   return (
     <div className="space-y-6 animate-fade-in">

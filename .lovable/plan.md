@@ -1,75 +1,45 @@
-# Notifier la liste d'attente + cadeau d'essai Pro 3 jours
+# Fix admin reminder cards showing 0
 
-39 emails sont actuellement enregistrés dans la table `waitlist`. On va leur envoyer un email "Bonne nouvelle, RepairPro est ouvert", et leur offrir automatiquement **3 jours d'essai du plan Pro** dès leur inscription.
+## Root cause analysis
 
-## Ce que voit l'utilisateur final
+After inspecting the database, both "0" displays have different causes:
 
-1. Reçoit un email "🎉 Votre place est confirmée — 3 jours d'essai Pro offerts"
-2. Clique sur le bouton → arrive sur la page d'inscription pré-remplie avec son email
-3. Crée son compte normalement (username + mot de passe + boutique)
-4. Le système détecte que son email est dans la waitlist → **active automatiquement un abonnement Pro pendant 3 jours**
-5. Voit une bannière de bienvenue "Votre cadeau : 3 jours Pro offerts (expire le …)"
+**1. Waitlist Invitations card — real bug**
+- The `waitlist` table contains **39 rows**, all with `notified_at = NULL` and `signed_up_user_id = NULL`.
+- Current admin (`hassen`) has `platform_admin` and RLS allows `SELECT`.
+- The card's query `supabase.from("waitlist" as any).select("id, notified_at, signed_up_user_id")` is silently failing or being intercepted, but errors are only `console.error`'d (no toast). The user sees 0 with no signal.
+- Most likely culprit: the typed client rejects the unknown table name at runtime in some build paths, OR the response is being truncated. Either way, the "Rafraîchir" button gives no feedback when it fails.
 
-## Ce que voit l'admin
+**2. Verification Reminders (waiting list) card — accurate but pointless**
+- The `handle_new_user` DB trigger sets `verification_status = 'verified'` for **every** new signup (it no longer puts anyone in `pending_verification`).
+- Result: the database has **0 profiles** in that status, so "0" is mathematically correct — but the card will *always* show 0 going forward.
+- This card was built when the verification flow was active; it is now orphaned.
 
-Dans **Admin → Paramètres**, nouvelle carte :
+## Plan
 
-- Compteur live : "39 inscrits sur la waitlist · 39 jamais notifiés"
-- Bouton "Envoyer l'invitation à 39 personnes" (avec confirmation)
-- Compteur après envoi : combien ont déjà créé un compte / combien ont activé leur trial
+### Step 1 — Fix the waitlist card (real bug)
+Update `src/components/admin/WaitlistInvitationsAdminCard.tsx`:
+- Switch to a server-trusted source: call the existing `admin-manage-users` edge function with a new action `get-waitlist-detailed-stats` (uses service role, bypasses RLS, immune to the typed-client `as any` issue). Returns `{ total, pending, notified, signedUp }`.
+- Surface failures with `toast.error` so refresh failures stop being silent.
+- Add the row count to the toast on success ("39 inscrits chargés") so the admin gets confirmation.
 
-## Détails techniques
+Update `supabase/functions/admin-manage-users/index.ts`:
+- Add the new `get-waitlist-detailed-stats` action that runs the four counts on the `waitlist` table with the service role client.
 
-### Base de données
-Sur la table `waitlist`, ajouter :
-- `notified_at` (timestamptz) — date d'envoi de l'email d'invitation
-- `signed_up_user_id` (uuid) — ID du compte créé une fois inscrit
-- `trial_granted_at` (timestamptz) — date d'activation de l'essai Pro
+### Step 2 — Make the verification reminders card honest
+Update `src/components/admin/VerificationRemindersAdminCard.tsx`:
+- Add a clear empty-state hint when `eligibleCount === 0`: explain that no users are currently in `pending_verification` because new signups are auto-verified, and the card will activate automatically if that policy changes.
+- Keep the card (no removal) so it stays ready if verification is re-enabled later.
 
-### Edge function `notify-waitlist`
-- Mode `manual` (déclenché par l'admin) — itère sur les entrées `notified_at IS NULL`
-- Génère un token unique → URL d'inscription `/auth?invite={token}&email={email}`
-- Enqueue dans `transactional_emails` via le système d'emails existant
-- Marque `notified_at = now()`
-- Anti-spam : ne renvoie jamais 2 fois à la même adresse
+### Step 3 — Quick verification
+After deploy, open Admin → Paramètres and confirm:
+- Waitlist card shows **39 / 39 pending / 0 notified / 0 signed up**.
+- "Envoyer l'invitation à 39 personnes" button is enabled.
+- Verification card shows 0 with a friendly explanation instead of looking broken.
 
-### Email
-Nouveau template `waitlist-invitation.tsx` :
-- Sujet : "🎉 Votre place est confirmée — 3 jours Pro offerts"
-- Message : remerciement, annonce du lancement, mention du cadeau (3 jours Pro), bouton CTA "Créer mon compte maintenant"
-- Lien de désabonnement standard
+## Files touched
+- `src/components/admin/WaitlistInvitationsAdminCard.tsx` (rewrite load logic, add error toasts)
+- `src/components/admin/VerificationRemindersAdminCard.tsx` (empty-state hint)
+- `supabase/functions/admin-manage-users/index.ts` (new action `get-waitlist-detailed-stats`)
 
-### Activation automatique du trial
-Dans `handle_new_user` (trigger Supabase), après création de la boutique :
-- Si l'email du nouvel utilisateur existe dans `waitlist` → créer une ligne dans `shop_subscriptions` avec :
-  - `plan_id` = ID du plan "🔥 Pro"
-  - `status = 'active'`
-  - `started_at = now()`
-  - `expires_at = now() + 3 days`
-- Lier `waitlist.signed_up_user_id` et `waitlist.trial_granted_at`
-
-### Bannière in-app
-Composant `WaitlistTrialBanner` sur le Dashboard (visible uniquement pendant les 3 jours d'essai issus du cadeau) :
-- "🎁 Cadeau de bienvenue : 3 jours Pro offerts — expire dans X heures"
-- Bouton "Voir les plans" pour passer à un abonnement payant avant expiration
-
-### Composant Admin
-`WaitlistInvitationsAdminCard` placée au-dessus des autres cartes de rappel dans `AdminSettingsView.tsx` :
-- 4 stats : total waitlist, jamais notifiés, déjà notifiés, ont créé leur compte
-- Bouton manuel d'envoi avec dialogue de confirmation
-
-## Fichiers créés / modifiés
-
-- `supabase/migrations/...sql` — colonnes waitlist + trigger d'activation trial
-- `supabase/functions/notify-waitlist/index.ts` — nouvelle edge function
-- `supabase/functions/_shared/email-templates/waitlist-invitation.tsx` — template email
-- `src/components/admin/WaitlistInvitationsAdminCard.tsx` — carte admin
-- `src/components/dashboard/WaitlistTrialBanner.tsx` — bannière in-app
-- `src/components/admin/AdminSettingsView.tsx` — intégration carte
-- `src/pages/Dashboard.tsx` — intégration bannière
-- `src/pages/Auth.tsx` — pré-remplissage email depuis `?email=` query param
-
-## Hors scope
-
-- Pas de cron automatique (envoi manuel uniquement, déclenché par l'admin)
-- Pas de modification du système de paiement existant — le trial expire et bascule simplement en compte gratuit
+No DB migration required.

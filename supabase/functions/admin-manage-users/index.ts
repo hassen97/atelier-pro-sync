@@ -15,7 +15,7 @@ const ActionSchema = z.object({
     "list-reset-requests", "update-reset-request", "approve-signup",
     "get-platform-settings", "update-platform-setting",
     "list-employees", "delete-employee", "get-shop-details",
-    "get-waitlist-stats", "list-waitlist",
+    "get-waitlist-stats", "get-waitlist-detailed-stats", "list-waitlist",
     "list-plans", "update-plan",
     "list-feature-flags", "toggle-feature-flag",
     "list-payment-gateways", "toggle-payment-gateway", "update-gateway-config",
@@ -424,6 +424,28 @@ serve(async (req) => {
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
         const { count: recent } = await adminClient.from("waitlist").select("*", { count: "exact", head: true }).gte("created_at", sevenDaysAgo);
         return jsonResp({ total: total || 0, recent_7d: recent || 0 });
+      }
+
+      if (action === "get-waitlist-detailed-stats") {
+        const { count: total } = await adminClient
+          .from("waitlist")
+          .select("*", { count: "exact", head: true });
+        const { count: notified } = await adminClient
+          .from("waitlist")
+          .select("*", { count: "exact", head: true })
+          .not("notified_at", "is", null);
+        const { count: signedUp } = await adminClient
+          .from("waitlist")
+          .select("*", { count: "exact", head: true })
+          .not("signed_up_user_id", "is", null);
+        const totalNum = total || 0;
+        const notifiedNum = notified || 0;
+        return jsonResp({
+          total: totalNum,
+          pending: Math.max(0, totalNum - notifiedNum),
+          notified: notifiedNum,
+          signedUp: signedUp || 0,
+        });
       }
 
       if (action === "list-waitlist") {

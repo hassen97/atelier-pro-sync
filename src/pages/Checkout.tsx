@@ -204,7 +204,14 @@ export default function Checkout() {
       currency: plan.currency,
       proofFile,
     }, {
-      onSuccess: () => {
+      onSuccess: async () => {
+        if (user) {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["onboarding-status", user.id] }),
+            queryClient.invalidateQueries({ queryKey: ["my-subscription", user.id] }),
+            queryClient.invalidateQueries({ queryKey: ["my-subscription-orders", user.id] }),
+          ]);
+        }
         navigate("/dashboard");
       },
     });

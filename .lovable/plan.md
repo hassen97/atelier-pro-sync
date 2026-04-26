@@ -1,53 +1,77 @@
-## Why your QR code prints inconsistently
+## Problem confirmed
 
-I found the root cause in `src/lib/receiptPdf.ts`. The receipt currently builds the QR code as a **remote image URL**:
+23 shop owner accounts exist in `auth.users` but are **invisible** in the Ultra Admin → Shops page (and elsewhere) because they're missing rows in `public.profiles`, `public.user_roles`, and (for 22 of them) `public.shop_settings`.
 
+The admin "list shops" endpoint joins on `profiles + user_roles`, so any account without those rows simply does not appear — even though the user can still log in normally.
+
+The shop owner you mentioned, **mohamedghoudi32** (`f5092578-42f8-4f66-8e09-5f33d235763b`), is one of these orphaned accounts. He last signed in today (2026-04-26) but has no profile.
+
+The `handle_new_user()` trigger that should auto-create these rows IS currently active, but it failed silently for 23 historical signups (older signups from a period when the trigger was missing, or signups that raced with it).
+
+### Affected accounts (23)
+
+Real-looking accounts that need recovery (the ones that actually use the app):
+- mohamedghoudi32 — Mohamed Ghoudi
+- lamjedgsm — hedhli lamjed
+- jerbigs — najjar nabil
+- jerbigsm — najjar nabil (2nd account)
+- storegsm — Helmi
+- gsmshoptn — welhazi bilel
+- ahmed2004 — ahmed ben elghali
+- jemnis — mustapha amine jemni
+- hamza111 — Hamza
+- ahmed1230 — ahmed
+- mouhib — Mouhib slimen
+- amourkappo123 — Hlimi nizar
+- 26489410 — Raed Messaoud
+- iheb_marzougui — Iheb Marzougui
+- adem — Ademamdouni
+
+Plus ~8 obvious test accounts (`testtest`, `test6`, `test7`, `7777`, `tttt`, `Trttt` duplicates, `Hh`, `Ttttt`).
+
+## Plan
+
+### Step 1 — Backfill the missing rows (one-time SQL migration)
+
+Run a single safe migration that inserts the missing `profiles`, `user_roles` (`super_admin`), and `shop_settings` rows for every `auth.users` entry that's missing them — pulling values from `auth.users.raw_user_meta_data` exactly the same way `handle_new_user()` does.
+
+Logic:
+```sql
+-- For each auth.users id with no profile → INSERT profile (full_name, username, email, phone, whatsapp, verification_status='verified')
+-- For each auth.users id with no user_roles → INSERT (user_id, 'super_admin')
+-- For each auth.users id with no shop_settings → INSERT (user_id, country, currency from metadata or defaults)
 ```
-https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=...
-```
 
-Then the print window opens and triggers `window.print()` after a fixed **400 ms delay**.
+All three inserts use `ON CONFLICT DO NOTHING` so the migration is idempotent and safe.
 
-This causes the "sometimes shows, sometimes doesn't" behavior, because **3 separate things have to all succeed within 400 ms**:
+### Step 2 — Harden `handle_new_user()` against future silent failures
 
-1. The browser must download the image from `api.qrserver.com` (third-party server)
-2. The image must finish decoding
-3. The print dialog must capture it before the user clicks Print
+The current trigger does 4 separate INSERTs in sequence (profile → role → shop_settings → optional waitlist trial). If any of them throws, Postgres aborts the whole signup transaction — but in some past versions the trigger was missing entirely or failed silently for unique-constraint reasons.
 
-**Things that make it fail:**
-- Slow shop Wi-Fi or mobile data → image isn't loaded yet when print fires → blank space on receipt
-- `api.qrserver.com` being slow, rate-limited, or briefly down → no QR
-- Browser print dialog opening faster than the image loads → QR missing
-- Same logo/QR works the second time because the browser cached it
+Improvements:
+- Wrap each INSERT in its own `BEGIN/EXCEPTION WHEN OTHERS` block so partial state can never happen again
+- Use `ON CONFLICT (user_id) DO NOTHING` on every insert
+- Keep waitlist gift logic intact
 
-The barcode (REP-xxxxx) doesn't have this problem because it's already generated **locally** as a base64 data URL using `jsbarcode`. We need to do the same thing for the QR code.
+### Step 3 — Add a self-healing safety net in the admin "list shops" endpoint
 
-## The fix
+Modify `supabase/functions/admin-manage-users/index.ts` `action: "list"` so that, before returning the list, it:
+1. Fetches all `auth.users` ids via the admin client
+2. Compares against `profiles` ids
+3. If any mismatch, auto-backfills the missing rows on the spot (same logic as Step 1)
+4. Then returns the full list
 
-Generate the QR code **locally in the browser** as a base64 PNG data URL — exactly like the existing `generateBarcodeDataUrl()` function does for the barcode. The image will then be embedded directly in the HTML, requiring no network call, and will be ready instantly when the print dialog opens.
+This guarantees orphaned accounts can never disappear from the admin view again, even if a future code change breaks the trigger.
 
-### Steps
+### Step 4 — Verify
 
-1. **Add the `qrcode` library** (lightweight, ~15 KB, works offline, already a peer of many React tools).
-2. **Create a helper** `generateQrDataUrl(value: string)` next to the existing `generateBarcodeDataUrl()` in `src/lib/receiptPdf.ts`. It will use dynamic import (same pattern as jsbarcode) so it doesn't bloat the main bundle.
-3. **Replace the remote URL block** (lines 170–175) so `qrImgTag` uses the locally-generated data URL instead of the `api.qrserver.com` link.
-4. **Bump the print delay safety net**: also wait for all `<img>` elements in the print window to finish loading before calling `window.print()`. This protects the shop logo too (which is also a remote image and can suffer the same issue on slow networks).
-
-### Bonus reliability improvements (small, same file)
-
-- If QR generation fails for any reason, fall back to printing the tracking URL as text so the customer can still type it.
-- Use `printWindow.addEventListener("load", ...)` plus an image-readiness check instead of the blind 400 ms `setTimeout`.
+After deploying, refresh the Ultra Admin → Shops page. All 23 accounts (including `mohamedghoudi32`) should appear, marked as verified super_admins with default shop settings. You can then contact the owner to confirm everything works on his side.
 
 ## Files to change
 
-- `src/lib/receiptPdf.ts` — add `generateQrDataUrl`, swap the QR `<img>` source, harden `printThermalHtml` to wait for images.
-- `package.json` — add `qrcode` and `@types/qrcode` as dependencies.
+- New SQL migration (backfill + harden trigger) — created via the migration tool
+- `supabase/functions/admin-manage-users/index.ts` — add self-healing block in the `list` action
 
-## What you'll see after
+## What the user (you) needs to do
 
-- QR code prints **every time**, including offline or on slow shop Wi-Fi.
-- Logo also prints more reliably.
-- No more dependency on the third-party `api.qrserver.com` service.
-- Receipts feel slightly snappier because there's no network round-trip.
-
-No database, no edge function, no UI changes — purely a fix in the receipt generation utility.
+Nothing — just approve the plan. The shop owner will appear in the admin list as soon as the migration runs, and his existing login will keep working unchanged.

@@ -62,6 +62,7 @@ export default function Dashboard() {
   const { data: teamInfo } = useMyTeamInfo();
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const onboardingReminder = useOnboardingReminder();
 
   const isLoading = statsLoading || repairsLoading || alertsLoading;
 
@@ -115,7 +116,6 @@ export default function Dashboard() {
     toast.success("Rapport exporté avec succès");
   };
 
-  const onboardingReminder = useOnboardingReminder();
 
   return (
     <div className="space-y-6 animate-fade-in">

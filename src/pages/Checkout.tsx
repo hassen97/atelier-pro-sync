@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSearchParams, Link, useNavigate, Navigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePublicPlans } from "@/hooks/useSubscriptionPlans";
 import { useEnabledGateways, useCreateOrder } from "@/hooks/useCheckout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,6 +34,7 @@ export default function Checkout() {
   const { data: plans } = usePublicPlans();
   const { data: gateways, isLoading: gatewaysLoading } = useEnabledGateways();
   const createOrder = useCreateOrder();
+  const queryClient = useQueryClient();
   const [startingTrial, setStartingTrial] = useState(false);
 
   const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
@@ -75,6 +77,16 @@ export default function Checkout() {
         });
 
       if (error) throw error;
+
+      // Invalidate caches that gate routing & subscription state, otherwise
+      // ProtectedRoute would re-read its stale "no subscription" snapshot
+      // and bounce the user back to /checkout.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["onboarding-status", user.id] }),
+        queryClient.invalidateQueries({ queryKey: ["my-subscription", user.id] }),
+        queryClient.invalidateQueries({ queryKey: ["my-subscription-orders", user.id] }),
+      ]);
+
       toast.success("Essai de 3 jours activé ! Bienvenue 🎉");
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
@@ -192,7 +204,14 @@ export default function Checkout() {
       currency: plan.currency,
       proofFile,
     }, {
-      onSuccess: () => {
+      onSuccess: async () => {
+        if (user) {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["onboarding-status", user.id] }),
+            queryClient.invalidateQueries({ queryKey: ["my-subscription", user.id] }),
+            queryClient.invalidateQueries({ queryKey: ["my-subscription-orders", user.id] }),
+          ]);
+        }
         navigate("/dashboard");
       },
     });

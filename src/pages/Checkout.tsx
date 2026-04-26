@@ -77,6 +77,16 @@ export default function Checkout() {
         });
 
       if (error) throw error;
+
+      // Invalidate caches that gate routing & subscription state, otherwise
+      // ProtectedRoute would re-read its stale "no subscription" snapshot
+      // and bounce the user back to /checkout.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["onboarding-status", user.id] }),
+        queryClient.invalidateQueries({ queryKey: ["my-subscription", user.id] }),
+        queryClient.invalidateQueries({ queryKey: ["my-subscription-orders", user.id] }),
+      ]);
+
       toast.success("Essai de 3 jours activé ! Bienvenue 🎉");
       navigate("/dashboard", { replace: true });
     } catch (err: any) {

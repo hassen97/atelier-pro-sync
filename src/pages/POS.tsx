@@ -21,6 +21,7 @@ import { CustomerCombobox } from "@/components/customers/CustomerCombobox";
 import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 
 interface CartItem {
@@ -60,6 +61,17 @@ export default function POS() {
   const { settings } = useShopSettingsContext();
   const { isEmployee } = useInventoryAccess();
   const { format } = useCurrency();
+
+  // Live-refresh product stock so cashiers never oversell on the cached grid
+  useRealtimeSubscription({
+    tables: ["products", "sales"],
+    queryKeys: [
+      ["products-all"],
+      ["products"],
+      ["products-low-stock"],
+      ["inventory-stats"],
+    ],
+  });
 
   // Completed repairs only
   const completedRepairs = (rawRepairs || []).filter((r: any) => r.status === "completed");

@@ -242,10 +242,18 @@ export async function generateThermalReceipt(
     }
   }
 
-  // Logo
+  // Logo — size is configurable per shop via settings.logo_size
   let logoTag = "";
   if (settings.logo_url) {
-    logoTag = `<img src="${escHtml(settings.logo_url)}" style="max-width:50mm;max-height:20mm;display:block;margin:0 auto 2mm;" alt="logo" crossorigin="anonymous" />`;
+    const sizeMap: Record<string, { w: string; h: string }> = {
+      small:  { w: "30mm", h: "15mm" },
+      medium: { w: "50mm", h: "20mm" },
+      large:  { w: "65mm", h: "30mm" },
+      xlarge: { w: "72mm", h: "40mm" },
+    };
+    const sizeKey = ((settings as any).logo_size as string) || "medium";
+    const { w, h } = sizeMap[sizeKey] || sizeMap.medium;
+    logoTag = `<img src="${escHtml(settings.logo_url)}" style="max-width:${w};max-height:${h};width:auto;height:auto;display:block;margin:0 auto 2mm;" alt="logo" crossorigin="anonymous" />`;
   }
 
   // Items table

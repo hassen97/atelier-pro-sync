@@ -94,7 +94,7 @@ export function useAllProducts() {
       return all as (Omit<any, 'barcodes'> & { barcodes: string[] })[];
     },
     enabled: !!effectiveUserId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 

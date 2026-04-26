@@ -34,6 +34,7 @@ export default function Checkout() {
   const { data: plans } = usePublicPlans();
   const { data: gateways, isLoading: gatewaysLoading } = useEnabledGateways();
   const createOrder = useCreateOrder();
+  const queryClient = useQueryClient();
   const [startingTrial, setStartingTrial] = useState(false);
 
   const [selectedGateway, setSelectedGateway] = useState<string | null>(null);

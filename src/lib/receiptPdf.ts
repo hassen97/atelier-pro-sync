@@ -121,9 +121,56 @@ export function printThermalHtml(html: string, windowSize = "width=400,height=60
   printWindow.document.write(html);
   printWindow.document.close();
   printWindow.focus();
-  setTimeout(() => {
-    printWindow.print();
-  }, 400);
+
+  // Wait for all images (QR, barcode, logo) to fully load before triggering
+  // the print dialog. Without this, slow networks or remote images caused
+  // the print to fire before the image was decoded → blank QR/logo.
+  const triggerPrint = () => {
+    try {
+      printWindow.focus();
+      printWindow.print();
+    } catch {
+      /* noop */
+    }
+  };
+
+  const waitForImages = () => {
+    const imgs = Array.from(printWindow.document.images);
+    if (imgs.length === 0) {
+      setTimeout(triggerPrint, 150);
+      return;
+    }
+    let remaining = imgs.length;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      // Small extra delay to let layout settle after the last image decodes
+      setTimeout(triggerPrint, 100);
+    };
+    const onOne = () => {
+      remaining -= 1;
+      if (remaining <= 0) finish();
+    };
+    imgs.forEach((img) => {
+      if (img.complete && img.naturalWidth > 0) {
+        onOne();
+      } else {
+        img.addEventListener("load", onOne, { once: true });
+        img.addEventListener("error", onOne, { once: true });
+      }
+    });
+    // Hard safety net: never wait more than 4s
+    setTimeout(finish, 4000);
+  };
+
+  if (printWindow.document.readyState === "complete") {
+    waitForImages();
+  } else {
+    printWindow.addEventListener("load", waitForImages, { once: true });
+    // Fallback in case 'load' never fires (some popup blockers / WebView)
+    setTimeout(waitForImages, 600);
+  }
 }
 
 async function generateBarcodeDataUrl(value: string): Promise<string | null> {
@@ -142,6 +189,21 @@ async function generateBarcodeDataUrl(value: string): Promise<string | null> {
       lineColor: "#000000",
     });
     return canvas.toDataURL("image/png");
+  } catch {
+    return null;
+  }
+}
+
+async function generateQrDataUrl(value: string): Promise<string | null> {
+  try {
+    const mod = await import("qrcode");
+    const QRCode = (mod as any).default ?? mod;
+    return await QRCode.toDataURL(value, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 220,
+      color: { dark: "#000000", light: "#FFFFFF" },
+    });
   } catch {
     return null;
   }
@@ -167,11 +229,17 @@ export async function generateThermalReceipt(
     }
   }
 
-  // QR code
+  // QR code — generated locally as a base64 PNG so it always prints, even
+  // offline or on slow networks. Falls back to plain-text URL if generation fails.
   let qrImgTag = "";
   if (data.trackingUrl) {
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.trackingUrl)}&format=png&margin=2`;
-    qrImgTag = `<img class="thermal-qr" src="${qrUrl}" style="width:${printerWidth === "58mm" ? "19mm" : "24mm"};" alt="QR" />`;
+    const qrDataUrl = await generateQrDataUrl(data.trackingUrl);
+    const qrSize = printerWidth === "58mm" ? "19mm" : "24mm";
+    if (qrDataUrl) {
+      qrImgTag = `<img class="thermal-qr" src="${qrDataUrl}" style="width:${qrSize};" alt="QR" />`;
+    } else {
+      qrImgTag = `<p class="terms" style="word-break:break-all;">${escHtml(data.trackingUrl)}</p>`;
+    }
   }
 
   // Logo

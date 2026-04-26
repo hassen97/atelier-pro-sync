@@ -128,6 +128,60 @@ serve(async (req) => {
 
       // ─── LIST OWNERS ───
       if (!action || action === "list") {
+        // Self-healing safety net: backfill any auth.users that are missing
+        // profile/role/shop_settings rows (e.g. signup trigger silently failed).
+        try {
+          const { data: authList } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          const authUsers = authList?.users || [];
+          if (authUsers.length > 0) {
+            const authIds = authUsers.map((u: any) => u.id);
+            const [profRes, roleRes, shopRes] = await Promise.all([
+              adminClient.from("profiles").select("user_id").in("user_id", authIds),
+              adminClient.from("user_roles").select("user_id").in("user_id", authIds),
+              adminClient.from("shop_settings").select("user_id").in("user_id", authIds),
+            ]);
+            const haveProfile = new Set((profRes.data || []).map((r: any) => r.user_id));
+            const haveRole = new Set((roleRes.data || []).map((r: any) => r.user_id));
+            const haveShop = new Set((shopRes.data || []).map((r: any) => r.user_id));
+
+            const missingProfiles = authUsers.filter((u: any) => !haveProfile.has(u.id)).map((u: any) => ({
+              user_id: u.id,
+              full_name: u.user_metadata?.full_name || u.email,
+              username: (u.user_metadata?.username || "").toLowerCase() || null,
+              is_locked: false,
+              phone: u.user_metadata?.phone || null,
+              whatsapp_phone: u.user_metadata?.whatsapp_phone || null,
+              email: u.user_metadata?.email || u.email,
+              verification_status: "verified",
+              verified_at: new Date().toISOString(),
+            }));
+            const missingRoles = authUsers.filter((u: any) => !haveRole.has(u.id)).map((u: any) => ({
+              user_id: u.id,
+              role: "super_admin",
+            }));
+            const missingShops = authUsers.filter((u: any) => !haveShop.has(u.id)).map((u: any) => ({
+              user_id: u.id,
+              country: u.user_metadata?.country || "TN",
+              currency: u.user_metadata?.currency || "TND",
+            }));
+
+            if (missingProfiles.length > 0) {
+              await adminClient.from("profiles").upsert(missingProfiles, { onConflict: "user_id", ignoreDuplicates: true });
+            }
+            if (missingRoles.length > 0) {
+              await adminClient.from("user_roles").upsert(missingRoles, { onConflict: "user_id,role", ignoreDuplicates: true });
+            }
+            if (missingShops.length > 0) {
+              await adminClient.from("shop_settings").upsert(missingShops, { onConflict: "user_id", ignoreDuplicates: true });
+            }
+            if (missingProfiles.length || missingRoles.length || missingShops.length) {
+              console.log(`[admin-list] Self-healed orphaned accounts: profiles=${missingProfiles.length}, roles=${missingRoles.length}, shops=${missingShops.length}`);
+            }
+          }
+        } catch (healErr) {
+          console.warn("[admin-list] Self-heal step failed (continuing):", healErr);
+        }
+
         const { data: profiles } = await adminClient
           .from("profiles")
           .select("user_id, full_name, username, created_at, is_locked, last_online_at, phone, whatsapp_phone, email, verification_status")

@@ -16,6 +16,7 @@ const ActionSchema = z.object({
     "get-platform-settings", "update-platform-setting",
     "list-employees", "delete-employee", "get-shop-details",
     "get-waitlist-stats", "get-waitlist-detailed-stats", "list-waitlist",
+    "get-onboarding-stats",
     "list-plans", "update-plan",
     "list-feature-flags", "toggle-feature-flag",
     "list-payment-gateways", "toggle-payment-gateway", "update-gateway-config",
@@ -451,6 +452,71 @@ serve(async (req) => {
       if (action === "list-waitlist") {
         const { data: entries } = await adminClient.from("waitlist").select("*").order("created_at", { ascending: false });
         return jsonResp({ entries: entries || [] });
+      }
+
+      // ─── ONBOARDING SETUP STATS ───
+      if (action === "get-onboarding-stats") {
+        const MAX_REMINDERS = 2;
+
+        // All super_admin user_ids
+        const { data: roles } = await adminClient
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "super_admin");
+        const ownerIds = (roles || []).map((r: any) => r.user_id);
+
+        if (ownerIds.length === 0) {
+          return jsonResp({
+            totalIncomplete: 0,
+            withEmail: 0,
+            withoutEmail: 0,
+            reachableRemindersLeft: 0,
+          });
+        }
+
+        // Shop settings for those owners with onboarding incomplete
+        const { data: settings } = await adminClient
+          .from("shop_settings")
+          .select("user_id, onboarding_completed, onboarding_reminders_sent")
+          .in("user_id", ownerIds)
+          .eq("onboarding_completed", false);
+
+        const incompleteIds = (settings || []).map((s: any) => s.user_id);
+        const remindersMap = new Map(
+          (settings || []).map((s: any) => [s.user_id, s.onboarding_reminders_sent ?? 0])
+        );
+
+        let withEmail = 0;
+        let withoutEmail = 0;
+        let reachableRemindersLeft = 0;
+
+        if (incompleteIds.length > 0) {
+          const { data: profiles } = await adminClient
+            .from("profiles")
+            .select("user_id, email")
+            .in("user_id", incompleteIds);
+          const emailMap = new Map(
+            (profiles || []).map((p: any) => [p.user_id, p.email || ""])
+          );
+          for (const uid of incompleteIds) {
+            const email = emailMap.get(uid) || "";
+            const hasEmail = !!email && email.includes("@");
+            if (hasEmail) {
+              withEmail++;
+              const sent = remindersMap.get(uid) ?? 0;
+              if (sent < MAX_REMINDERS) reachableRemindersLeft++;
+            } else {
+              withoutEmail++;
+            }
+          }
+        }
+
+        return jsonResp({
+          totalIncomplete: incompleteIds.length,
+          withEmail,
+          withoutEmail,
+          reachableRemindersLeft,
+        });
       }
 
       // ─── SUBSCRIPTION PLANS ───

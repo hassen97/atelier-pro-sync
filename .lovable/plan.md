@@ -1,45 +1,46 @@
-# Fix admin reminder cards showing 0
+## Goal
+Make the **Rappels de configuration boutique** card reflect what you actually care about: users who **have not completed setup**, even when they do not have an email attached.
 
-## Root cause analysis
-
-After inspecting the database, both "0" displays have different causes:
-
-**1. Waitlist Invitations card — real bug**
-- The `waitlist` table contains **39 rows**, all with `notified_at = NULL` and `signed_up_user_id = NULL`.
-- Current admin (`hassen`) has `platform_admin` and RLS allows `SELECT`.
-- The card's query `supabase.from("waitlist" as any).select("id, notified_at, signed_up_user_id")` is silently failing or being intercepted, but errors are only `console.error`'d (no toast). The user sees 0 with no signal.
-- Most likely culprit: the typed client rejects the unknown table name at runtime in some build paths, OR the response is being truncated. Either way, the "Rafraîchir" button gives no feedback when it fails.
-
-**2. Verification Reminders (waiting list) card — accurate but pointless**
-- The `handle_new_user` DB trigger sets `verification_status = 'verified'` for **every** new signup (it no longer puts anyone in `pending_verification`).
-- Result: the database has **0 profiles** in that status, so "0" is mathematically correct — but the card will *always* show 0 going forward.
-- This card was built when the verification flow was active; it is now orphaned.
+## What I found
+- The current onboarding card shows two numbers:
+  - owners with incomplete setup
+  - owners with a valid email
+- In the database right now:
+  - **295** owners have not completed setup
+  - only **14** of them have an email attached
+  - **281** do not have an email attached
+- So the current UI is technically correct for email sending, but misleading for tracking incomplete setup.
 
 ## Plan
+1. **Add a dedicated admin stats action** in the backend admin function for onboarding reminders.
+   - Return:
+     - total owners with incomplete setup
+     - count with email
+     - count without email
+     - count still eligible for email reminders
+   - Use the service-role-backed admin function so the admin UI gets consistent stats.
 
-### Step 1 — Fix the waitlist card (real bug)
-Update `src/components/admin/WaitlistInvitationsAdminCard.tsx`:
-- Switch to a server-trusted source: call the existing `admin-manage-users` edge function with a new action `get-waitlist-detailed-stats` (uses service role, bypasses RLS, immune to the typed-client `as any` issue). Returns `{ total, pending, notified, signedUp }`.
-- Surface failures with `toast.error` so refresh failures stop being silent.
-- Add the row count to the toast on success ("39 inscrits chargés") so the admin gets confirmation.
+2. **Update `OnboardingRemindersAdminCard.tsx`** to show setup progress first.
+   - Replace the current emphasis on “Avec email valide” with metrics centered on:
+     - **Configuration non terminée**
+     - **Sans email lié**
+   - Keep the email-send button tied only to users who can actually receive reminders.
+   - Add helper text explaining that many users are blocked from email reminders because no email is linked to their account.
 
-Update `supabase/functions/admin-manage-users/index.ts`:
-- Add the new `get-waitlist-detailed-stats` action that runs the four counts on the `waitlist` table with the service role client.
+3. **Refine the CTA and empty/edge states**.
+   - Button label should make it clear it sends only to reachable users.
+   - If many users lack email, show an info box instead of making the card look broken.
+   - Preserve refresh + manual send behavior.
 
-### Step 2 — Make the verification reminders card honest
-Update `src/components/admin/VerificationRemindersAdminCard.tsx`:
-- Add a clear empty-state hint when `eligibleCount === 0`: explain that no users are currently in `pending_verification` because new signups are auto-verified, and the card will activate automatically if that policy changes.
-- Keep the card (no removal) so it stays ready if verification is re-enabled later.
+## Files to update
+- `supabase/functions/admin-manage-users/index.ts`
+- `src/components/admin/OnboardingRemindersAdminCard.tsx`
 
-### Step 3 — Quick verification
-After deploy, open Admin → Paramètres and confirm:
-- Waitlist card shows **39 / 39 pending / 0 notified / 0 signed up**.
-- "Envoyer l'invitation à 39 personnes" button is enabled.
-- Verification card shows 0 with a friendly explanation instead of looking broken.
+## Technical details
+- No database schema change needed.
+- No auth flow change needed.
+- Email sending logic in `send-onboarding-reminder` stays intact; only the admin stats/display layer changes.
+- I’ll keep the card consistent with the existing waitlist card pattern so counts come from a single admin endpoint.
 
-## Files touched
-- `src/components/admin/WaitlistInvitationsAdminCard.tsx` (rewrite load logic, add error toasts)
-- `src/components/admin/VerificationRemindersAdminCard.tsx` (empty-state hint)
-- `supabase/functions/admin-manage-users/index.ts` (new action `get-waitlist-detailed-stats`)
-
-No DB migration required.
+## Expected result
+After this change, the card will no longer look “empty” just because most accounts have no linked email. It will clearly show the real onboarding backlog and separately indicate how many can actually be reached by email.

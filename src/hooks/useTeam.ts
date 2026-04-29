@@ -12,6 +12,8 @@ export interface TeamMember {
   allowed_pages: string[];
   status: string;
   created_at: string;
+  base_salary?: number | null;
+  hire_date?: string | null;
   profile?: {
     username: string | null;
     full_name: string | null;
@@ -46,6 +48,7 @@ export const ALL_PAGES = [
   { href: "/invoices", label: "Factures" },
   { href: "/statistics", label: "Statistiques" },
   { href: "/profit", label: "Profit" },
+  { href: "/team", label: "Équipe" },
   { href: "/settings", label: "Paramètres" },
   { href: "/communaute", label: "Entraide" },
   { href: "/messages", label: "Messages" },

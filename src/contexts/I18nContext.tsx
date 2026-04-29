@@ -21,6 +21,7 @@ const translations = {
     "nav.feedback": "Signaler / Suggérer",
     "nav.community": "Entraide",
     "nav.messages": "Messages",
+    "nav.team": "Équipe",
 
     // Common
     "common.save": "Enregistrer",
@@ -133,6 +134,7 @@ const translations = {
     "nav.warranty": "Warranty",
     "nav.community": "Community",
     "nav.messages": "Messages",
+    "nav.team": "Team",
     "nav.settings": "Settings",
     "nav.feedback": "Report / Suggest",
 

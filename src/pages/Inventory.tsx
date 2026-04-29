@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback } from "react";
-import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Package, AlertTriangle, MoreHorizontal, Download, History, Zap, FileSpreadsheet, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useEffectiveUserId } from "@/hooks/useTeam";
+import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -58,6 +60,8 @@ export default function Inventory() {
   
   // Unlock dialog
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const effectiveUserId = useEffectiveUserId();
   
   // Pulse animation
   const [pulsedProductId, setPulsedProductId] = useState<string | null>(null);
@@ -196,6 +200,95 @@ export default function Inventory() {
     returnFocusToScanBar();
   };
 
+  // Export full inventory to CSV (paged fetch, sanitized)
+  const handleExport = useCallback(async () => {
+    if (!effectiveUserId) {
+      toast.error("Session non valide");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const PAGE = 1000;
+      let from = 0;
+      const all: Array<{ name: string; sku: string | null; quantity: number; cost_price: number; sell_price: number; category_id: string | null }> = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("name, sku, quantity, cost_price, sell_price, category_id")
+          .eq("user_id", effectiveUserId)
+          .order("name", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = data || [];
+        all.push(...(batch as any));
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+
+      // Resolve category names in one query
+      const catIds = Array.from(new Set(all.map((p) => p.category_id).filter(Boolean) as string[]));
+      const catMap = new Map<string, string>();
+      if (catIds.length > 0) {
+        const { data: cats } = await supabase
+          .from("categories")
+          .select("id, name")
+          .in("id", catIds);
+        (cats || []).forEach((c: any) => catMap.set(c.id, c.name));
+      }
+
+      const sanitize = (v: unknown): string => {
+        const s = v == null ? "" : String(v);
+        // Strip line breaks and dangerous CSV chars; escape double quotes
+        const cleaned = s.replace(/[\r\n]+/g, " ").trim();
+        if (/[";]/.test(cleaned)) {
+          return `"${cleaned.replace(/"/g, '""')}"`;
+        }
+        return cleaned;
+      };
+
+      const headers = [
+        "Nom du produit",
+        "Référence/SKU",
+        "Catégorie",
+        "Quantité en stock",
+        "Prix d'achat",
+        "Prix de vente",
+      ];
+      const lines: string[] = [headers.join(";")];
+      for (const p of all) {
+        lines.push([
+          sanitize(p.name),
+          sanitize(p.sku ?? ""),
+          sanitize(p.category_id ? (catMap.get(p.category_id) ?? "") : ""),
+          sanitize(p.quantity ?? 0),
+          sanitize(Number(p.cost_price ?? 0).toFixed(2)),
+          sanitize(Number(p.sell_price ?? 0).toFixed(2)),
+        ].join(";"));
+      }
+
+      // BOM for Excel-FR + UTF-8
+      const csv = "\uFEFF" + lines.join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `inventaire-${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+
+      toast.success(`Export terminé — ${all.length} produit${all.length > 1 ? "s" : ""}`);
+    } catch (err) {
+      console.error("Inventory export failed:", err);
+      toast.error("Erreur lors de l'export");
+    } finally {
+      setIsExporting(false);
+    }
+  }, [effectiveUserId]);
+
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -221,7 +314,12 @@ export default function Inventory() {
             Déverrouillé
           </Badge>
         )}
-        <Button variant="outline"><Download className="h-4 w-4 mr-2" />Exporter</Button>
+        <PremiumFeature featureKey="inventory_export" featureName="Export Inventaire" mode="locked">
+          <Button variant="outline" onClick={handleExport} disabled={isExporting} className="gap-2">
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {isExporting ? "Export en cours..." : "Exporter"}
+          </Button>
+        </PremiumFeature>
         <PremiumFeature featureKey="inventory_export" featureName="Export Inventaire" mode="locked">
           <Button
             variant="outline"

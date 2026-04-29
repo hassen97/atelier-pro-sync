@@ -400,6 +400,45 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          employee_id: string
+          expense_id: string | null
+          id: string
+          transaction_date: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id: string
+          expense_id?: string | null
+          id?: string
+          transaction_date?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id?: string
+          expense_id?: string | null
+          id?: string
+          transaction_date?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           created_at: string
@@ -1741,7 +1780,9 @@ export type Database = {
       team_members: {
         Row: {
           allowed_pages: string[]
+          base_salary: number
           created_at: string
+          hire_date: string | null
           id: string
           member_user_id: string
           owner_id: string
@@ -1750,7 +1791,9 @@ export type Database = {
         }
         Insert: {
           allowed_pages?: string[]
+          base_salary?: number
           created_at?: string
+          hire_date?: string | null
           id?: string
           member_user_id: string
           owner_id: string
@@ -1759,7 +1802,9 @@ export type Database = {
         }
         Update: {
           allowed_pages?: string[]
+          base_salary?: number
           created_at?: string
+          hire_date?: string | null
           id?: string
           member_user_id?: string
           owner_id?: string

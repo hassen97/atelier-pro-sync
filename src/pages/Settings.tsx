@@ -694,6 +694,50 @@ export default function Settings() {
           </div>
         </GlassCard>
 
+        {/* Loyalty Program */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Tag} title="Programme de fidélité" description="Récompensez vos clients avec des points sur ventes et réparations" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/30">
+                <div>
+                  <p className="font-medium text-sm">Activer la fidélité</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Les clients gagnent et peuvent dépenser des points</p>
+                </div>
+                <Switch checked={loyaltyEnabled} onCheckedChange={setLoyaltyEnabled} />
+              </div>
+
+              {loyaltyEnabled && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="loyaltyEarnRate">Taux de gain (points par {settings.currency || "TND"})</Label>
+                    <Input id="loyaltyEarnRate" type="number" step="0.1" min="0" value={loyaltyEarnRate} onChange={(e) => setLoyaltyEarnRate(e.target.value)} className="max-w-[160px] font-mono-numbers" />
+                    <p className="text-xs text-muted-foreground">Ex : 1 = 1 point par {settings.currency || "TND"} dépensé.</p>
+                  </div>
+                  <Separator />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="loyaltyRedeemPoints">Points par bloc d'échange</Label>
+                      <Input id="loyaltyRedeemPoints" type="number" min="1" value={loyaltyRedeemPoints} onChange={(e) => setLoyaltyRedeemPoints(e.target.value)} className="font-mono-numbers" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="loyaltyRedeemValue">Valeur du bloc ({settings.currency || "TND"})</Label>
+                      <Input id="loyaltyRedeemValue" type="number" step="0.001" min="0" value={loyaltyRedeemValue} onChange={(e) => setLoyaltyRedeemValue(e.target.value)} className="font-mono-numbers" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {loyaltyRedeemPoints} pts = {loyaltyRedeemValue} {settings.currency || "TND"} de réduction.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="loyaltyMinRedeem">Solde minimum pour utiliser les points</Label>
+                    <Input id="loyaltyMinRedeem" type="number" min="0" value={loyaltyMinRedeem} onChange={(e) => setLoyaltyMinRedeem(e.target.value)} className="max-w-[160px] font-mono-numbers" />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </GlassCard>
+
         <Button className="bg-gradient-primary hover:opacity-90" onClick={handleSaveGeneralSettings} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           {saving ? "Enregistrement..." : "Enregistrer les paramètres boutique"}

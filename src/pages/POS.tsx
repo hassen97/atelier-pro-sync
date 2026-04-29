@@ -228,12 +228,17 @@ export default function POS() {
 
     if (productItems.length > 0) {
       const productTotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const productPaid = Math.max(0, productTotal - (repairItems.length === 0 ? loyaltyDiscount : 0));
       await createSale.mutateAsync({
-        customer_id: null,
+        customer_id: selectedCustomerId || null,
         payment_method: "cash",
-        total_amount: productTotal,
-        amount_paid: productTotal,
+        total_amount: Math.max(0, productTotal - (repairItems.length === 0 ? loyaltyDiscount : 0)),
+        amount_paid: productPaid,
         items: productItems.map((item) => ({ product_id: item.id, quantity: item.quantity, unit_price: item.price })),
+        loyalty_enabled: settings.loyalty_enabled && !!selectedCustomerId,
+        loyalty_earn_rate: settings.loyalty_earn_rate,
+        loyalty_points_used: repairItems.length === 0 ? loyaltyPointsUsed : 0,
+        loyalty_discount: repairItems.length === 0 ? loyaltyDiscount : 0,
       });
     }
 
@@ -294,7 +299,9 @@ export default function POS() {
 
     // Create sale for products
     if (productItems.length > 0) {
-      const productTotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const productTotalRaw = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const effectiveLoyaltyDiscount = repairItems.length === 0 ? loyaltyDiscount : 0;
+      const productTotal = Math.max(0, productTotalRaw - effectiveLoyaltyDiscount);
       const productPaid = repairItems.length > 0
         ? Math.min(actualPaid, productTotal)
         : actualPaid;
@@ -304,6 +311,10 @@ export default function POS() {
         total_amount: productTotal,
         amount_paid: Math.min(productPaid, productTotal),
         items: productItems.map((item) => ({ product_id: item.id, quantity: item.quantity, unit_price: item.price })),
+        loyalty_enabled: settings.loyalty_enabled && !!selectedCustomerId,
+        loyalty_earn_rate: settings.loyalty_earn_rate,
+        loyalty_points_used: repairItems.length === 0 ? loyaltyPointsUsed : 0,
+        loyalty_discount: effectiveLoyaltyDiscount,
       });
     }
 

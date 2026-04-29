@@ -314,7 +314,12 @@ export default function Inventory() {
             Déverrouillé
           </Badge>
         )}
-        <Button variant="outline"><Download className="h-4 w-4 mr-2" />Exporter</Button>
+        <PremiumFeature featureKey="inventory_export" featureName="Export Inventaire" mode="locked">
+          <Button variant="outline" onClick={handleExport} disabled={isExporting} className="gap-2">
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {isExporting ? "Export en cours..." : "Exporter"}
+          </Button>
+        </PremiumFeature>
         <PremiumFeature featureKey="inventory_export" featureName="Export Inventaire" mode="locked">
           <Button
             variant="outline"

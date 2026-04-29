@@ -163,6 +163,13 @@ export default function Settings() {
   const [warrantyDays, setWarrantyDays] = useState("30");
   const [showPaymentOnTracking, setShowPaymentOnTracking] = useState(false);
   const [storeHours, setStoreHours] = useState("");
+
+  // Loyalty
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
+  const [loyaltyEarnRate, setLoyaltyEarnRate] = useState("1");
+  const [loyaltyRedeemPoints, setLoyaltyRedeemPoints] = useState("100");
+  const [loyaltyRedeemValue, setLoyaltyRedeemValue] = useState("5");
+  const [loyaltyMinRedeem, setLoyaltyMinRedeem] = useState("100");
   
   // Phone / WhatsApp state
   const [profilePhone, setProfilePhone] = useState("");
@@ -221,6 +228,11 @@ export default function Settings() {
       setShowPaymentOnTracking((settings as any).show_payment_on_tracking ?? false);
       setStoreHours((settings as any).store_hours || "");
       setLogoSize(((settings as any).logo_size as any) || "medium");
+      setLoyaltyEnabled(!!(settings as any).loyalty_enabled);
+      setLoyaltyEarnRate(String((settings as any).loyalty_earn_rate ?? 1));
+      setLoyaltyRedeemPoints(String((settings as any).loyalty_redeem_points ?? 100));
+      setLoyaltyRedeemValue(String((settings as any).loyalty_redeem_value ?? 5));
+      setLoyaltyMinRedeem(String((settings as any).loyalty_min_redeem ?? 100));
     }
   }, [loading, settings]);
 

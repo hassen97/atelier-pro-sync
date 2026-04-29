@@ -58,6 +58,11 @@ const defaultSettings: ShopSettings = {
   warranty_days: 30,
   show_payment_on_tracking: false,
   store_hours: null,
+  loyalty_enabled: false,
+  loyalty_earn_rate: 1,
+  loyalty_redeem_points: 100,
+  loyalty_redeem_value: 5,
+  loyalty_min_redeem: 100,
 };
 
 export function useShopSettings() {

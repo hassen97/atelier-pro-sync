@@ -572,9 +572,30 @@ export default function POS() {
               )}
             </div>
 
+            {/* Loyalty redeem */}
+            {settings.loyalty_enabled && selectedCustomerEarly && cart.some(i => i.type === "product") && !cart.some(i => i.type === "repair") && (
+              <div className="shrink-0 pt-2">
+                <LoyaltyRedeemCard
+                  customerName={selectedCustomerEarly.name}
+                  customerPoints={(selectedCustomerEarly as any).loyalty_points ?? 0}
+                  redeemPoints={settings.loyalty_redeem_points || 100}
+                  redeemValue={settings.loyalty_redeem_value || 0}
+                  minRedeem={settings.loyalty_min_redeem || 100}
+                  cartSubtotal={subtotal}
+                  pointsUsed={loyaltyPointsUsed}
+                  enabled={loyaltyEnabled}
+                  onEnabledChange={setLoyaltyEnabled}
+                  onPointsUsedChange={setLoyaltyPointsUsed}
+                />
+              </div>
+            )}
+
             <div className="shrink-0 pt-3 space-y-2">
               <Separator />
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="font-mono-numbers">{format(subtotal)}</span></div>
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between text-sm text-success"><span>Fidélité (-{loyaltyPointsUsed} pts)</span><span className="font-mono-numbers">-{format(loyaltyDiscount)}</span></div>
+              )}
               <Separator />
               <div className="flex justify-between text-lg font-bold"><span>Total</span><span className="font-mono-numbers text-primary">{format(total)}</span></div>
               <div className="grid grid-cols-2 gap-2 pt-2">

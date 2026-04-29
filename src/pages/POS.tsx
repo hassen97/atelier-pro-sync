@@ -193,9 +193,25 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = subtotal;
 
-  const clearCart = () => setCart([]);
+  // Loyalty discount
+  const selectedCustomerEarly = customers.find((c: any) => c.id === selectedCustomerId);
+  const loyaltyDiscount = (settings.loyalty_enabled && loyaltyEnabled && selectedCustomerEarly && loyaltyPointsUsed > 0)
+    ? (loyaltyPointsUsed / (settings.loyalty_redeem_points || 100)) * (settings.loyalty_redeem_value || 0)
+    : 0;
+  const total = Math.max(0, subtotal - loyaltyDiscount);
+
+  const clearCart = () => {
+    setCart([]);
+    setLoyaltyEnabled(false);
+    setLoyaltyPointsUsed(0);
+  };
+
+  // Reset loyalty when customer changes
+  useEffect(() => {
+    setLoyaltyEnabled(false);
+    setLoyaltyPointsUsed(0);
+  }, [selectedCustomerId]);
 
   const openPaymentDialog = (method: string) => {
     if (cart.length === 0) return;

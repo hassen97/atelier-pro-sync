@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffectiveUserId } from "@/hooks/useTeam";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { applyLoyaltyEarn, applyLoyaltyRedeem } from "@/hooks/useLoyalty";
 
 export type Sale = Tables<"sales">;
 export type SaleInsert = TablesInsert<"sales">;
@@ -20,6 +22,18 @@ interface CreateSaleParams {
     quantity: number;
     unit_price: number;
   }[];
+  // Loyalty
+  loyalty_points_used?: number;
+  loyalty_discount?: number;
+  loyalty_enabled?: boolean;
+  loyalty_earn_rate?: number;
+}
+
+export interface CreateSaleResult {
+  sale: Sale;
+  points_earned: number;
+  points_used: number;
+  loyalty_balance_after: number | null;
 }
 
 export function useSales() {

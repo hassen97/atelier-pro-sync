@@ -207,6 +207,7 @@ export function useCreateRepair() {
 export function useUpdateRepair() {
   const queryClient = useQueryClient();
   const effectiveUserId = useEffectiveUserId();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: RepairUpdate & { id: string }) => {
@@ -218,6 +219,11 @@ export function useUpdateRepair() {
         .single();
 
       if (error) throw error;
+
+      // Loyalty earn (idempotent) when fully paid + delivered
+      if (effectiveUserId) {
+        try { await maybeAwardRepairLoyalty(id, effectiveUserId, user?.id ?? null); } catch (e) { console.error("Loyalty award (repair update) failed:", e); }
+      }
       return data;
     },
     // Optimistic update: instantly reflect changes in the cache
@@ -261,6 +267,7 @@ export function useUpdateRepair() {
 export function useUpdateRepairStatus() {
   const queryClient = useQueryClient();
   const effectiveUserId = useEffectiveUserId();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: RepairStatus }) => {
@@ -280,6 +287,11 @@ export function useUpdateRepairStatus() {
         .single();
 
       if (error) throw error;
+
+      // Loyalty earn (idempotent) when transitioning to delivered & fully paid
+      if (effectiveUserId && status === "delivered") {
+        try { await maybeAwardRepairLoyalty(id, effectiveUserId, user?.id ?? null); } catch (e) { console.error("Loyalty award (status) failed:", e); }
+      }
       return data;
     },
     // Optimistic update for instant status badge change

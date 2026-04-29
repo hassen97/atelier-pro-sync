@@ -1,136 +1,178 @@
-## Two deliverables
+## Customer Loyalty Points System
 
-### 1. Fix Inventory CSV Export
-
-**Bug**: The "Exporter" button in `src/pages/Inventory.tsx` (line 224) has no `onClick` — it's a dead button.
-
-**Fix** (all in `src/pages/Inventory.tsx`):
-
-- Add `isExporting` state + spinner.
-- New async `handleExport()`:
-  1. Fetch the **complete** inventory directly from Supabase, scoped by `useEffectiveUserId()` (so employees export their owner's stock). Use a paged loop (`.range(from, from+999)` in 1000-row chunks) until fewer than 1000 rows are returned — guarantees full export even on shops with > 1000 SKUs and avoids the default 1000-row cap.
-  2. Join `category_id → categories.name` via a single `.in()` lookup.
-  3. Map each row into a clean record:
-     - `Nom du produit`, `Référence/SKU`, `Catégorie`, `Quantité en stock`, `Prix d'achat`, `Prix de vente`.
-  4. **Sanitize**: strip `,`, `\n`, `\r`, `"` from string fields (replace `"` with `""` and wrap any field containing `;` or whitespace in quotes). Use `;` as the delimiter (Excel-FR friendly) and prepend a UTF-8 BOM (`\uFEFF`) so accents render correctly.
-  5. Build a `Blob([csv], { type: 'text/csv;charset=utf-8;' })`, create an `<a>` with `URL.createObjectURL`, click, then `URL.revokeObjectURL` + `remove()` to avoid leaks.
-  6. Filename: `inventaire-YYYY-MM-DD.csv`.
-- Wire the button: `onClick={handleExport}` with `disabled={isExporting}` and a `<Loader2 className="animate-spin" />` icon while running.
-- Wrap the button in `<PremiumFeature featureKey="inventory_export" ...>` (it's already a paid feature flag).
-- Toast success ("Export terminé — N produits") / error.
-
-No DB changes needed for this part.
+A points-based loyalty program: customers earn points on Sales/Repairs and redeem them as discounts in POS. Owner-configurable rates, full audit ledger, and receipt footer summary.
 
 ---
 
-### 2. Employee Management Dashboard (HR + Finance Ledger)
+### 1. Database (one migration)
 
-**Route**: `/team` (added to `App.tsx`, `AppSidebar`, and `ALL_PAGES` in `useTeam.ts` so owners see it and can grant employees access).
+**1.1 Extend `customers`**
+- `loyalty_points integer not null default 0` (running balance, denormalized for fast reads)
 
-#### 2.1 Database (one migration)
+**1.2 Extend `shop_settings`**
+- `loyalty_enabled boolean not null default false`
+- `loyalty_earn_rate numeric not null default 1` — points earned per 1 unit of currency spent (e.g. `1` = 1 pt per 1 DT)
+- `loyalty_redeem_points integer not null default 100` — how many points equal one discount unit
+- `loyalty_redeem_value numeric not null default 5` — discount amount unlocked per `loyalty_redeem_points` block (e.g. 100 pts → 5 DT)
+- `loyalty_min_redeem integer not null default 100` — minimum points required to redeem
 
-**New table `employee_transactions`** (multi-tenant, owner-scoped — uses `user_id` for the shop owner, matching the rest of the schema):
+**1.3 New table `loyalty_transactions`**
 
 ```text
-employee_transactions
+loyalty_transactions
 - id            uuid pk default gen_random_uuid()
-- user_id       uuid not null         -- shop owner (the "shop_id")
-- employee_id   uuid not null         -- references the employee's auth user id
-- type          text not null check (type in ('avance_salaire','prime_bonus','remboursement_frais','salary_payment'))
-- amount        numeric not null default 0
-- description   text
-- transaction_date date not null default current_date
-- expense_id    uuid                  -- link to public.expenses row when paid in cash (for caisse sync)
-- created_at    timestamptz not null default now()
-- created_by    uuid                  -- who logged it (owner or impersonator)
+- user_id       uuid not null            -- shop owner (multi-tenant)
+- customer_id   uuid not null
+- type          text not null check (type in ('earned','redeemed','adjustment'))
+- amount_points integer not null         -- positive for earned, negative for redeemed
+- amount_money  numeric                  -- the spend (earned) or discount (redeemed) that triggered it
+- source        text                     -- 'sale' | 'repair' | 'manual'
+- sale_id       uuid                     -- nullable FK reference (no hard FK to keep delete-safe)
+- repair_id     uuid
+- note          text
+- created_by    uuid                     -- who logged it
+- created_at    timestamptz default now()
 ```
 
-RLS:
-- `Owner or team can view employee_transactions` — `user_id = auth.uid() OR is_team_member(user_id, auth.uid())`
-- `Owner can manage employee_transactions` — `user_id = auth.uid()` (employees can't write financial records about themselves)
+RLS (matches existing project patterns):
+- `Owner or team can view loyalty_transactions` — `user_id = auth.uid() OR is_team_member(user_id, auth.uid())`
+- `Owner or team can insert loyalty_transactions` — same
 - `Platform admin can view all` — `has_role(auth.uid(),'platform_admin')`
+- No update / delete (immutable ledger).
 
-**Add 2 columns to `team_members`** (HR profile fields, optional):
-- `base_salary numeric default 0`
-- `hire_date date`
-
-(monthly settlement = base_salary − sum(avances this month) + sum(remboursements this month) − sum(salary_payment this month).)
-
-**Seed an expense category** automatically on first advance: insert `'Avance Employé'` into `expense_categories` for the owner if missing (handled in mutation, not via migration).
-
-#### 2.2 New hook `src/hooks/useEmployeeTransactions.ts`
-
-- `useEmployees()` — wraps `useTeamMembers()` and enriches each row with `currentBalance` = sum(avance + salary_payment) − sum(prime + remboursement) over the current month (negative = shop owes employee, positive = employee owes shop).
-- `useEmployeeTransactions(employeeId)` — list one employee's ledger.
-- `useCreateEmployeeTransaction()` — inserts the transaction. **If `type === 'avance_salaire'` AND `paidInCash === true`**, also insert a row in `public.expenses` (`category: 'Avance Employé - <name>'`, `amount`, `expense_date = today`, link the new `expense_id` back on the transaction). This keeps the till balanced. Invalidates `['expenses']`, `['profit']`, `['dashboard-stats']`, `['employee-transactions']`.
-- `useEmployeeMonthlyStats(employeeId)` — fetches counts of `repairs.repaired_by = username` and `sales` rows where `created_by` matches, for the current month (best-effort performance KPIs).
-
-#### 2.3 New page `src/pages/Team.tsx`
-
-```text
-+-------------------------------------------------------------+
-| Gestion des Employés                       [+ Nouvel employé]|
-+-------------------------------------------------------------+
-| Card | Card | Card    (one per active team_member)           |
-| Nom  | Rôle | Solde du mois (color-coded)                    |
-+-------------------------------------------------------------+
-```
-
-Click a card → opens a `Sheet` with tabs:
-
-- **Profil** — name, role, hire_date, base_salary (editable inline by owner).
-- **Historique** — table of `employee_transactions` (date, type badge, montant, description, "payé en caisse" badge if linked to an expense).
-- **Performance** — this-month repair count + sale count + total revenue handled.
-- **Clôture du mois** — visual calculator card:
-  ```text
-  Salaire de base        +  X TND
-  Avances (-)            -  X TND
-  Remboursements (+)     +  X TND
-  Primes (+)             +  X TND
-  Salaires déjà payés (-) - X TND
-  ─────────────────────────
-  Net à payer            =  X TND  [Marquer comme payé]
-  ```
-  "Marquer comme payé" opens a confirm modal that creates a `salary_payment` transaction (and optionally a matching cash expense).
-
-Action buttons in the sheet header:
-- **Accorder une avance** → modal: amount, description, checkbox "Payée en espèces (créer une dépense en caisse)" (default ON).
-- **Saisir une dépense remboursable** → modal: amount, description (does NOT touch caisse — it's a debt the shop owes).
-- **Verser une prime** → modal: amount, description.
-
-Empty state if no team members yet → CTA "Ajouter un membre" linking to existing `TeamManagement` flow in Settings.
-
-#### 2.4 Wiring
-
-- `src/App.tsx`: lazy-import `Team`, add `<Route path="/team" element={<Team />} />` inside the protected `ShopSettingsProvider` block.
-- `src/components/layout/AppSidebar.tsx`: add nav entry "Équipe" (Users icon) — owner-only via the existing `useIsOwner()` gate that's already used for sensitive pages, OR include it in the standard `ALL_PAGES` list so owners can grant the page to specific managers.
-- `src/hooks/useTeam.ts`: append `{ href: "/team", label: "Équipe" }` to `ALL_PAGES`.
-
-#### 2.5 Reusing existing infrastructure
-
-- Money formatting → `useCurrency()` (multi-country support).
-- Toasts → `sonner`.
-- Modals → existing `Dialog` / `Sheet` primitives.
-- Realtime invalidation → `useRealtimeSubscription({ tables: ['employee_transactions','expenses'] })` on Team page so multi-device owners see updates live.
+Indexes: `(user_id, customer_id, created_at desc)`, `(sale_id)`, `(repair_id)`.
 
 ---
 
-### Files touched
+### 2. Earning logic (frontend, inside existing mutations)
 
-**Inventory export fix**
-- `src/pages/Inventory.tsx`
+No DB triggers — keep logic in the React Query mutations so we can read shop settings cleanly and skip when `loyalty_enabled = false` or `customer_id` is null.
 
-**Employee dashboard (new)**
-- `supabase/migrations/<new>.sql` — `employee_transactions` + RLS + `team_members` columns
-- `src/hooks/useEmployeeTransactions.ts` (new)
-- `src/pages/Team.tsx` (new)
-- `src/components/team/EmployeeCard.tsx` (new)
-- `src/components/team/EmployeeDetailSheet.tsx` (new)
-- `src/components/team/GrantAdvanceDialog.tsx` (new)
-- `src/components/team/LogReimbursementDialog.tsx` (new)
-- `src/components/team/MonthlySettlementCard.tsx` (new)
-- `src/App.tsx` — add `/team` route
-- `src/components/layout/AppSidebar.tsx` — add nav entry
-- `src/hooks/useTeam.ts` — add `/team` to `ALL_PAGES`
+**2.1 `useCreateSale` (`src/hooks/useSales.ts`)**
 
-No breaking changes; existing team / expenses / caisse logic stays intact, the new module just plugs into them.
+After the sale + sale_items insert, when a customer is attached and loyalty is enabled:
+```text
+points_earned = floor(amount_paid * loyalty_earn_rate)
+```
+Then in one batch:
+- Insert into `loyalty_transactions` (type `earned`, source `sale`, sale_id, amount_money = amount_paid).
+- `UPDATE customers SET loyalty_points = loyalty_points + points_earned`.
+- Return `{ sale, points_earned, new_balance }` so the UI / receipt can show it.
+
+Already invalidates `sales` / `products`; add `["customers"]` and `["loyalty-transactions"]`.
+
+**2.2 Repairs (`src/hooks/useRepairs.ts`)**
+
+Earning fires only on the transition to **completed/delivered AND fully paid**. Inside the existing repair update mutation:
+- Detect: `old.status !== 'delivered'` AND `new.status === 'delivered'` AND `amount_paid >= total_cost` AND `customer_id` set.
+- Compute points on `total_cost` (the actual spend, not the partial last payment).
+- Same insert + customer balance update.
+- Idempotency guard: skip if a `loyalty_transactions` row already exists for this `repair_id` with `type='earned'` (defensive against double-click).
+
+**2.3 Redemption recording**
+
+When a sale is created with redeemed points (see §3), the same `useCreateSale` mutation also inserts a `redeemed` row with `amount_points = -used_points`, `amount_money = discount_amount`, `source='sale'`, `sale_id=...`, and decrements `customers.loyalty_points` by `used_points`. Earning still applies on the *post-discount* paid amount (so customers don't earn points on points).
+
+---
+
+### 3. Redemption UI (POS / `src/pages/POS.tsx`)
+
+When a customer is selected in the cart AND `loyalty_enabled` AND `customer.loyalty_points >= loyalty_min_redeem`:
+
+Add a card under the cart total:
+
+```text
++--------------------------------------------+
+| Fidélité — Sara B.                         |
+| Solde : 320 pts                            |
+| [Switch] Utiliser mes points              |
+|                                            |
+| (when ON):                                 |
+| Points utilisés : 300 / 320                |
+| [- 100]  [+ 100]                           |
+| Réduction appliquée : -15.00 DT            |
++--------------------------------------------+
+```
+
+Logic:
+- Max usable = `floor(customer.loyalty_points / loyalty_redeem_points) * loyalty_redeem_points`, capped so the discount cannot exceed `cart_subtotal` (no negative totals).
+- Step buttons add/remove `loyalty_redeem_points` at a time.
+- `discount = (used_points / loyalty_redeem_points) * loyalty_redeem_value`.
+- Display final total = subtotal − discount.
+- Pass `loyalty_points_used` and `loyalty_discount` into `useCreateSale`. The mutation stores them in `sales.notes` (appended) and writes the redemption ledger row. (We do *not* alter the `sales` schema — `total_amount` is the post-discount value, matching how the existing receipt prints.)
+
+Repairs do not get a redemption UI in this MVP (kept simple — only POS redeems). Earning still works on repairs.
+
+---
+
+### 4. Customer dossier / dedicated views
+
+- `src/components/customers/CustomerDossierDialog.tsx` — add a **"Fidélité"** section: current balance, "Ajuster" button (manual `adjustment` entry, owner-only), and a paginated history table from `loyalty_transactions` with type badge, date, points, money, link to sale/repair.
+- `src/pages/Customers.tsx` — add a `Solde points` column (sortable).
+
+---
+
+### 5. Settings (`src/pages/Settings.tsx`)
+
+New "Fidélité" subsection inside the **Boutique** tab:
+- Switch: "Activer le programme de fidélité"
+- Input: "Taux de gain — 1 [currency] = X points"
+- Inputs: "Conversion — X points = Y [currency] de réduction"
+- Input: "Seuil minimum pour utiliser les points"
+- Live preview line: "Exemple : un client qui dépense 100 DT gagne 100 points et peut obtenir 5 DT de réduction tous les 100 points."
+
+Persist via the existing `useShopSettings` save flow.
+
+---
+
+### 6. Thermal receipt (`src/lib/receiptPdf.ts`)
+
+When loyalty is enabled AND a customer is attached, append a footer block (matching the existing high-contrast bold thermal style — same font weight, all-caps label, divider line):
+
+```text
+─────────────────────────────
+FIDÉLITÉ
+Points gagnés : +25
+Points utilisés : -100  (-5.00 DT)   ← only if redeemed
+Nouveau solde : 245 pts
+─────────────────────────────
+```
+
+The receipt generator receives `points_earned`, `points_used`, `loyalty_balance_after` as new optional fields; the POS finalize flow passes them after `useCreateSale` resolves. If the customer is anonymous or loyalty is off, the section is omitted entirely.
+
+Apply the same change to the repair receipt (`RepairReceiptDialog.tsx`) for the "delivered & paid" print.
+
+---
+
+### 7. Files touched
+
+**New**
+- `supabase/migrations/<ts>_loyalty_program.sql` — column adds + table + RLS + indexes
+- `src/hooks/useLoyalty.ts` — `useLoyaltyTransactions(customerId)`, `useAdjustLoyaltyPoints()` (owner-only manual)
+- `src/components/pos/LoyaltyRedeemCard.tsx` — POS redemption widget
+- `src/components/customers/LoyaltyHistoryTab.tsx` — dossier history view
+- `src/components/settings/LoyaltySettings.tsx` — settings panel
+
+**Edited**
+- `src/hooks/useSales.ts` — earn + redeem logic in `useCreateSale`
+- `src/hooks/useRepairs.ts` — earn on delivered+paid transition (with idempotency guard)
+- `src/pages/POS.tsx` — render `LoyaltyRedeemCard`, pass redemption to mutation, pass receipt loyalty fields
+- `src/pages/Customers.tsx` — points column
+- `src/components/customers/CustomerDossierDialog.tsx` — Fidélité tab
+- `src/pages/Settings.tsx` — mount `LoyaltySettings` in Boutique tab
+- `src/hooks/useShopSettings.ts` — expose new loyalty fields
+- `src/lib/receiptPdf.ts` — footer block
+- `src/components/repairs/RepairReceiptDialog.tsx` — footer block
+- `src/contexts/I18nContext.tsx` — translation keys
+
+---
+
+### 8. Edge cases / decisions
+
+- **Refunds / returns**: out of scope for MVP — manual `adjustment` ledger entry by the owner is the workflow. (Adding auto-clawback on returns can be a phase 2; the Returns/RMA module is frozen per project memory.)
+- **Anonymous sales** (no `customer_id`): no points awarded, no receipt loyalty block.
+- **Concurrency**: balance update uses an optimistic read-modify-write. Duplicate inserts are caught by the per-sale/per-repair idempotency check on the ledger.
+- **Employee privacy**: loyalty values are not financial margins, so they're visible to all team members (consistent with `customers` RLS).
+- **Migration safety**: pure additive — adds columns with defaults and a new table. No data loss risk.
+
+Approve to proceed with the migration + implementation.

@@ -193,9 +193,25 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = subtotal;
 
-  const clearCart = () => setCart([]);
+  // Loyalty discount
+  const selectedCustomerEarly = customers.find((c: any) => c.id === selectedCustomerId);
+  const loyaltyDiscount = (settings.loyalty_enabled && loyaltyEnabled && selectedCustomerEarly && loyaltyPointsUsed > 0)
+    ? (loyaltyPointsUsed / (settings.loyalty_redeem_points || 100)) * (settings.loyalty_redeem_value || 0)
+    : 0;
+  const total = Math.max(0, subtotal - loyaltyDiscount);
+
+  const clearCart = () => {
+    setCart([]);
+    setLoyaltyEnabled(false);
+    setLoyaltyPointsUsed(0);
+  };
+
+  // Reset loyalty when customer changes
+  useEffect(() => {
+    setLoyaltyEnabled(false);
+    setLoyaltyPointsUsed(0);
+  }, [selectedCustomerId]);
 
   const openPaymentDialog = (method: string) => {
     if (cart.length === 0) return;
@@ -212,12 +228,17 @@ export default function POS() {
 
     if (productItems.length > 0) {
       const productTotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const productPaid = Math.max(0, productTotal - (repairItems.length === 0 ? loyaltyDiscount : 0));
       await createSale.mutateAsync({
-        customer_id: null,
+        customer_id: selectedCustomerId || null,
         payment_method: "cash",
-        total_amount: productTotal,
-        amount_paid: productTotal,
+        total_amount: Math.max(0, productTotal - (repairItems.length === 0 ? loyaltyDiscount : 0)),
+        amount_paid: productPaid,
         items: productItems.map((item) => ({ product_id: item.id, quantity: item.quantity, unit_price: item.price })),
+        loyalty_enabled: settings.loyalty_enabled && !!selectedCustomerId,
+        loyalty_earn_rate: settings.loyalty_earn_rate,
+        loyalty_points_used: repairItems.length === 0 ? loyaltyPointsUsed : 0,
+        loyalty_discount: repairItems.length === 0 ? loyaltyDiscount : 0,
       });
     }
 
@@ -278,7 +299,9 @@ export default function POS() {
 
     // Create sale for products
     if (productItems.length > 0) {
-      const productTotal = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const productTotalRaw = productItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const effectiveLoyaltyDiscount = repairItems.length === 0 ? loyaltyDiscount : 0;
+      const productTotal = Math.max(0, productTotalRaw - effectiveLoyaltyDiscount);
       const productPaid = repairItems.length > 0
         ? Math.min(actualPaid, productTotal)
         : actualPaid;
@@ -288,6 +311,10 @@ export default function POS() {
         total_amount: productTotal,
         amount_paid: Math.min(productPaid, productTotal),
         items: productItems.map((item) => ({ product_id: item.id, quantity: item.quantity, unit_price: item.price })),
+        loyalty_enabled: settings.loyalty_enabled && !!selectedCustomerId,
+        loyalty_earn_rate: settings.loyalty_earn_rate,
+        loyalty_points_used: repairItems.length === 0 ? loyaltyPointsUsed : 0,
+        loyalty_discount: effectiveLoyaltyDiscount,
       });
     }
 
@@ -545,9 +572,30 @@ export default function POS() {
               )}
             </div>
 
+            {/* Loyalty redeem */}
+            {settings.loyalty_enabled && selectedCustomerEarly && cart.some(i => i.type === "product") && !cart.some(i => i.type === "repair") && (
+              <div className="shrink-0 pt-2">
+                <LoyaltyRedeemCard
+                  customerName={selectedCustomerEarly.name}
+                  customerPoints={(selectedCustomerEarly as any).loyalty_points ?? 0}
+                  redeemPoints={settings.loyalty_redeem_points || 100}
+                  redeemValue={settings.loyalty_redeem_value || 0}
+                  minRedeem={settings.loyalty_min_redeem || 100}
+                  cartSubtotal={subtotal}
+                  pointsUsed={loyaltyPointsUsed}
+                  enabled={loyaltyEnabled}
+                  onEnabledChange={setLoyaltyEnabled}
+                  onPointsUsedChange={setLoyaltyPointsUsed}
+                />
+              </div>
+            )}
+
             <div className="shrink-0 pt-3 space-y-2">
               <Separator />
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="font-mono-numbers">{format(subtotal)}</span></div>
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between text-sm text-success"><span>Fidélité (-{loyaltyPointsUsed} pts)</span><span className="font-mono-numbers">-{format(loyaltyDiscount)}</span></div>
+              )}
               <Separator />
               <div className="flex justify-between text-lg font-bold"><span>Total</span><span className="font-mono-numbers text-primary">{format(total)}</span></div>
               <div className="grid grid-cols-2 gap-2 pt-2">

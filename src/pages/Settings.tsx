@@ -163,6 +163,13 @@ export default function Settings() {
   const [warrantyDays, setWarrantyDays] = useState("30");
   const [showPaymentOnTracking, setShowPaymentOnTracking] = useState(false);
   const [storeHours, setStoreHours] = useState("");
+
+  // Loyalty
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
+  const [loyaltyEarnRate, setLoyaltyEarnRate] = useState("1");
+  const [loyaltyRedeemPoints, setLoyaltyRedeemPoints] = useState("100");
+  const [loyaltyRedeemValue, setLoyaltyRedeemValue] = useState("5");
+  const [loyaltyMinRedeem, setLoyaltyMinRedeem] = useState("100");
   
   // Phone / WhatsApp state
   const [profilePhone, setProfilePhone] = useState("");
@@ -221,6 +228,11 @@ export default function Settings() {
       setShowPaymentOnTracking((settings as any).show_payment_on_tracking ?? false);
       setStoreHours((settings as any).store_hours || "");
       setLogoSize(((settings as any).logo_size as any) || "medium");
+      setLoyaltyEnabled(!!(settings as any).loyalty_enabled);
+      setLoyaltyEarnRate(String((settings as any).loyalty_earn_rate ?? 1));
+      setLoyaltyRedeemPoints(String((settings as any).loyalty_redeem_points ?? 100));
+      setLoyaltyRedeemValue(String((settings as any).loyalty_redeem_value ?? 5));
+      setLoyaltyMinRedeem(String((settings as any).loyalty_min_redeem ?? 100));
     }
   }, [loading, settings]);
 
@@ -282,6 +294,11 @@ export default function Settings() {
       warranty_days: parseInt(warrantyDays) || 30,
       show_payment_on_tracking: showPaymentOnTracking,
       store_hours: storeHours.trim() || null,
+      loyalty_enabled: loyaltyEnabled,
+      loyalty_earn_rate: parseFloat(loyaltyEarnRate) || 0,
+      loyalty_redeem_points: parseInt(loyaltyRedeemPoints) || 100,
+      loyalty_redeem_value: parseFloat(loyaltyRedeemValue) || 0,
+      loyalty_min_redeem: parseInt(loyaltyMinRedeem) || 100,
     });
   };
 
@@ -673,6 +690,50 @@ export default function Settings() {
                 </div>
                 <Switch checked={notifSettings.browserNotifications} disabled={permissionStatus === "unsupported"} onCheckedChange={async (checked) => { if (checked) { const granted = await requestBrowserPermission(); if (granted) saveNotifSettings({ browserNotifications: true }); } else { saveNotifSettings({ browserNotifications: false }); } }} />
               </div>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Loyalty Program */}
+        <GlassCard>
+          <div className="p-5 sm:p-6">
+            <SectionHeading icon={Tag} title="Programme de fidélité" description="Récompensez vos clients avec des points sur ventes et réparations" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/30">
+                <div>
+                  <p className="font-medium text-sm">Activer la fidélité</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Les clients gagnent et peuvent dépenser des points</p>
+                </div>
+                <Switch checked={loyaltyEnabled} onCheckedChange={setLoyaltyEnabled} />
+              </div>
+
+              {loyaltyEnabled && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="loyaltyEarnRate">Taux de gain (points par {settings.currency || "TND"})</Label>
+                    <Input id="loyaltyEarnRate" type="number" step="0.1" min="0" value={loyaltyEarnRate} onChange={(e) => setLoyaltyEarnRate(e.target.value)} className="max-w-[160px] font-mono-numbers" />
+                    <p className="text-xs text-muted-foreground">Ex : 1 = 1 point par {settings.currency || "TND"} dépensé.</p>
+                  </div>
+                  <Separator />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="loyaltyRedeemPoints">Points par bloc d'échange</Label>
+                      <Input id="loyaltyRedeemPoints" type="number" min="1" value={loyaltyRedeemPoints} onChange={(e) => setLoyaltyRedeemPoints(e.target.value)} className="font-mono-numbers" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="loyaltyRedeemValue">Valeur du bloc ({settings.currency || "TND"})</Label>
+                      <Input id="loyaltyRedeemValue" type="number" step="0.001" min="0" value={loyaltyRedeemValue} onChange={(e) => setLoyaltyRedeemValue(e.target.value)} className="font-mono-numbers" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {loyaltyRedeemPoints} pts = {loyaltyRedeemValue} {settings.currency || "TND"} de réduction.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="loyaltyMinRedeem">Solde minimum pour utiliser les points</Label>
+                    <Input id="loyaltyMinRedeem" type="number" min="0" value={loyaltyMinRedeem} onChange={(e) => setLoyaltyMinRedeem(e.target.value)} className="max-w-[160px] font-mono-numbers" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </GlassCard>

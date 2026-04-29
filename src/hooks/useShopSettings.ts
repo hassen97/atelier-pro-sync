@@ -28,6 +28,12 @@ export interface ShopSettings {
   warranty_days: number;
   show_payment_on_tracking: boolean;
   store_hours: string | null;
+  // Loyalty
+  loyalty_enabled: boolean;
+  loyalty_earn_rate: number;
+  loyalty_redeem_points: number;
+  loyalty_redeem_value: number;
+  loyalty_min_redeem: number;
 }
 
 const defaultSettings: ShopSettings = {

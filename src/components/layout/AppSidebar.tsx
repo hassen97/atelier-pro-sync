@@ -48,7 +48,7 @@ const navigation = [
   { nameKey: "nav.statistics" as const, href: "/statistics", icon: BarChart3 },
   { nameKey: "nav.profit" as const, href: "/profit", icon: TrendingUp },
   { nameKey: "nav.warranty" as const, href: "/warranty", icon: Shield },
-  { nameKey: "nav.team" as const, href: "/team", icon: Users2, fallbackLabel: "Équipe" },
+  { nameKey: "nav.team" as const, href: "/team", icon: Users2 },
   { nameKey: "nav.community" as const, href: "/communaute", icon: Users2 },
   { nameKey: "nav.messages" as const, href: "/messages", icon: MessageCircle },
 ];

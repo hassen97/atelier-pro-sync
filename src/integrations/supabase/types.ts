@@ -214,6 +214,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          loyalty_points: number
           name: string
           notes: string | null
           phone: string | null
@@ -226,6 +227,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          loyalty_points?: number
           name: string
           notes?: string | null
           phone?: string | null
@@ -238,6 +240,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          loyalty_points?: number
           name?: string
           notes?: string | null
           phone?: string | null
@@ -615,6 +618,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      loyalty_transactions: {
+        Row: {
+          amount_money: number | null
+          amount_points: number
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          note: string | null
+          repair_id: string | null
+          sale_id: string | null
+          source: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount_money?: number | null
+          amount_points: number
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          note?: string | null
+          repair_id?: string | null
+          sale_id?: string | null
+          source?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount_money?: number | null
+          amount_points?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          note?: string | null
+          repair_id?: string | null
+          sale_id?: string | null
+          source?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -1359,6 +1407,11 @@ export type Database = {
           last_onboarding_reminder_sent_at: string | null
           logo_size: string
           logo_url: string | null
+          loyalty_earn_rate: number
+          loyalty_enabled: boolean
+          loyalty_min_redeem: number
+          loyalty_redeem_points: number
+          loyalty_redeem_value: number
           onboarding_completed: boolean
           onboarding_reminders_sent: number
           phone: string | null
@@ -1390,6 +1443,11 @@ export type Database = {
           last_onboarding_reminder_sent_at?: string | null
           logo_size?: string
           logo_url?: string | null
+          loyalty_earn_rate?: number
+          loyalty_enabled?: boolean
+          loyalty_min_redeem?: number
+          loyalty_redeem_points?: number
+          loyalty_redeem_value?: number
           onboarding_completed?: boolean
           onboarding_reminders_sent?: number
           phone?: string | null
@@ -1421,6 +1479,11 @@ export type Database = {
           last_onboarding_reminder_sent_at?: string | null
           logo_size?: string
           logo_url?: string | null
+          loyalty_earn_rate?: number
+          loyalty_enabled?: boolean
+          loyalty_min_redeem?: number
+          loyalty_redeem_points?: number
+          loyalty_redeem_value?: number
           onboarding_completed?: boolean
           onboarding_reminders_sent?: number
           phone?: string | null

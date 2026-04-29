@@ -28,6 +28,12 @@ export interface ShopSettings {
   warranty_days: number;
   show_payment_on_tracking: boolean;
   store_hours: string | null;
+  // Loyalty
+  loyalty_enabled: boolean;
+  loyalty_earn_rate: number;
+  loyalty_redeem_points: number;
+  loyalty_redeem_value: number;
+  loyalty_min_redeem: number;
 }
 
 const defaultSettings: ShopSettings = {
@@ -52,6 +58,11 @@ const defaultSettings: ShopSettings = {
   warranty_days: 30,
   show_payment_on_tracking: false,
   store_hours: null,
+  loyalty_enabled: false,
+  loyalty_earn_rate: 1,
+  loyalty_redeem_points: 100,
+  loyalty_redeem_value: 5,
+  loyalty_min_redeem: 100,
 };
 
 export function useShopSettings() {
@@ -105,6 +116,11 @@ export function useShopSettings() {
           warranty_days: (data as any).warranty_days ?? 30,
           show_payment_on_tracking: (data as any).show_payment_on_tracking ?? false,
           store_hours: (data as any).store_hours || null,
+          loyalty_enabled: (data as any).loyalty_enabled ?? false,
+          loyalty_earn_rate: Number((data as any).loyalty_earn_rate ?? 1),
+          loyalty_redeem_points: Number((data as any).loyalty_redeem_points ?? 100),
+          loyalty_redeem_value: Number((data as any).loyalty_redeem_value ?? 5),
+          loyalty_min_redeem: Number((data as any).loyalty_min_redeem ?? 100),
         });
       }
     } catch (error) {
@@ -151,6 +167,11 @@ export function useShopSettings() {
             warranty_days: updatedSettings.warranty_days,
             show_payment_on_tracking: updatedSettings.show_payment_on_tracking,
             store_hours: updatedSettings.store_hours,
+            loyalty_enabled: updatedSettings.loyalty_enabled,
+            loyalty_earn_rate: updatedSettings.loyalty_earn_rate,
+            loyalty_redeem_points: updatedSettings.loyalty_redeem_points,
+            loyalty_redeem_value: updatedSettings.loyalty_redeem_value,
+            loyalty_min_redeem: updatedSettings.loyalty_min_redeem,
             updated_at: new Date().toISOString(),
           } as any)
           .eq("id", settings.id);
@@ -183,6 +204,11 @@ export function useShopSettings() {
             warranty_days: updatedSettings.warranty_days,
             show_payment_on_tracking: updatedSettings.show_payment_on_tracking,
             store_hours: updatedSettings.store_hours,
+            loyalty_enabled: updatedSettings.loyalty_enabled,
+            loyalty_earn_rate: updatedSettings.loyalty_earn_rate,
+            loyalty_redeem_points: updatedSettings.loyalty_redeem_points,
+            loyalty_redeem_value: updatedSettings.loyalty_redeem_value,
+            loyalty_min_redeem: updatedSettings.loyalty_min_redeem,
           } as any)
           .select()
           .single();

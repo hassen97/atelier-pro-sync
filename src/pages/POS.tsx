@@ -22,6 +22,7 @@ import { CustomerDialog } from "@/components/customers/CustomerDialog";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { LoyaltyRedeemCard } from "@/components/pos/LoyaltyRedeemCard";
 import { toast } from "sonner";
 
 interface CartItem {
@@ -47,6 +48,8 @@ export default function POS() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<string>("");
   const [amountPaidInput, setAmountPaidInput] = useState<string>("");
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
+  const [loyaltyPointsUsed, setLoyaltyPointsUsed] = useState(0);
   const scanRef = useRef<HTMLInputElement>(null);
   const beepRef = useRef<AudioContext | null>(null);
 

@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffectiveUserId } from "@/hooks/useTeam";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { applyLoyaltyEarn, applyLoyaltyRedeem } from "@/hooks/useLoyalty";
 
 export type Sale = Tables<"sales">;
 export type SaleInsert = TablesInsert<"sales">;
@@ -20,6 +22,18 @@ interface CreateSaleParams {
     quantity: number;
     unit_price: number;
   }[];
+  // Loyalty
+  loyalty_points_used?: number;
+  loyalty_discount?: number;
+  loyalty_enabled?: boolean;
+  loyalty_earn_rate?: number;
+}
+
+export interface CreateSaleResult {
+  sale: Sale;
+  points_earned: number;
+  points_used: number;
+  loyalty_balance_after: number | null;
 }
 
 export function useSales() {
@@ -50,9 +64,17 @@ export function useSales() {
 export function useCreateSale() {
   const queryClient = useQueryClient();
   const effectiveUserId = useEffectiveUserId();
+  const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ items, ...saleData }: CreateSaleParams) => {
+    mutationFn: async ({
+      items,
+      loyalty_points_used,
+      loyalty_discount,
+      loyalty_enabled,
+      loyalty_earn_rate,
+      ...saleData
+    }: CreateSaleParams): Promise<CreateSaleResult> => {
       if (!effectiveUserId) throw new Error("Non authentifié");
 
       // Create the sale
@@ -100,7 +122,53 @@ export function useCreateSale() {
         }
       }
 
-      return sale;
+      // Loyalty: redemption (deducts points first)
+      let points_used = 0;
+      let balance_after: number | null = null;
+      if (saleData.customer_id && loyalty_enabled && (loyalty_points_used ?? 0) > 0) {
+        balance_after = await applyLoyaltyRedeem({
+          user_id: effectiveUserId,
+          customer_id: saleData.customer_id,
+          points: loyalty_points_used!,
+          discount_money: loyalty_discount ?? 0,
+          sale_id: sale.id,
+          created_by: user?.id ?? null,
+        });
+        points_used = loyalty_points_used!;
+      }
+
+      // Loyalty: earning on actual paid amount (post-discount)
+      let points_earned = 0;
+      if (
+        saleData.customer_id &&
+        loyalty_enabled &&
+        (loyalty_earn_rate ?? 0) > 0 &&
+        saleData.amount_paid > 0
+      ) {
+        points_earned = await applyLoyaltyEarn({
+          user_id: effectiveUserId,
+          customer_id: saleData.customer_id,
+          amount_money: saleData.amount_paid,
+          earn_rate: loyalty_earn_rate!,
+          source: "sale",
+          sale_id: sale.id,
+          created_by: user?.id ?? null,
+        });
+        // Re-read to get final balance
+        const { data: c } = await supabase
+          .from("customers")
+          .select("loyalty_points")
+          .eq("id", saleData.customer_id)
+          .maybeSingle();
+        balance_after = (c as any)?.loyalty_points ?? balance_after;
+      }
+
+      return {
+        sale: sale as Sale,
+        points_earned,
+        points_used,
+        loyalty_balance_after: balance_after,
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
@@ -111,6 +179,9 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["inventory-stats"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["profit"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-all"] });
+      queryClient.invalidateQueries({ queryKey: ["loyalty-transactions"] });
       toast.success("Vente enregistrée avec succès");
     },
     onError: (error) => {

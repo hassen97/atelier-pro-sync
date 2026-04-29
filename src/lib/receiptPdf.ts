@@ -303,6 +303,28 @@ export async function generateThermalReceipt(
   // Ticket number
   const ticketStr = data.ticketNumber ? String(data.ticketNumber).padStart(5, "0") : "";
 
+  // Loyalty footer block (only when there is something to show)
+  const showLoyalty = (data.loyaltyPointsEarned ?? 0) > 0 || (data.loyaltyPointsUsed ?? 0) > 0 || (data.loyaltyBalanceAfter !== null && data.loyaltyBalanceAfter !== undefined);
+  let loyaltyHtml = "";
+  if (showLoyalty) {
+    const lines: string[] = [];
+    if ((data.loyaltyPointsEarned ?? 0) > 0) {
+      lines.push(`<div class="total-row"><span>Points gagnés :</span><span class="val">+${data.loyaltyPointsEarned}</span></div>`);
+    }
+    if ((data.loyaltyPointsUsed ?? 0) > 0) {
+      const moneyPart = data.loyaltyDiscount ? ` (-${escHtml(formatCurrency(data.loyaltyDiscount))})` : "";
+      lines.push(`<div class="total-row"><span>Points utilisés :</span><span class="val">-${data.loyaltyPointsUsed}${moneyPart}</span></div>`);
+    }
+    if (data.loyaltyBalanceAfter !== null && data.loyaltyBalanceAfter !== undefined) {
+      lines.push(`<div class="total-row bold"><span>Nouveau solde :</span><span class="val">${data.loyaltyBalanceAfter} pts</span></div>`);
+    }
+    loyaltyHtml = `
+<div class="sep-bold"></div>
+<p class="label center">FIDÉLITÉ</p>
+${lines.join("\n")}
+<div class="sep-bold"></div>`;
+  }
+
   const html = `<!DOCTYPE html>
 <html>
 <head>

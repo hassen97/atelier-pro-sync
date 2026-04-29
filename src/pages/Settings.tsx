@@ -294,6 +294,11 @@ export default function Settings() {
       warranty_days: parseInt(warrantyDays) || 30,
       show_payment_on_tracking: showPaymentOnTracking,
       store_hours: storeHours.trim() || null,
+      loyalty_enabled: loyaltyEnabled,
+      loyalty_earn_rate: parseFloat(loyaltyEarnRate) || 0,
+      loyalty_redeem_points: parseInt(loyaltyRedeemPoints) || 100,
+      loyalty_redeem_value: parseFloat(loyaltyRedeemValue) || 0,
+      loyalty_min_redeem: parseInt(loyaltyMinRedeem) || 100,
     });
   };
 

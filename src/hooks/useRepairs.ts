@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffectiveUserId } from "@/hooks/useTeam";
 import { toast } from "sonner";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { applyLoyaltyEarn, hasRepairEarnedLoyalty } from "@/hooks/useLoyalty";
 
 export type Repair = Tables<"repairs">;
 export type RepairInsert = TablesInsert<"repairs">;
@@ -12,6 +13,44 @@ export type RepairUpdate = TablesUpdate<"repairs">;
 export type RepairStatus = "pending" | "in_progress" | "completed" | "delivered";
 
 export const REPAIRS_PAGE_SIZE = 100;
+
+/**
+ * Internal helper: award points for a repair if conditions are met
+ * (status is delivered, fully paid, customer attached, loyalty enabled, not already awarded).
+ */
+async function maybeAwardRepairLoyalty(repairId: string, userId: string, actorId: string | null) {
+  const { data: repair } = await supabase
+    .from("repairs")
+    .select("id, status, customer_id, total_cost, amount_paid")
+    .eq("id", repairId)
+    .maybeSingle();
+  if (!repair) return;
+  if (repair.status !== "delivered") return;
+  if (!repair.customer_id) return;
+  const total = Number(repair.total_cost) || 0;
+  const paid = Number(repair.amount_paid) || 0;
+  if (total <= 0 || paid + 0.001 < total) return;
+
+  const { data: settings } = await supabase
+    .from("shop_settings")
+    .select("loyalty_enabled, loyalty_earn_rate")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!settings || !(settings as any).loyalty_enabled) return;
+
+  const already = await hasRepairEarnedLoyalty(repairId);
+  if (already) return;
+
+  await applyLoyaltyEarn({
+    user_id: userId,
+    customer_id: repair.customer_id,
+    amount_money: total,
+    earn_rate: Number((settings as any).loyalty_earn_rate ?? 1),
+    source: "repair",
+    repair_id: repairId,
+    created_by: actorId,
+  });
+}
 
 /** Paginated repairs — fetches one page at a time from the server. */
 export function useRepairs(page = 0) {

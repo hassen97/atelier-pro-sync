@@ -59,6 +59,8 @@ export default function Inventory() {
   
   // Unlock dialog
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const effectiveUserId = useEffectiveUserId();
   
   // Pulse animation
   const [pulsedProductId, setPulsedProductId] = useState<string | null>(null);

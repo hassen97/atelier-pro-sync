@@ -259,6 +259,9 @@ export function useUpdateRepair() {
       queryClient.invalidateQueries({ queryKey: ["recent-repairs"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["profit"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-all"] });
+      queryClient.invalidateQueries({ queryKey: ["loyalty-transactions"] });
       toast.success("Réparation mise à jour");
     },
   });
@@ -326,6 +329,9 @@ export function useUpdateRepairStatus() {
       queryClient.invalidateQueries({ queryKey: ["recent-repairs"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["profit"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-all"] });
+      queryClient.invalidateQueries({ queryKey: ["loyalty-transactions"] });
     },
   });
 }

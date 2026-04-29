@@ -31,6 +31,11 @@ interface ReceiptData {
   receivedBy?: string;
   repairedBy?: string;
   deviceCondition?: string;
+  // Loyalty footer
+  loyaltyPointsEarned?: number;
+  loyaltyPointsUsed?: number;
+  loyaltyDiscount?: number;
+  loyaltyBalanceAfter?: number | null;
 }
 
 function escHtml(s: string): string {

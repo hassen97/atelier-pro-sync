@@ -378,6 +378,8 @@ ${data.paymentMethod ? `<div class="total-row"><span>Paiement :</span><span clas
 <div class="total-row grand"><span>TOTAL :</span><span class="val">${escHtml(formatCurrency(data.total))}</span></div>
 <div class="sep-bold"></div>
 
+${loyaltyHtml}
+
 ${termsHtml}
 
 ${data.trackingUrl ? `

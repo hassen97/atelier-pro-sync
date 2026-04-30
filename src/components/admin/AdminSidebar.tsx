@@ -2,12 +2,15 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound,
   Settings, Users, CreditCard, Tags, ClipboardList, Shield,
-  ChevronLeft, ChevronRight, Users2,
+  ChevronLeft, ChevronRight, Users2, BarChart3, ListChecks, Flag,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "orders" | "community" | "reports";
+type AdminView =
+  | "overview" | "shops" | "announcements" | "feedback" | "reset_requests"
+  | "settings" | "employees" | "plans" | "gateways" | "feature_flags"
+  | "waitlist" | "signup_attempts" | "orders" | "community" | "reports";
 
 interface AdminSidebarProps {
   active: AdminView;
@@ -17,49 +20,65 @@ interface AdminSidebarProps {
   onToggleCollapse?: () => void;
 }
 
-const navSections = [
+type NavItem = {
+  id: AdminView;
+  label: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  badge?: string;
+};
+
+const navSections: { label: string; items: NavItem[] }[] = [
   {
-    label: "Écosystème",
+    label: "Plateforme",
     items: [
-      { id: "overview" as const, label: "Dashboard", icon: LayoutDashboard },
-      { id: "shops" as const, label: "Boutiques", icon: Store },
-      { id: "employees" as const, label: "Employés", icon: Users },
-      { id: "waitlist" as const, label: "Liste d'attente", icon: ClipboardList },
+      { id: "overview",  label: "Dashboard",  icon: LayoutDashboard },
+      { id: "shops",     label: "Boutiques",  icon: Store },
+      { id: "employees", label: "Employés",   icon: Users },
+      { id: "reports",   label: "Rapports",   icon: BarChart3, badge: "Nouveau" },
     ],
   },
   {
-    label: "Monétisation",
+    label: "Commercial",
     items: [
-      { id: "plans" as const, label: "Tarifs & Plans", icon: Tags },
-      { id: "gateways" as const, label: "Paiements", icon: CreditCard },
-      { id: "orders" as const, label: "Commandes", icon: ClipboardList },
+      { id: "plans",    label: "Tarifs & Plans", icon: Tags },
+      { id: "orders",   label: "Commandes",      icon: ClipboardList },
+      { id: "gateways", label: "Paiements",      icon: CreditCard },
     ],
   },
   {
-    label: "Engagement",
+    label: "Opérations",
     items: [
-      { id: "reset_requests" as const, label: "Demandes", icon: KeyRound },
-      { id: "announcements" as const, label: "Annonces", icon: Megaphone },
-      { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
-      { id: "community" as const, label: "Communauté", icon: Users2 },
+      { id: "waitlist",       label: "Liste d'attente", icon: ListChecks },
+      { id: "reset_requests", label: "Demandes",        icon: KeyRound },
+      { id: "announcements",  label: "Annonces",        icon: Megaphone },
+      { id: "feedback",       label: "Feedback",        icon: MessageSquare },
+      { id: "community",      label: "Communauté",      icon: Users2 },
     ],
   },
   {
-    label: "Sécurité & Système",
+    label: "Système",
     items: [
-      { id: "signup_attempts" as const, label: "Tentatives", icon: Shield },
-      { id: "settings" as const, label: "Paramètres", icon: Settings },
+      { id: "signup_attempts", label: "Tentatives",     icon: Shield },
+      { id: "feature_flags",   label: "Feature Flags",  icon: Flag },
+      { id: "settings",        label: "Paramètres",     icon: Settings },
     ],
   },
 ];
 
 export function AdminSidebar({ active, onNavigate, onClose, collapsed = false, onToggleCollapse }: AdminSidebarProps) {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
 
   const handleNavigate = (view: AdminView) => {
     onNavigate(view);
     onClose?.();
   };
+
+  const displayName =
+    (user?.user_metadata?.full_name as string) ||
+    (user?.user_metadata?.username as string) ||
+    user?.email ||
+    "Admin";
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -71,7 +90,7 @@ export function AdminSidebar({ active, onNavigate, onClose, collapsed = false, o
         <div className={cn("flex items-center border-b border-white/10 shrink-0", collapsed ? "p-3 justify-center" : "p-4 justify-between")}>
           {!collapsed ? (
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00D4FF] to-[#0066FF] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00D4FF] to-[#0066FF] flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(0,212,255,0.3)]">
                 <span className="text-white font-bold text-sm">⚡</span>
               </div>
               <div className="min-w-0">
@@ -116,14 +135,21 @@ export function AdminSidebar({ active, onNavigate, onClose, collapsed = false, o
                         collapsed ? "px-0 py-2 justify-center" : "px-2.5 py-2",
                         isActive
                           ? "bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20"
-                          : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                          : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent",
                       )}
                     >
                       <Icon className="shrink-0" style={{ width: collapsed ? 18 : 16, height: collapsed ? 18 : 16 }} />
                       {!collapsed && (
-                        <span className="truncate overflow-hidden whitespace-nowrap">
-                          {item.label}
-                        </span>
+                        <>
+                          <span className="truncate overflow-hidden whitespace-nowrap flex-1 text-left">
+                            {item.label}
+                          </span>
+                          {item.badge && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider rounded-full px-1.5 py-0.5 bg-[#00D4FF]/15 text-[#00D4FF]">
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
                       )}
                     </button>
                   );
@@ -132,7 +158,7 @@ export function AdminSidebar({ active, onNavigate, onClose, collapsed = false, o
                       <Tooltip key={item.id}>
                         <TooltipTrigger asChild>{btn}</TooltipTrigger>
                         <TooltipContent side="right" className="bg-[#0F172A] border-white/10 text-white text-xs">
-                          {item.label}
+                          {item.label}{item.badge ? ` · ${item.badge}` : ""}
                         </TooltipContent>
                       </Tooltip>
                     );
@@ -144,7 +170,23 @@ export function AdminSidebar({ active, onNavigate, onClose, collapsed = false, o
           ))}
         </nav>
 
-        {/* Footer */}
+        {/* Profile card */}
+        {!collapsed && (
+          <div className="px-2 pb-2 shrink-0">
+            <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#6366F1] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                {initial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-white truncate">{displayName}</div>
+                <div className="text-[10px] text-slate-500">Super Admin</div>
+              </div>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            </div>
+          </div>
+        )}
+
+        {/* Footer / sign out */}
         <div className="p-2 border-t border-white/10 shrink-0">
           {collapsed ? (
             <Tooltip>

@@ -1,44 +1,97 @@
-# Show usernames in Admin Orders page
+# Apply Claude's Ultra Admin redesign + real Reports & Export view
 
-## Problem
-The "Commandes d'abonnement" admin page (`AdminOrdersView.tsx`) shows truncated user UUIDs (`26c3f824…`) in the "Utilisateur" column instead of human-readable usernames or full names.
+## Summary
+Bring in the redesign from `AdminDashboardPreview.jsx`, install the new `AdminReportsView.tsx`, and replace its mock data + CSV/JSON exports with **real Supabase data + Excel (.xlsx) + PDF** exports. Keep all existing functionality working.
 
-Root cause: `useAdminOrders` in `src/hooks/useSubscription.ts` selects from `subscription_orders` without joining the `profiles` table — so only `user_id` is available to the UI, which renders `order.user_id.slice(0, 8)…`.
+---
 
-## Plan
+## 1. Sidebar redesign — `src/components/admin/AdminSidebar.tsx`
 
-### 1. `src/hooks/useSubscription.ts` — enrich the admin query
-Update the admin `useAdminOrders` query to also fetch profile info per order:
+Re-group nav into the 4 sections from the new design (same items, new labels):
 
-- After loading orders, collect distinct `user_id`s and run a second query:
-  `supabase.from("profiles").select("user_id, username, full_name, email").in("user_id", ids)`
-- Merge into each order as `order.profile = { username, full_name, email }`.
-
-(Two-step approach is safer than a PostgREST embed because there is no FK from `subscription_orders.user_id` → `profiles.user_id` declared, and an embed could silently return null.)
-
-### 2. `src/components/admin/AdminOrdersView.tsx` — render the name
-Replace both occurrences of:
+```text
+Plateforme  : Dashboard · Boutiques · Employés · Rapports (badge "Nouveau")
+Commercial  : Tarifs & Plans · Commandes · Paiements
+Opérations  : Liste d'attente · Demandes · Annonces · Feedback · Communauté
+Système     : Tentatives · Feature Flags · Paramètres
 ```
-{order.user_id.slice(0, 8)}…
-```
-with a small helper that shows, in priority order:
-1. `@username`
-2. `full_name`
-3. `email`
-4. fallback: `uuid.slice(0,8)…`
 
-Apply in:
-- Pending table "Utilisateur" cell (line ~111)
-- Reviewed/Historique table "Utilisateur" cell (line ~171)
-- Also surface the name in the Review dialog header for clarity.
+Visual updates:
+- Add small "Nouveau" cyan badge next to Reports
+- Add bottom **admin profile card** (avatar with initial, name, "Super Admin", green dot) when expanded — pulls from `useAuth().user`
+- Keep collapse/expand, tooltips when collapsed, sign-out button, and the existing `AdminView` type
+- Keep all colors / hover states as in the current file (already matches the preview)
 
-Style: keep the same compact design — username in white, secondary line (email or uuid) in muted slate text below.
+No type changes — `feature_flags` and `signup_attempts` stay in `Système`. We just regroup display.
 
-### 3. No DB / RLS changes needed
-Platform admins already have read access to `profiles` via existing admin policies, so no migration required. If the profile fetch returns nothing for a given user (deleted account), the UI falls back gracefully to the UUID.
+## 2. Topbar polish — `src/pages/AdminDashboard.tsx`
+
+Minor tweaks to match the preview (file already very close):
+- Live indicator → show **real** active-shop count from `useAdminData()` instead of hard-coded "40"
+- Avatar shows the real user initial (from `useAuth`)
+- Keep Cmd+K, notifications bell, mobile sheet, all current view routing
+
+## 3. Reports view — `src/components/admin/AdminReportsView.tsx`
+
+Full rewrite to use real data + Excel/PDF exports.
+
+### Data hook (new): `src/hooks/useAdminReports.ts`
+Single React Query (`staleTime: 5 min`, per Ultra Admin perf rules) that fetches platform-wide aggregates as a `platform_admin`:
+
+- **Revenue per month (last 6/3/1m or 1y)**: groupBy month from `sales.total_amount` + `repairs.amount_paid`
+- **Repairs per month**: count from `repairs`
+- **KPIs**:
+  - Total revenue (sales + repairs) over the range
+  - Total repairs count
+  - Average ticket value = revenue / repairs
+  - Active shops count = distinct `user_id` with activity in range
+- **Repair types breakdown**: group `repairs` by `category_id` → category name (top 6 + "Autre")
+- **Top shops table**: per `user_id` aggregate `repair_count`, `revenue` (sales+repairs paid), join `shop_settings.shop_name + city/address`, compute MoM growth %
+- **Device-type pie**: best-effort from repair `device_model` keyword match (Mobile/Laptop/Tablette) — falls back to "Autre"
+
+Returns `{ kpis, revenueSeries, repairTypes, topShops, deviceMix }`.
+
+### View component
+- Same layout as the uploaded file (header, filter bar, KPIs, charts, table)
+- Replace mock constants with hook data
+- Filter bar: `dateRange` (1m/3m/6m/1y) + `shopFilter` populated from real shops + search input
+- Loading skeletons while query pending
+- Empty states when no data
+
+### Exports — Excel & PDF only
+Replace the CSV/JSON helpers with two helpers in **`src/lib/adminReportExport.ts`** (new):
+
+- **Excel (.xlsx)** via `xlsx` lib (already used in project — see Inventory import)
+  - Multi-sheet workbook: `KPIs` · `Revenu mensuel` · `Top boutiques` · `Types de réparation` · `Appareils`
+  - Header row bold, currency col formatted, frozen header
+  - Filename: `rapport-plateforme-{range}-{YYYY-MM-DD}.xlsx`
+
+- **PDF** via dynamic `import("jspdf")` + `import("jspdf-autotable")` (lazy, per "Dynamic Imports Perf" rule)
+  - A4 landscape, brand header (Centre de Commande, generated date, range)
+  - KPI grid at top, then auto-table for top shops, then small revenue summary table
+  - Filename: `rapport-plateforme-{range}-{YYYY-MM-DD}.pdf`
+
+Header buttons:
+- `Export Excel` (emerald accent)
+- `Export PDF` (gradient cyan→blue, primary)
+- Success toast (sonner) on completion
+
+## 4. AdminDashboard wiring
+Already imports `AdminReportsView` and routes `reports` view. Just confirm Reports stays in the sidebar map and the page label "Rapports & Export" is added to `viewLabels`.
+
+---
+
+## Files to create
+- `src/hooks/useAdminReports.ts`
+- `src/lib/adminReportExport.ts`
 
 ## Files to edit
-- `src/hooks/useSubscription.ts` (admin `useAdminOrders` only — leave shop-owner `useMyOrders` untouched)
-- `src/components/admin/AdminOrdersView.tsx`
+- `src/components/admin/AdminSidebar.tsx` (regroup + badge + profile card)
+- `src/components/admin/AdminReportsView.tsx` (full rewrite, real data + xlsx/PDF)
+- `src/pages/AdminDashboard.tsx` (live count + avatar from auth)
 
-No new files, no migration, no edge function changes.
+## No DB / migration changes
+Existing `platform_admin` RLS policies on `sales`, `repairs`, `shop_settings`, `categories`, `customers` already allow all reads needed.
+
+## Dependencies
+Already in `package.json`: `xlsx`, `jspdf`, `jspdf-autotable`, `recharts`, `lucide-react`, `sonner`. No new installs.

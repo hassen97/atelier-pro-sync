@@ -24,6 +24,26 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   pending: { label: "En attente", color: "text-amber-400 bg-amber-400/10 border-amber-400/20", icon: AlertCircle },
 };
 
+function UserCell({ order }: { order: any }) {
+  const p = order.profile;
+  const primary =
+    (p?.username && `@${p.username}`) ||
+    p?.full_name ||
+    p?.email ||
+    `${order.user_id.slice(0, 8)}…`;
+  const secondary =
+    p?.username && p?.full_name ? p.full_name :
+    p?.username && p?.email ? p.email :
+    p?.full_name && p?.email ? p.email :
+    null;
+  return (
+    <div className="flex flex-col leading-tight">
+      <span className="text-xs text-white font-medium">{primary}</span>
+      {secondary && <span className="text-[10px] text-slate-500 font-mono truncate max-w-[180px]">{secondary}</span>}
+    </div>
+  );
+}
+
 export function AdminOrdersView() {
   const { data: orders, isLoading } = useAdminOrders();
   const reviewOrder = useAdminReviewOrder();
@@ -108,7 +128,7 @@ export function AdminOrdersView() {
             <TableBody>
               {pending.map((order: any) => (
                 <TableRow key={order.id} className="border-white/5 hover:bg-white/[0.02]">
-                  <TableCell className="text-xs text-slate-300 font-mono">{order.user_id.slice(0, 8)}…</TableCell>
+                  <TableCell><UserCell order={order} /></TableCell>
                   <TableCell className="text-sm text-white font-medium">{order.plan?.name ?? "—"}</TableCell>
                   <TableCell className="text-sm text-[#00D4FF] font-mono-numbers">
                     {order.amount} {order.currency}
@@ -168,7 +188,7 @@ export function AdminOrdersView() {
                 const Icon = s.icon;
                 return (
                   <TableRow key={order.id} className="border-white/5 hover:bg-white/[0.02]">
-                    <TableCell className="text-xs text-slate-400 font-mono">{order.user_id.slice(0, 8)}…</TableCell>
+                    <TableCell><UserCell order={order} /></TableCell>
                     <TableCell className="text-sm text-white">{order.plan?.name ?? "—"}</TableCell>
                     <TableCell className="text-sm font-mono-numbers text-slate-300">
                       {order.amount} {order.currency}

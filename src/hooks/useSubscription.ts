@@ -94,7 +94,21 @@ export function useAdminOrders() {
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data || []) as any[];
+      const orders = (data || []) as any[];
+
+      // Enrich with profile info (username / full_name / email)
+      const userIds = Array.from(new Set(orders.map((o) => o.user_id).filter(Boolean)));
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, username, full_name, email")
+          .in("user_id", userIds);
+        const map = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+        for (const o of orders) {
+          o.profile = map.get(o.user_id) ?? null;
+        }
+      }
+      return orders;
     },
   });
 }

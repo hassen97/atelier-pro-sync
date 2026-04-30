@@ -188,7 +188,7 @@ export function AdminOrdersView() {
                 const Icon = s.icon;
                 return (
                   <TableRow key={order.id} className="border-white/5 hover:bg-white/[0.02]">
-                    <TableCell className="text-xs text-slate-400 font-mono">{order.user_id.slice(0, 8)}…</TableCell>
+                    <TableCell><UserCell order={order} /></TableCell>
                     <TableCell className="text-sm text-white">{order.plan?.name ?? "—"}</TableCell>
                     <TableCell className="text-sm font-mono-numbers text-slate-300">
                       {order.amount} {order.currency}

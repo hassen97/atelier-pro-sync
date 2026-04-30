@@ -128,7 +128,7 @@ export function AdminOrdersView() {
             <TableBody>
               {pending.map((order: any) => (
                 <TableRow key={order.id} className="border-white/5 hover:bg-white/[0.02]">
-                  <TableCell className="text-xs text-slate-300 font-mono">{order.user_id.slice(0, 8)}…</TableCell>
+                  <TableCell><UserCell order={order} /></TableCell>
                   <TableCell className="text-sm text-white font-medium">{order.plan?.name ?? "—"}</TableCell>
                   <TableCell className="text-sm text-[#00D4FF] font-mono-numbers">
                     {order.amount} {order.currency}

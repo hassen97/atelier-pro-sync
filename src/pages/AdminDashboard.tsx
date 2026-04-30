@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Loader2, Menu, Search, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAdminData } from "@/hooks/useAdmin";
+import { useAuth } from "@/contexts/AuthContext";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AdminShopsView } from "@/components/admin/AdminShopsView";
@@ -47,7 +48,15 @@ const viewLabels: Record<AdminView, string> = {
 };
 
 const AdminDashboard = () => {
-  const { isLoading } = useAdminData();
+  const { data: adminData, isLoading } = useAdminData();
+  const { user } = useAuth();
+  const activeShopsCount = adminData?.stats?.active_now_count ?? adminData?.stats?.total_owners ?? 0;
+  const userInitial = (
+    (user?.user_metadata?.full_name as string) ||
+    (user?.user_metadata?.username as string) ||
+    user?.email ||
+    "A"
+  ).charAt(0).toUpperCase();
   const [activeView, setActiveView] = useState<AdminView>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -177,7 +186,7 @@ const AdminDashboard = () => {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
                 </span>
-                <span className="text-[11px] text-emerald-400 font-medium">40 boutiques actives</span>
+                <span className="text-[11px] text-emerald-400 font-medium">{activeShopsCount} boutique{activeShopsCount > 1 ? "s" : ""} active{activeShopsCount > 1 ? "s" : ""}</span>
               </div>
 
               {/* Search / Cmd+K */}
@@ -199,7 +208,7 @@ const AdminDashboard = () => {
 
               {/* Admin avatar */}
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#6366F1] flex items-center justify-center text-xs font-bold cursor-pointer hover:shadow-[0_0_12px_rgba(0,212,255,0.3)] transition-shadow">
-                H
+                {userInitial}
               </div>
             </div>
           )}

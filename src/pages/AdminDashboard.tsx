@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Menu, Search } from "lucide-react";
+import { Loader2, Menu, Search, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAdminData } from "@/hooks/useAdmin";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminOverview } from "@/components/admin/AdminOverview";
@@ -17,27 +17,33 @@ import { AdminSignupAttemptsView } from "@/components/admin/AdminSignupAttemptsV
 import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
 import { AdminOrdersView } from "@/components/admin/AdminOrdersView";
 import { AdminCommunityView } from "@/components/admin/AdminCommunityView";
+import { AdminReportsView } from "@/components/admin/AdminReportsView"; // NEW
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useAdminSignupNotifier } from "@/hooks/useAdminSignupNotifier";
+import { cn } from "@/lib/utils";
 
-type AdminView = "overview" | "shops" | "announcements" | "feedback" | "reset_requests" | "settings" | "employees" | "plans" | "gateways" | "feature_flags" | "waitlist" | "signup_attempts" | "orders" | "community";
+type AdminView =
+  | "overview" | "shops" | "announcements" | "feedback" | "reset_requests"
+  | "settings" | "employees" | "plans" | "gateways" | "feature_flags"
+  | "waitlist" | "signup_attempts" | "orders" | "community" | "reports";
 
 const viewLabels: Record<AdminView, string> = {
-  overview: "Dashboard",
-  shops: "Boutiques",
-  employees: "Employés",
-  waitlist: "Liste d'attente",
-  plans: "Tarifs & Plans",
-  gateways: "Paiements",
-  orders: "Commandes",
-  reset_requests: "Demandes",
-  announcements: "Annonces",
-  feedback: "Feedback",
-  community: "Communauté",
+  overview:        "Dashboard",
+  shops:           "Boutiques",
+  employees:       "Employes",
+  waitlist:        "Liste d'attente",
+  plans:           "Tarifs & Plans",
+  gateways:        "Paiements",
+  orders:          "Commandes",
+  reset_requests:  "Demandes",
+  announcements:   "Annonces",
+  feedback:        "Feedback",
+  community:       "Communaute",
   signup_attempts: "Tentatives de connexion",
-  settings: "Paramètres",
-  feature_flags: "Feature Flags",
+  settings:        "Parametres",
+  feature_flags:   "Feature Flags",
+  reports:         "Rapports & Export",
 };
 
 const AdminDashboard = () => {
@@ -49,7 +55,6 @@ const AdminDashboard = () => {
   const isMobile = useIsMobile();
   useAdminSignupNotifier();
 
-  // Cmd+K shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -63,17 +68,25 @@ const AdminDashboard = () => {
 
   const handleNavigate = useCallback((view: string) => {
     setActiveView(view as AdminView);
-  }, []);
+    if (isMobile) setSidebarOpen(false);
+  }, [isMobile]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#0B1120]">
-        <div className="flex flex-col items-center gap-4">
+      <div className="flex items-center justify-center h-screen bg-[#080E1A]">
+        <div className="flex flex-col items-center gap-5">
           <div className="relative">
-            <Loader2 className="h-8 w-8 animate-spin text-[#00D4FF]" />
-            <div className="absolute inset-0 blur-xl bg-[#00D4FF]/20 rounded-full" />
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00D4FF] to-[#0066FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,212,255,0.35)]">
+              <span className="text-2xl">⚡</span>
+            </div>
+            <div className="absolute inset-0 rounded-2xl animate-ping bg-[#00D4FF]/10" />
           </div>
-          <p className="text-slate-500 text-xs tracking-wide">Chargement du centre de commande...</p>
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-[#00D4FF]" />
+            <p className="text-slate-500 text-xs tracking-widest uppercase">
+              Chargement du centre de commande...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -84,7 +97,7 @@ const AdminDashboard = () => {
 
       {/* Mobile header */}
       {isMobile && (
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] shrink-0 bg-[#0B1120]">
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] shrink-0 bg-[#0B1120]/95 backdrop-blur-sm">
           <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <Menu className="h-5 w-5 text-slate-400" />
           </button>
@@ -92,22 +105,29 @@ const AdminDashboard = () => {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00D4FF] to-[#0066FF] flex items-center justify-center shadow-[0_0_10px_rgba(0,212,255,0.3)]">
               <span className="text-white font-bold text-xs">⚡</span>
             </div>
-            <span className="font-semibold text-sm text-white">Centre de Commande</span>
+            <span className="font-semibold text-sm">Centre de Commande</span>
           </div>
-          <button
-            onClick={() => setCmdOpen(true)}
-            className="ml-auto p-2 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <Search className="h-4 w-4 text-slate-400" />
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            <button onClick={() => setCmdOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+              <Search className="h-4 w-4 text-slate-400" />
+            </button>
+            <button className="relative p-2 rounded-lg hover:bg-white/10 transition-colors">
+              <Bell className="h-4 w-4 text-slate-400" />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-red-500" />
+            </button>
+          </div>
         </header>
       )}
 
       <div className="flex flex-1 overflow-hidden">
+
         {/* Desktop sidebar */}
         {!isMobile && (
           <aside
-            className="shrink-0 admin-glass border-r border-white/[0.06] h-full transition-all duration-250"
+            className={cn(
+              "shrink-0 relative border-r border-white/[0.06] h-full bg-[#080E1A]/95",
+              "transition-[width] duration-200 ease-in-out"
+            )}
             style={{ width: sidebarCollapsed ? 64 : 240 }}
           >
             <AdminSidebar
@@ -116,10 +136,18 @@ const AdminDashboard = () => {
               collapsed={sidebarCollapsed}
               onToggleCollapse={() => setSidebarCollapsed(v => !v)}
             />
+            <button
+              onClick={() => setSidebarCollapsed(v => !v)}
+              className="absolute -right-3 top-[22px] z-10 w-6 h-6 rounded-full bg-[#0D1526] border border-white/10 flex items-center justify-center hover:border-[#00D4FF]/30 hover:text-[#00D4FF] text-slate-500 transition-all"
+            >
+              {sidebarCollapsed
+                ? <ChevronRight className="h-3 w-3" />
+                : <ChevronLeft className="h-3 w-3" />}
+            </button>
           </aside>
         )}
 
-        {/* Mobile sheet sidebar */}
+        {/* Mobile sheet */}
         {isMobile && (
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetContent side="left" className="w-60 p-0 bg-[#080E1A] border-r border-white/[0.06]">
@@ -133,48 +161,70 @@ const AdminDashboard = () => {
         )}
 
         {/* Main content */}
-        <main className="flex-1 overflow-auto">
-          {/* Top bar */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Desktop top bar */}
           {!isMobile && (
-            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-white/[0.05] bg-[#0B1120]/95"
-            >
-              <div>
-                <h2 className="text-sm font-semibold text-white">{viewLabels[activeView]}</h2>
-                <p className="text-[10px] text-slate-600">Ultra Admin · Centre de Commande</p>
+            <div className="flex items-center gap-4 px-6 h-14 border-b border-white/[0.05] bg-[#0B1120]/95 backdrop-blur-sm shrink-0">
+              <div className="flex-1">
+                <h2 className="text-sm font-semibold text-white leading-tight">{viewLabels[activeView]}</h2>
+                <p className="text-[10px] text-slate-600 mt-0.5">Ultra Admin · Centre de Commande</p>
               </div>
+
+              {/* Live indicator */}
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/15">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                </span>
+                <span className="text-[11px] text-emerald-400 font-medium">40 boutiques actives</span>
+              </div>
+
+              {/* Search / Cmd+K */}
               <button
                 onClick={() => setCmdOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/[0.06] hover:bg-white/5 transition-all group"
-                style={{ background: "hsla(215, 28%, 12%, 0.6)" }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/[0.06] hover:bg-white/5 hover:border-[#00D4FF]/20 transition-all group"
+                style={{ background: "hsla(215,28%,10%,0.6)" }}
               >
                 <Search className="h-3.5 w-3.5 text-slate-500 group-hover:text-slate-400" />
                 <span className="text-xs text-slate-600 group-hover:text-slate-500">Rechercher...</span>
                 <kbd className="ml-2 text-[10px] text-slate-700 border border-white/[0.06] rounded px-1.5 py-0.5 font-mono">⌘K</kbd>
               </button>
+
+              {/* Notifications bell */}
+              <button className="relative w-9 h-9 rounded-lg border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] flex items-center justify-center transition-all">
+                <Bell className="h-4 w-4 text-slate-400" />
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-red-500 border-[1.5px] border-[#0B1120]" />
+              </button>
+
+              {/* Admin avatar */}
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#6366F1] flex items-center justify-center text-xs font-bold cursor-pointer hover:shadow-[0_0_12px_rgba(0,212,255,0.3)] transition-shadow">
+                H
+              </div>
             </div>
           )}
 
           {/* View content */}
-          <div className="p-4 sm:p-6">
-            {activeView === "overview" && <AdminOverview />}
-            {activeView === "shops" && <AdminShopsView />}
-            {activeView === "reset_requests" && <AdminResetRequests />}
-            {activeView === "announcements" && <AdminAnnouncementsView />}
-            {activeView === "feedback" && <AdminFeedbackInbox />}
-            {activeView === "settings" && <AdminSettingsView />}
-            {activeView === "employees" && <AdminEmployeesView />}
-            {activeView === "plans" && <AdminPlansView />}
-            {activeView === "gateways" && <AdminPaymentGatewaysView />}
-            {activeView === "feature_flags" && <AdminFeatureFlagsView />}
-            {activeView === "waitlist" && <AdminWaitlistView />}
+          <div className="flex-1 overflow-auto p-4 sm:p-6">
+            {activeView === "overview"        && <AdminOverview />}
+            {activeView === "shops"           && <AdminShopsView />}
+            {activeView === "reset_requests"  && <AdminResetRequests />}
+            {activeView === "announcements"   && <AdminAnnouncementsView />}
+            {activeView === "feedback"        && <AdminFeedbackInbox />}
+            {activeView === "settings"        && <AdminSettingsView />}
+            {activeView === "employees"       && <AdminEmployeesView />}
+            {activeView === "plans"           && <AdminPlansView />}
+            {activeView === "gateways"        && <AdminPaymentGatewaysView />}
+            {activeView === "feature_flags"   && <AdminFeatureFlagsView />}
+            {activeView === "waitlist"        && <AdminWaitlistView />}
             {activeView === "signup_attempts" && <AdminSignupAttemptsView />}
-            {activeView === "orders" && <AdminOrdersView />}
-            {activeView === "community" && <AdminCommunityView />}
+            {activeView === "orders"          && <AdminOrdersView />}
+            {activeView === "community"       && <AdminCommunityView />}
+            {activeView === "reports"         && <AdminReportsView />}
           </div>
         </main>
       </div>
 
-      {/* Command Palette */}
       <AdminCommandPalette
         open={cmdOpen}
         onClose={() => setCmdOpen(false)}

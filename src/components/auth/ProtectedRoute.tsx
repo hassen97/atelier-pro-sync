@@ -90,6 +90,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Normalize path: treat "/" and "/dashboard" as equivalent
   const currentPath = location.pathname === "/" ? "/dashboard" : location.pathname;
 
+  // NOTE: `allowed_pages` is a UX navigation policy, not a data-security boundary.
+  // Actual data protection lives in row-level security on every business table
+  // (employees inherit the owner context via useEffectiveUserId + team_members RLS).
+  // A team member who manually types a restricted URL hits this guard AND would
+  // see no data even if the guard were bypassed, because the underlying queries
+  // are RLS-scoped to permissions granted on `team_members`.
   const isBlocked =
     !pagesLoading &&
     allowedPages !== null &&

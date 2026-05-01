@@ -60,7 +60,7 @@ const repairSchema = z.object({
   device_brand: z.string().optional(),
   device_model: z.string().min(1, "Le modèle est requis"),
   imei: z.string().optional(),
-  problem_description: z.string().min(1, "La description du problème est requise"),
+  problem_description: z.string().optional().default(""),
   diagnosis: z.string().optional(),
   labor_cost: z.coerce.number().min(0, "Le coût doit être positif"),
   parts_cost: z.coerce.number().min(0, "Le coût doit être positif"),
@@ -582,23 +582,25 @@ export function RepairDialog({
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Problem Description */}
-            <FormField
-              control={form.control}
-              name="problem_description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description du problème *</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Décrivez le problème signalé par le client..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Problem Description - édition uniquement */}
+            {isEditing && (
+              <FormField
+                control={form.control}
+                name="problem_description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description du problème</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Décrivez le problème signalé par le client..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Diagnosis - édition uniquement */}
             {isEditing && (
@@ -736,23 +738,25 @@ export function RepairDialog({
             </>
             )}
 
-            {/* Notes */}
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes internes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Notes internes (non visibles par le client)..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Notes - édition uniquement */}
+            {isEditing && (
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes internes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Notes internes (non visibles par le client)..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Estimated ready date */}
             <FormField

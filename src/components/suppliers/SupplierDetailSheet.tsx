@@ -308,9 +308,14 @@ export function SupplierDetailSheet({
                           <div className="flex items-center gap-1">
                             {tx.description || "—"}
                             {tx.proof_url && (
-                              <a href={tx.proof_url} target="_blank" rel="noopener noreferrer">
+                              <button
+                                type="button"
+                                onClick={() => handleViewProof(tx.proof_url)}
+                                className="inline-flex items-center"
+                                aria-label="Voir la preuve"
+                              >
                                 <ExternalLink className="h-3 w-3 text-primary" />
-                              </a>
+                              </button>
                             )}
                           </div>
                         </TableCell>

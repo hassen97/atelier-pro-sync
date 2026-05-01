@@ -827,27 +827,29 @@ export function RepairDialog({
               )}
             />
 
-            {/* Technician note */}
-            <FormField
-              control={form.control}
-              name="technician_note"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Note du technicien (visible par le client)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Ex: Écran remplacé. Test en cours. Pièce commandée, arrivée prévue demain..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">Cette note sera visible par le client sur la page de suivi public</p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Technician note - édition uniquement */}
+            {isEditing && (
+              <FormField
+                control={form.control}
+                name="technician_note"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Note du technicien (visible par le client)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Ex: Écran remplacé. Test en cours. Pièce commandée, arrivée prévue demain..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">Cette note sera visible par le client sur la page de suivi public</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            {/* Staff / Intake fields */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Staff / Intake fields - "Réparé par" uniquement en édition */}
+            <div className={cn("grid gap-4", isEditing ? "grid-cols-2" : "grid-cols-1")}>
               <FormField
                 control={form.control}
                 name="received_by"
@@ -861,19 +863,21 @@ export function RepairDialog({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="repaired_by"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Réparé par</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nom du technicien..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {isEditing && (
+                <FormField
+                  control={form.control}
+                  name="repaired_by"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Réparé par</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nom du technicien..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {/* Device condition at intake */}

@@ -600,23 +600,25 @@ export function RepairDialog({
               )}
             />
 
-            {/* Diagnosis */}
-            <FormField
-              control={form.control}
-              name="diagnosis"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Diagnostic</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Votre diagnostic technique..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Diagnosis - édition uniquement */}
+            {isEditing && (
+              <FormField
+                control={form.control}
+                name="diagnosis"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Diagnostic</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Votre diagnostic technique..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Replacement Parts from Inventory — hidden for employees */}
             {!isEmployee && (

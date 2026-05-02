@@ -1248,7 +1248,7 @@ export type Database = {
           repaired_by?: string | null
           status?: string
           technician_note?: string | null
-          ticket_number: number
+          ticket_number?: number
           total_cost?: number
           tracking_token?: string
           updated_at?: string

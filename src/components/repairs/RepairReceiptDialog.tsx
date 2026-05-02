@@ -100,9 +100,13 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
     if (!repair) return;
     setPrinting(true);
     try {
+      const initials = getShopInitials(settings.shop_name);
+      const ticketNum = (repair as any).ticket_number ?? null;
+      const ticketLabel = formatTicketNumberPadded(initials, ticketNum);
       await generatePhoneLabel(
         {
-          ticketNumber: (repair as any).ticket_number || null,
+          ticketNumber: ticketNum,
+          ticketLabel: ticketLabel || null,
           customer: repair.customer,
           phone: repair.phone,
           device: repair.device,

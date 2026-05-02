@@ -387,6 +387,7 @@ interface PhoneLabelData {
   customer: string;
   phone?: string;
   device: string;
+  category?: string | null;
   problem: string;
   depositDate: string;
   receivedBy?: string;
@@ -415,7 +416,7 @@ export async function generatePhoneLabel(
   ${getThermalPrintCss(pageW, "11px")}
   .shop { font-size: 12px; font-weight: bold; text-align: center; }
   .ticket-label-tiny { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin: 2px 0 0; }
-  .ticket-huge { font-size: 22px; font-weight: 900; text-align: center; letter-spacing: 1px; margin: 0 0 4px; }
+  .ticket-huge { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin: 0 0 3px; line-height: 1.35; }
   .field { font-size: 11px; margin: 1px 0; }
 </style>
 </head>
@@ -427,6 +428,7 @@ ${ticketDisplayLabel ? `<p class="ticket-label-tiny">TICKET N°</p><p class="tic
 <p class="field"><span class="bold">Client:</span> ${escHtml(data.customer)}</p>
 ${data.phone ? `<p class="field"><span class="bold">Tél:</span> ${escHtml(data.phone)}</p>` : ""}
 <p class="field"><span class="bold">Appareil:</span> ${escHtml(data.device)}</p>
+${data.category ? `<p class="field"><span class="bold">Catégorie:</span> ${escHtml(data.category)}</p>` : ""}
 <p class="field"><span class="bold">Problème:</span> ${escHtml(problemTruncated)}</p>
 <p class="field"><span class="bold">Dépôt:</span> ${escHtml(data.depositDate)}</p>
 ${data.receivedBy ? `<p class="field"><span class="bold">Reçu par:</span> ${escHtml(data.receivedBy)}</p>` : ""}

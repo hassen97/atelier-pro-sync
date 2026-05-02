@@ -144,7 +144,7 @@ export function useAllUnpaidRepairs() {
           .from("repairs")
           .select(
             `id, status, customer_id, total_cost, amount_paid, created_at,
-             device_model, tracking_token,
+             device_model, tracking_token, ticket_number,
              customer:customers(id, name, phone)`
           )
           .eq("user_id", effectiveUserId)

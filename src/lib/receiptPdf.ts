@@ -11,6 +11,7 @@ interface ReceiptData {
   type: "repair" | "sale";
   id: string;
   ticketNumber?: number | null;
+  ticketLabel?: string | null; // e.g. "CS-00451" — preferred display value
   date: string;
   time?: string;
   customer?: { name: string; phone?: string };

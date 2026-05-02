@@ -47,6 +47,7 @@ interface RepairWithCustomer {
   amount_paid: number;
   notes: string | null;
   tracking_token?: string | null;
+  ticket_number?: number | null;
   estimated_ready_date?: string | null;
   technician_note?: string | null;
   customer: {
@@ -58,7 +59,8 @@ interface RepairWithCustomer {
 }
 
 // Transform database repair to UI repair format
-function transformRepair(dbRepair: RepairWithCustomer) {
+function transformRepair(dbRepair: RepairWithCustomer, shopInitials: string) {
+  const ticketNum = dbRepair.ticket_number ?? null;
   return {
     id: dbRepair.id,
     customer_id: dbRepair.customer_id,
@@ -82,6 +84,8 @@ function transformRepair(dbRepair: RepairWithCustomer) {
     tracking_token: dbRepair.tracking_token || dbRepair.id,
     estimated_ready_date: dbRepair.estimated_ready_date || null,
     technician_note: dbRepair.technician_note || null,
+    ticket_number: ticketNum,
+    ticket_label: formatTicketNumber(shopInitials, ticketNum),
     // Original data for editing
     _original: dbRepair,
   };

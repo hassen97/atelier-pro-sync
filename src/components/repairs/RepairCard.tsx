@@ -84,10 +84,11 @@ export function RepairCard({ repair, onViewDetails, onEdit, onPrint, onCancel, o
 
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-sm"><Phone className="h-4 w-4 text-muted-foreground" /><span>{repair.device}</span></div>
-          <div className="flex items-center gap-2 text-sm"><WrenchIcon className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{repair.issue}</span></div>
-          {repair.category && (
+          {repair.category ? (
             <div className="flex items-center gap-2 text-sm"><Tag className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{repair.category}</span></div>
-          )}
+          ) : repair.issue ? (
+            <div className="flex items-center gap-2 text-sm"><WrenchIcon className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{repair.issue}</span></div>
+          ) : null}
           <div className="flex items-center gap-2 text-sm"><Calendar className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Dépôt: {new Date(repair.depositDate).toLocaleDateString("fr-TN")}</span></div>
           {repair.estimated_ready_date && (
             <div className="flex items-center gap-2 text-sm text-primary">

@@ -429,8 +429,7 @@ ${data.phone ? `<p class="field"><span class="bold">Tél:</span> ${escHtml(data.
 <p class="field"><span class="bold">Dépôt:</span> ${escHtml(data.depositDate)}</p>
 ${data.receivedBy ? `<p class="field"><span class="bold">Reçu par:</span> ${escHtml(data.receivedBy)}</p>` : ""}
 ${data.repairedBy ? `<p class="field"><span class="bold">Tech:</span> ${escHtml(data.repairedBy)}</p>` : ""}
-<div class="sep"></div>
-${barcodeImgTag ? `<div class="barcode">${barcodeImgTag}</div>` : ""}
+
 
 </main></body>
 </html>`;

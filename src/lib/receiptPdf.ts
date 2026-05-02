@@ -400,15 +400,7 @@ export async function generatePhoneLabel(
   const ticketDisplayLabel = data.ticketLabel
     ?? (data.ticketNumber ? `REP-${String(data.ticketNumber).padStart(5, "0")}` : "");
 
-  let barcodeImgTag = "";
-  if (ticketDisplayLabel) {
-    const barcodeDataUrl = await generateBarcodeDataUrl(ticketDisplayLabel);
-    if (barcodeDataUrl) {
-      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(ticketDisplayLabel)}" />`;
-    } else {
-      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(ticketDisplayLabel)}</p>`;
-    }
-  }
+
 
   const problemTruncated = data.problem.length > 60 ? data.problem.slice(0, 57) + "..." : data.problem;
 

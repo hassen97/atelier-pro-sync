@@ -225,15 +225,19 @@ export async function generateThermalReceipt(
 ) {
   const pageW = printerWidth === "80mm" ? "72mm" : "48mm";
 
-  // Prepare barcode image
+  // Build ticket display label: prefer explicit ticketLabel ("CS-00451"),
+  // else fall back to legacy "REP-00451" from ticketNumber.
+  const ticketDisplayLabel = data.ticketLabel
+    ?? (data.ticketNumber ? `REP-${String(data.ticketNumber).padStart(5, "0")}` : "");
+
+  // Prepare barcode image (uses the same label as the on-receipt big number)
   let barcodeImgTag = "";
-  if (data.ticketNumber) {
-    const barcodeValue = `REP-${String(data.ticketNumber).padStart(5, "0")}`;
-    const barcodeDataUrl = await generateBarcodeDataUrl(barcodeValue);
+  if (ticketDisplayLabel) {
+    const barcodeDataUrl = await generateBarcodeDataUrl(ticketDisplayLabel);
     if (barcodeDataUrl) {
-      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(barcodeValue)}" />`;
+      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(ticketDisplayLabel)}" />`;
     } else {
-      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(barcodeValue)}</p>`;
+      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(ticketDisplayLabel)}</p>`;
     }
   }
 

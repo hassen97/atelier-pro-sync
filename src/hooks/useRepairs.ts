@@ -69,10 +69,11 @@ export function useRepairs(page = 0) {
           `id, status, device_model, problem_description, diagnosis,
            deposit_date, delivery_date, imei, labor_cost, parts_cost,
            total_cost, amount_paid, notes, tracking_token, ticket_number,
-           estimated_ready_date, technician_note, customer_id,
+           estimated_ready_date, technician_note, customer_id, category_id,
            is_warranty, received_by, repaired_by, device_condition,
            warranty_ticket_id, created_at, updated_at,
-           customer:customers(id, name, phone, email)`,
+           customer:customers(id, name, phone, email),
+           category:categories(id, name)`,
           { count: "exact" }
         )
         .eq("user_id", effectiveUserId)
@@ -104,10 +105,11 @@ export function useRepairByTicketNumber(ticketNumber: number | null) {
           `id, status, device_model, problem_description, diagnosis,
            deposit_date, delivery_date, imei, labor_cost, parts_cost,
            total_cost, amount_paid, notes, tracking_token, ticket_number,
-           estimated_ready_date, technician_note, customer_id,
+           estimated_ready_date, technician_note, customer_id, category_id,
            is_warranty, received_by, repaired_by, device_condition,
            warranty_ticket_id, created_at, updated_at,
-           customer:customers(id, name, phone, email)`
+           customer:customers(id, name, phone, email),
+           category:categories(id, name)`
         )
         .eq("user_id", effectiveUserId)
         .eq("ticket_number", ticketNumber)

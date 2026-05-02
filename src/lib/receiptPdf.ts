@@ -18,6 +18,7 @@ interface ReceiptData {
   device?: string;
   imei?: string;
   problem?: string;
+  category?: string | null;
   items: ReceiptItem[];
   subtotal: number;
   taxRate?: number;
@@ -100,7 +101,7 @@ export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
     .title { font-size: 14px; font-weight: bold; text-align: center; margin: 3px 0 1px; }
     .ticket-num { font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 2px; }
     .ticket-label-small { font-size: 11px; font-weight: bold; text-align: center; letter-spacing: 1px; margin: 4px 0 0; }
-    .ticket-big { font-size: 28px; font-weight: 900; text-align: center; letter-spacing: 2px; margin: 0 0 6px; line-height: 1.1; }
+    .ticket-big { font-size: 11px; font-weight: bold; text-align: center; letter-spacing: 1px; margin: 0 0 4px; line-height: 1.35; }
     .sep { border-top: 1px dashed #000000; margin: 3px 0; }
     .sep-bold { border-top: 2px solid #000000; margin: 3px 0; }
     .field { font-size: 12px; margin: 1px 0; }
@@ -333,6 +334,7 @@ ${data.time ? `<p class="field">Heure : ${escHtml(data.time)}</p>` : ""}
 ${data.customer ? `<p class="field">Client : ${escHtml(data.customer.name)}</p>` : ""}
 ${data.customer?.phone ? `<p class="field">Tél : ${escHtml(data.customer.phone)}</p>` : ""}
 ${data.type === "repair" && data.device ? `<p class="field">Appareil : ${escHtml(data.device)}</p>` : ""}
+${data.type === "repair" && data.category ? `<p class="field">Catégorie : ${escHtml(data.category)}</p>` : ""}
 ${data.type === "repair" && data.imei ? `<p class="field">IMEI : ${escHtml(data.imei)}</p>` : ""}
 ${data.deviceCondition ? `<p class="field">État à réception : ${escHtml(data.deviceCondition)}</p>` : ""}
 ${data.receivedBy ? `<p class="field">Reçu par : ${escHtml(data.receivedBy)}</p>` : ""}
@@ -385,6 +387,7 @@ interface PhoneLabelData {
   customer: string;
   phone?: string;
   device: string;
+  category?: string | null;
   problem: string;
   depositDate: string;
   receivedBy?: string;
@@ -413,7 +416,7 @@ export async function generatePhoneLabel(
   ${getThermalPrintCss(pageW, "11px")}
   .shop { font-size: 12px; font-weight: bold; text-align: center; }
   .ticket-label-tiny { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin: 2px 0 0; }
-  .ticket-huge { font-size: 22px; font-weight: 900; text-align: center; letter-spacing: 1px; margin: 0 0 4px; }
+  .ticket-huge { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin: 0 0 3px; line-height: 1.35; }
   .field { font-size: 11px; margin: 1px 0; }
 </style>
 </head>
@@ -425,6 +428,7 @@ ${ticketDisplayLabel ? `<p class="ticket-label-tiny">TICKET N°</p><p class="tic
 <p class="field"><span class="bold">Client:</span> ${escHtml(data.customer)}</p>
 ${data.phone ? `<p class="field"><span class="bold">Tél:</span> ${escHtml(data.phone)}</p>` : ""}
 <p class="field"><span class="bold">Appareil:</span> ${escHtml(data.device)}</p>
+${data.category ? `<p class="field"><span class="bold">Catégorie:</span> ${escHtml(data.category)}</p>` : ""}
 <p class="field"><span class="bold">Problème:</span> ${escHtml(problemTruncated)}</p>
 <p class="field"><span class="bold">Dépôt:</span> ${escHtml(data.depositDate)}</p>
 ${data.receivedBy ? `<p class="field"><span class="bold">Reçu par:</span> ${escHtml(data.receivedBy)}</p>` : ""}

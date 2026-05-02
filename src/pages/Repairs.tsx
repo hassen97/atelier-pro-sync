@@ -34,6 +34,7 @@ import { getShopInitials, formatTicketNumber } from "@/lib/utils";
 interface RepairWithCustomer {
   id: string;
   customer_id: string | null;
+  category_id: string | null;
   device_model: string;
   problem_description: string;
   diagnosis: string | null;
@@ -56,6 +57,7 @@ interface RepairWithCustomer {
     phone: string | null;
     email: string | null;
   } | null;
+  category?: { id: string; name: string } | null;
 }
 
 // Transform database repair to UI repair format
@@ -64,6 +66,8 @@ function transformRepair(dbRepair: RepairWithCustomer, shopInitials: string) {
   return {
     id: dbRepair.id,
     customer_id: dbRepair.customer_id,
+    category_id: dbRepair.category_id,
+    category: dbRepair.category?.name || null,
     customer: dbRepair.customer?.name || "Client anonyme",
     phone: dbRepair.customer?.phone || "",
     device: dbRepair.device_model,
@@ -332,6 +336,7 @@ export default function Repairs() {
 
   const handleRepairSubmit = async (data: {
     customer_id?: string;
+    category_id?: string;
     device_model: string;
     imei?: string;
     problem_description: string;
@@ -349,6 +354,7 @@ export default function Repairs() {
   }, selectedParts: SelectedPart[] = []) => {
     const repairData = {
       customer_id: data.customer_id || null,
+      category_id: data.category_id || null,
       device_model: data.device_model,
       imei: data.imei || null,
       problem_description: data.problem_description,

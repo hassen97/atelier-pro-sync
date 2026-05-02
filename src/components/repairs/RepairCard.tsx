@@ -1,4 +1,4 @@
-import { Phone, Wrench as WrenchIcon, Calendar, MoreHorizontal, Shield } from "lucide-react";
+import { Phone, Wrench as WrenchIcon, Calendar, MoreHorizontal, Shield, Tag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,8 @@ export interface Repair {
   technician_note?: string | null;
   ticket_number?: number | null;
   ticket_label?: string;
+  category?: string | null;
+  category_id?: string | null;
 }
 
 interface RepairCardProps {
@@ -83,6 +85,9 @@ export function RepairCard({ repair, onViewDetails, onEdit, onPrint, onCancel, o
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-sm"><Phone className="h-4 w-4 text-muted-foreground" /><span>{repair.device}</span></div>
           <div className="flex items-center gap-2 text-sm"><WrenchIcon className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{repair.issue}</span></div>
+          {repair.category && (
+            <div className="flex items-center gap-2 text-sm"><Tag className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{repair.category}</span></div>
+          )}
           <div className="flex items-center gap-2 text-sm"><Calendar className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Dépôt: {new Date(repair.depositDate).toLocaleDateString("fr-TN")}</span></div>
           {repair.estimated_ready_date && (
             <div className="flex items-center gap-2 text-sm text-primary">

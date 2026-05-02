@@ -60,7 +60,7 @@ const repairSchema = z.object({
   device_brand: z.string().optional(),
   device_model: z.string().min(1, "Le modèle est requis"),
   imei: z.string().optional(),
-  problem_description: z.string().optional().default(""),
+  problem_description: z.string().optional().default(""), // auto-filled from category name
   diagnosis: z.string().optional(),
   labor_cost: z.coerce.number().min(0, "Le coût doit être positif"),
   parts_cost: z.coerce.number().min(0, "Le coût doit être positif"),
@@ -293,10 +293,17 @@ export function RepairDialog({
     const fullDeviceModel = brandLabel 
       ? `${brandLabel} ${data.device_model}`.trim()
       : data.device_model;
-    
+
+    // The category IS the phone's problem. Derive problem_description from
+    // the selected category name so the DB NOT NULL column always has a value
+    // and downstream displays (cards, receipts, tracking) stay consistent.
+    const selectedCategory = repairCategories.find((c) => c.id === data.category_id);
+    const problemFromCategory = selectedCategory?.name || data.problem_description || "";
+
     await onSubmit({
       ...data,
       device_model: fullDeviceModel,
+      problem_description: problemFromCategory,
     }, selectedParts);
     clearDraft();
     form.reset();
@@ -582,25 +589,7 @@ export function RepairDialog({
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Problem Description - édition uniquement */}
-            {isEditing && (
-              <FormField
-                control={form.control}
-                name="problem_description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description du problème</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Décrivez le problème signalé par le client..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            {/* Problem description removed: the selected category IS the problem. */}
 
             {/* Diagnosis - édition uniquement */}
             {isEditing && (

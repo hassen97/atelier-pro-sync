@@ -366,12 +366,7 @@ ${data.trackingUrl ? `
 </div>
 ` : ""}
 
-${barcodeImgTag ? `
-<div class="sep"></div>
-<div class="barcode-section">
-  ${barcodeImgTag}
-</div>
-` : ""}
+
 
 <p class="footer">Présentez ce ticket pour récupérer<br>votre appareil.</p>
 ${thankYouHtml}

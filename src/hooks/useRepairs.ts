@@ -68,7 +68,7 @@ export function useRepairs(page = 0) {
         .select(
           `id, status, device_model, problem_description, diagnosis,
            deposit_date, delivery_date, imei, labor_cost, parts_cost,
-           total_cost, amount_paid, notes, tracking_token,
+           total_cost, amount_paid, notes, tracking_token, ticket_number,
            estimated_ready_date, technician_note, customer_id,
            is_warranty, received_by, repaired_by, device_condition,
            warranty_ticket_id, created_at, updated_at,
@@ -85,6 +85,38 @@ export function useRepairs(page = 0) {
     enabled: !!effectiveUserId,
     // Keep previous page data while loading next page (no flicker)
     placeholderData: (prev) => prev,
+  });
+}
+
+/**
+ * Server-side lookup by ticket_number for a numeric search query.
+ * Returns at most one matching repair (ticket numbers are unique per shop).
+ */
+export function useRepairByTicketNumber(ticketNumber: number | null) {
+  const effectiveUserId = useEffectiveUserId();
+  return useQuery({
+    queryKey: ["repair-by-ticket", effectiveUserId, ticketNumber],
+    queryFn: async () => {
+      if (!effectiveUserId || !ticketNumber) return null;
+      const { data, error } = await supabase
+        .from("repairs")
+        .select(
+          `id, status, device_model, problem_description, diagnosis,
+           deposit_date, delivery_date, imei, labor_cost, parts_cost,
+           total_cost, amount_paid, notes, tracking_token, ticket_number,
+           estimated_ready_date, technician_note, customer_id,
+           is_warranty, received_by, repaired_by, device_condition,
+           warranty_ticket_id, created_at, updated_at,
+           customer:customers(id, name, phone, email)`
+        )
+        .eq("user_id", effectiveUserId)
+        .eq("ticket_number", ticketNumber)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!effectiveUserId && !!ticketNumber,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -112,7 +144,7 @@ export function useAllUnpaidRepairs() {
           .from("repairs")
           .select(
             `id, status, customer_id, total_cost, amount_paid, created_at,
-             device_model, tracking_token,
+             device_model, tracking_token, ticket_number,
              customer:customers(id, name, phone)`
           )
           .eq("user_id", effectiveUserId)

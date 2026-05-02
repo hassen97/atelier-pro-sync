@@ -11,6 +11,7 @@ import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { generateThermalReceipt, generatePhoneLabel } from "@/lib/receiptPdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
+import { getShopInitials, formatTicketNumberPadded, formatTicketNumber } from "@/lib/utils";
 
 interface RepairReceiptDialogProps {
   repair: Repair | null;
@@ -59,11 +60,16 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
       const domain = publicDomain || window.location.origin;
       const trackingUrl = `${domain}/r/${token}`;
 
+      const initials = getShopInitials(settings.shop_name);
+      const ticketNum = (repair as any).ticket_number ?? null;
+      const ticketLabel = formatTicketNumberPadded(initials, ticketNum);
+
       await generateThermalReceipt(
         {
           type: "repair",
           id: repair.id,
-          ticketNumber: (repair as any).ticket_number || null,
+          ticketNumber: ticketNum,
+          ticketLabel: ticketLabel || null,
           date: new Date(repair.depositDate).toLocaleDateString("fr-TN"),
           time: new Date().toLocaleTimeString("fr-TN", { hour: "2-digit", minute: "2-digit" }),
           customer: { name: repair.customer, phone: repair.phone },
@@ -94,9 +100,13 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
     if (!repair) return;
     setPrinting(true);
     try {
+      const initials = getShopInitials(settings.shop_name);
+      const ticketNum = (repair as any).ticket_number ?? null;
+      const ticketLabel = formatTicketNumberPadded(initials, ticketNum);
       await generatePhoneLabel(
         {
-          ticketNumber: (repair as any).ticket_number || null,
+          ticketNumber: ticketNum,
+          ticketLabel: ticketLabel || null,
           customer: repair.customer,
           phone: repair.phone,
           device: repair.device,
@@ -116,6 +126,8 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
   if (!repair) return null;
 
   const remaining = repair.total - repair.paid;
+  const previewInitials = getShopInitials(settings.shop_name);
+  const previewTicketLabel = formatTicketNumber(previewInitials, (repair as any).ticket_number ?? null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -129,8 +141,13 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
           <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-xs font-mono">
             <p className="text-center font-bold text-sm">{settings.shop_name}</p>
             <p className="text-center text-muted-foreground">BON DE RÉPARATION</p>
+            {previewTicketLabel && (
+              <>
+                <p className="text-center text-[10px] tracking-widest text-muted-foreground mt-1">TICKET N°</p>
+                <p className="text-center font-bold text-lg tracking-wider">{previewTicketLabel}</p>
+              </>
+            )}
             <div className="border-t my-1" />
-            <p><span className="text-muted-foreground">Réf :</span> {repair.id.slice(0, 8).toUpperCase()}</p>
             <p><span className="text-muted-foreground">Client :</span> {repair.customer}</p>
             <p><span className="text-muted-foreground">Appareil :</span> {repair.device}</p>
             {repair.imei && <p><span className="text-muted-foreground">IMEI :</span> {repair.imei}</p>}

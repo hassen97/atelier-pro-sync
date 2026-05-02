@@ -18,6 +18,8 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useAllCustomers, useUpdateCustomer, Customer } from "@/hooks/useCustomers";
 import { useAllUnpaidRepairs, useUpdateRepair } from "@/hooks/useRepairs";
 import { useSales, useUpdateSale } from "@/hooks/useSales";
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { getShopInitials, formatTicketNumber } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface DebtItem {
@@ -39,13 +41,17 @@ export default function CustomerDebts() {
   const updateSale = useUpdateSale();
   const { format } = useCurrency();
 
+  const { settings } = useShopSettingsContext();
+  const shopInitials = getShopInitials(settings.shop_name);
+
   const debts: DebtItem[] = [];
 
-  repairs.forEach((repair) => {
+  repairs.forEach((repair: any) => {
     const remaining = Number(repair.total_cost) - Number(repair.amount_paid);
     if (remaining > 0) {
       const customer = customers.find((c) => c.id === repair.customer_id);
-      debts.push({ id: repair.id, customerId: repair.customer_id || "", customerName: customer?.name || "Client inconnu", customerPhone: customer?.phone || "", type: "Réparation", reference: `REP-${repair.id.slice(0, 8).toUpperCase()}`, totalAmount: Number(repair.total_cost), paidAmount: Number(repair.amount_paid), createdAt: repair.created_at });
+      const ref = formatTicketNumber(shopInitials, repair.ticket_number ?? null) || `REP-${repair.id.slice(0, 8).toUpperCase()}`;
+      debts.push({ id: repair.id, customerId: repair.customer_id || "", customerName: customer?.name || "Client inconnu", customerPhone: customer?.phone || "", type: "Réparation", reference: ref, totalAmount: Number(repair.total_cost), paidAmount: Number(repair.amount_paid), createdAt: repair.created_at });
     }
   });
 

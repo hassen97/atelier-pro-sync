@@ -11,6 +11,7 @@ interface ReceiptData {
   type: "repair" | "sale";
   id: string;
   ticketNumber?: number | null;
+  ticketLabel?: string | null; // e.g. "CS-00451" — preferred display value
   date: string;
   time?: string;
   customer?: { name: string; phone?: string };
@@ -98,6 +99,8 @@ export function getThermalPrintCss(pageW = "72mm", fontSize = "12px") {
     .shop-info { font-size: 10px; text-align: center; }
     .title { font-size: 14px; font-weight: bold; text-align: center; margin: 3px 0 1px; }
     .ticket-num { font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 2px; }
+    .ticket-label-small { font-size: 11px; font-weight: bold; text-align: center; letter-spacing: 1px; margin: 4px 0 0; }
+    .ticket-big { font-size: 28px; font-weight: 900; text-align: center; letter-spacing: 2px; margin: 0 0 6px; line-height: 1.1; }
     .sep { border-top: 1px dashed #000000; margin: 3px 0; }
     .sep-bold { border-top: 2px solid #000000; margin: 3px 0; }
     .field { font-size: 12px; margin: 1px 0; }
@@ -222,15 +225,19 @@ export async function generateThermalReceipt(
 ) {
   const pageW = printerWidth === "80mm" ? "72mm" : "48mm";
 
-  // Prepare barcode image
+  // Build ticket display label: prefer explicit ticketLabel ("CS-00451"),
+  // else fall back to legacy "REP-00451" from ticketNumber.
+  const ticketDisplayLabel = data.ticketLabel
+    ?? (data.ticketNumber ? `REP-${String(data.ticketNumber).padStart(5, "0")}` : "");
+
+  // Prepare barcode image (uses the same label as the on-receipt big number)
   let barcodeImgTag = "";
-  if (data.ticketNumber) {
-    const barcodeValue = `REP-${String(data.ticketNumber).padStart(5, "0")}`;
-    const barcodeDataUrl = await generateBarcodeDataUrl(barcodeValue);
+  if (ticketDisplayLabel) {
+    const barcodeDataUrl = await generateBarcodeDataUrl(ticketDisplayLabel);
     if (barcodeDataUrl) {
-      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(barcodeValue)}" />`;
+      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(ticketDisplayLabel)}" />`;
     } else {
-      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(barcodeValue)}</p>`;
+      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(ticketDisplayLabel)}</p>`;
     }
   }
 
@@ -300,8 +307,7 @@ export async function generateThermalReceipt(
   // Phones
   const phones = [settings.phone, settings.whatsapp_phone].filter(Boolean);
 
-  // Ticket number
-  const ticketStr = data.ticketNumber ? String(data.ticketNumber).padStart(5, "0") : "";
+  // Ticket label is computed earlier as `ticketDisplayLabel`
 
   // Loyalty footer block (only when there is something to show)
   const showLoyalty = (data.loyaltyPointsEarned ?? 0) > 0 || (data.loyaltyPointsUsed ?? 0) > 0 || (data.loyaltyBalanceAfter !== null && data.loyaltyBalanceAfter !== undefined);
@@ -345,11 +351,10 @@ ${settings.email ? `<p class="shop-info">${escHtml(settings.email)}</p>` : ""}
 <div class="sep-bold"></div>
 
 <p class="title">${data.type === "repair" ? "BON DE RÉPARATION" : "REÇU DE VENTE"}</p>
-${ticketStr ? `<p class="ticket-num">N° ${ticketStr}</p>` : ""}
+${ticketDisplayLabel ? `<p class="ticket-label-small">TICKET N°</p><p class="ticket-big">${escHtml(ticketDisplayLabel)}</p>` : ""}
 
 <div class="sep"></div>
 
-<p class="field">Référence : ${escHtml(data.id.slice(0, 8).toUpperCase())}</p>
 <p class="field">Date dépôt : ${escHtml(data.date)}</p>
 ${data.time ? `<p class="field">Heure : ${escHtml(data.time)}</p>` : ""}
 
@@ -411,6 +416,7 @@ ${thankYouHtml}
 
 interface PhoneLabelData {
   ticketNumber?: number | null;
+  ticketLabel?: string | null;
   customer: string;
   phone?: string;
   device: string;
@@ -426,16 +432,16 @@ export async function generatePhoneLabel(
   printerWidth: "80mm" | "58mm" = "80mm"
 ) {
   const pageW = printerWidth === "80mm" ? "72mm" : "48mm";
-  const ticketStr = data.ticketNumber ? String(data.ticketNumber).padStart(5, "0") : "";
+  const ticketDisplayLabel = data.ticketLabel
+    ?? (data.ticketNumber ? `REP-${String(data.ticketNumber).padStart(5, "0")}` : "");
 
   let barcodeImgTag = "";
-  if (data.ticketNumber) {
-    const barcodeValue = `REP-${ticketStr}`;
-    const barcodeDataUrl = await generateBarcodeDataUrl(barcodeValue);
+  if (ticketDisplayLabel) {
+    const barcodeDataUrl = await generateBarcodeDataUrl(ticketDisplayLabel);
     if (barcodeDataUrl) {
-      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(barcodeValue)}" />`;
+      barcodeImgTag = `<img src="${barcodeDataUrl}" style="max-width:90%;height:auto;" alt="${escHtml(ticketDisplayLabel)}" />`;
     } else {
-      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(barcodeValue)}</p>`;
+      barcodeImgTag = `<p style="font-size:11px;font-weight:bold;">${escHtml(ticketDisplayLabel)}</p>`;
     }
   }
 
@@ -449,14 +455,15 @@ export async function generatePhoneLabel(
 <style>
   ${getThermalPrintCss(pageW, "11px")}
   .shop { font-size: 12px; font-weight: bold; text-align: center; }
-  .ticket { font-size: 14px; font-weight: bold; text-align: center; margin: 2px 0; }
+  .ticket-label-tiny { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin: 2px 0 0; }
+  .ticket-huge { font-size: 22px; font-weight: 900; text-align: center; letter-spacing: 1px; margin: 0 0 4px; }
   .field { font-size: 11px; margin: 1px 0; }
 </style>
 </head>
 <body class="thermal-print-root"><main class="thermal-print-container">
 
 <p class="shop">${escHtml(shopName)}</p>
-${ticketStr ? `<p class="ticket">N° ${ticketStr}</p>` : ""}
+${ticketDisplayLabel ? `<p class="ticket-label-tiny">TICKET N°</p><p class="ticket-huge">${escHtml(ticketDisplayLabel)}</p>` : ""}
 <div class="sep"></div>
 <p class="field"><span class="bold">Client:</span> ${escHtml(data.customer)}</p>
 ${data.phone ? `<p class="field"><span class="bold">Tél:</span> ${escHtml(data.phone)}</p>` : ""}

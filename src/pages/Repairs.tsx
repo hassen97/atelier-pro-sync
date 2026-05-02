@@ -16,6 +16,7 @@ import type { SelectedPart } from "@/components/repairs/RepairDialog";
 import { PaymentConfirmDialog } from "@/components/repairs/PaymentConfirmDialog";
 import {
   useRepairs,
+  useRepairByTicketNumber,
   useCreateRepair,
   useUpdateRepair,
   useUpdateRepairStatus,
@@ -26,6 +27,8 @@ import { useAllCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
+import { getShopInitials, formatTicketNumber } from "@/lib/utils";
 
 // Type for the repair with customer relation
 interface RepairWithCustomer {
@@ -44,6 +47,7 @@ interface RepairWithCustomer {
   amount_paid: number;
   notes: string | null;
   tracking_token?: string | null;
+  ticket_number?: number | null;
   estimated_ready_date?: string | null;
   technician_note?: string | null;
   customer: {
@@ -55,7 +59,8 @@ interface RepairWithCustomer {
 }
 
 // Transform database repair to UI repair format
-function transformRepair(dbRepair: RepairWithCustomer) {
+function transformRepair(dbRepair: RepairWithCustomer, shopInitials: string) {
+  const ticketNum = dbRepair.ticket_number ?? null;
   return {
     id: dbRepair.id,
     customer_id: dbRepair.customer_id,
@@ -79,6 +84,8 @@ function transformRepair(dbRepair: RepairWithCustomer) {
     tracking_token: dbRepair.tracking_token || dbRepair.id,
     estimated_ready_date: dbRepair.estimated_ready_date || null,
     technician_note: dbRepair.technician_note || null,
+    ticket_number: ticketNum,
+    ticket_label: formatTicketNumber(shopInitials, ticketNum),
     // Original data for editing
     _original: dbRepair,
   };
@@ -123,18 +130,40 @@ export default function Repairs() {
     queryKeys: [["repairs"], ["recent-repairs"], ["dashboard-stats"]],
   });
 
+  // Shop initials for ticket number labels
+  const { settings } = useShopSettingsContext();
+  const shopInitials = getShopInitials(settings.shop_name);
+
+  // Numeric search → server-side lookup so a ticket number on another page is found
+  const trimmed = searchQuery.trim();
+  const numericSearch = /^\d+$/.test(trimmed) ? parseInt(trimmed, 10) : null;
+  const { data: ticketHit } = useRepairByTicketNumber(numericSearch);
+
   // Transform repairs for UI
-  const repairs = (rawRepairs as unknown as RepairWithCustomer[]).map(transformRepair);
+  const baseRepairs = (rawRepairs as unknown as RepairWithCustomer[]).map((r) => transformRepair(r, shopInitials));
+  // Inject the server-side numeric hit if it's not already in the current page
+  const repairs = (() => {
+    if (!ticketHit) return baseRepairs;
+    if (baseRepairs.some((r) => r.id === ticketHit.id)) return baseRepairs;
+    return [transformRepair(ticketHit as unknown as RepairWithCustomer, shopInitials), ...baseRepairs];
+  })();
+
   const selectedRepair = selectedRepairId
     ? repairs.find((r) => r.id === selectedRepairId) || null
     : null;
 
   const filteredRepairs = repairs.filter((repair) => {
+    const q = searchQuery.toLowerCase();
+    const ticketStr = repair.ticket_number ? String(repair.ticket_number) : "";
+    const ticketLabel = (repair.ticket_label || "").toLowerCase();
     const matchesSearch =
-      repair.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      repair.device.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      repair.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (repair.phone && repair.phone.toLowerCase().includes(searchQuery.toLowerCase()));
+      !q ||
+      repair.customer.toLowerCase().includes(q) ||
+      repair.device.toLowerCase().includes(q) ||
+      repair.id.toLowerCase().includes(q) ||
+      ticketStr.includes(trimmed) ||
+      ticketLabel.includes(q) ||
+      (repair.phone && repair.phone.toLowerCase().includes(q));
     const matchesTab = activeTab === "all" || activeTab === "warranty" ? true : repair.status === activeTab;
     const matchesWarranty = activeTab === "warranty" ? repair.is_warranty : true;
     return matchesSearch && matchesTab && matchesWarranty;

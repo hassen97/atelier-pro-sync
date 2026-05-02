@@ -1,51 +1,99 @@
-## Finding analysis
+## Goal
+Implement a per-shop sequential lifetime ticket numbering for repairs, displayed as `[ShopInitials]-[Number]` (e.g. `CS-451`), with the number prominent on the thermal receipt and searchable from the repairs page.
 
-`useAllowedPages` reads `team_members.allowed_pages` from the database (RLS-protected — only the owner and the member can read their own row). `ProtectedRoute` then blocks navigation to pages not in that list.
+## Important pre-decision (please confirm or override)
 
-Critically, **all actual data is protected by row-level security** (every business table is scoped via `useEffectiveUserId` + RLS policies tied to `team_members`). A team member who manually types a restricted URL would only see an empty page or get an "Accès non autorisé" toast and be redirected — they cannot read or mutate data their role does not allow.
+The `repairs` table already has an `integer ticket_number` column with a `BEFORE INSERT` trigger (`assign_repair_ticket_number`) that does exactly `MAX(ticket_number) + 1` per `user_id`. So instead of adding a new `receipt_number` column, **I will reuse the existing `ticket_number` column** (it is the same concept). This avoids duplicate columns and keeps the existing trigger working.
 
-`allowed_pages` is therefore a **UI navigation policy**, not a data access boundary. The scanner is technically correct that there is no Postgres-level enforcement of "page visibility", but page visibility is a UX concept, not a data concept. Trying to enforce it in the database would be an architectural mismatch (URLs are a frontend concern; the DB has no notion of routes).
+If you'd rather have a dedicated new `receipt_number` column anyway, say so and I'll add it side-by-side.
 
-The right response is:
-1. Make sure the client guard is robust (it already is — `ProtectedRoute` blocks + redirects + toasts).
-2. Confirm data-layer RLS truly covers every page's underlying tables (already done — covered by the `Multi-tenant Architecture` and `Shared Data Access` memories).
-3. Mark this finding as an **accepted risk** in the security memory so the scanner stops re-flagging it.
-
-## What to change
-
-### 1. Small hardening of `ProtectedRoute`
-Currently `ProtectedRoute` only redirects when `allowedPages !== null` (i.e. the user is a team member). Add a defensive log + ensure the redirect target itself is in `allowedPages` (avoid redirect loops if `firstAllowed` is somehow stale).
+The DB query on Live shows historical gaps that need backfilling:
 
 ```text
-src/components/auth/ProtectedRoute.tsx
-- if `isBlocked`, pick `allowedPages?.[0] ?? "/dashboard"` (already correct)
-- add an explicit comment that this is a UX guard, data is RLS-protected
+shop A: 200 repairs, only 10 have a number (max=10)   ← needs backfill
+shop B: 148 repairs, 123 numbered (max=125)            ← needs backfill
+shop C: 108 repairs, 8 numbered (max=8)                ← needs backfill
+shop D: 88/88 numbered                                  ← already clean
+... etc.
 ```
 
-No new files, no DB changes.
+## Plan
 
-### 2. Mark the finding as accepted
+### 1. Database migration (backfill + concurrency safety)
 
-Use `security--manage_security_finding` with `operation: "ignore"` on `internal_id: team_permission_client_check`, with the rationale: "Page visibility is a UI policy. All underlying data is RLS-protected per-table via `team_members` membership. A bypassed URL shows no data."
+- **Backfill**: For every shop, sort all existing repairs by `created_at ASC, id ASC` and assign `ticket_number = row_number()` — overwriting existing values so the sequence is contiguous from 1..N with no gaps. Done in a single SQL `UPDATE ... FROM (SELECT … row_number() OVER …)`.
+- **NOT NULL + UNIQUE**: After backfill, set `ticket_number NOT NULL` and add a unique constraint `(user_id, ticket_number)` to guarantee no duplicates even under concurrent inserts.
+- **Concurrency-safe trigger**: Replace `assign_repair_ticket_number` with a version that takes a transaction-level advisory lock keyed by `user_id` (`pg_advisory_xact_lock(hashtext('repairs:'||user_id::text))`) before computing `MAX+1`. Combined with the unique index, two simultaneous inserts cannot collide.
+- **Safety**: Wrap backfill + constraint creation in one migration. The unique index is only created **after** the backfill completes.
 
-### 3. Update `@security-memory`
+### 2. Display: `[ShopInitials]-[Number]`
 
-Append an "Accepted risks" entry:
-- `allowed_pages` is enforced client-side only by design. Data protection is at the table-RLS layer, which is the actual security boundary. Future scans should not re-flag this.
+- Add a tiny helper `getShopInitials(shopName)` in `src/lib/utils.ts`:
+  - take first letter of each word, uppercase, max 3 letters, fallback to `"REP"` if empty.
+  - examples: `"Cybertek Shop"` → `CS`, `"Mon Atelier"` → `MA`.
+- Add `formatTicketNumber(initials, n)` → `"CS-00451"` (5-digit zero-padded for thermal/scan consistency, but unpadded `CS-451` in UI badges).
+- Surface `ticket_number` everywhere it's needed:
+  - `useRepairs` SELECT list — add `ticket_number` to the selected columns (currently missing).
+  - `Repair` UI type in `RepairCard.tsx` and `transformRepair` in `Repairs.tsx` — pass it through.
+  - `RepairCard` header — replace the muted `repair.id` mono chip with a bold primary `CS-451` badge.
+  - `RepairReceiptDialog` preview — same.
+  - `CustomerDebts.tsx` — `reference: \`${initials}-${n}\`` instead of `REP-${id.slice(0,8)}`.
 
-## Why not enforce server-side
+### 3. Thermal receipt (Epson)
 
-Options that were considered and rejected:
+In `src/lib/receiptPdf.ts`:
 
-- **A Postgres function `can_access_page(user_id, route)`**: would duplicate UI route definitions in the DB. Adding a new page would require a migration. No data-protection benefit beyond what RLS already gives.
-- **An edge function gate**: same problem — every page navigation would need a network round-trip just to confirm UI visibility, harming UX, with no extra data protection.
+- Replace the `Référence : <uuid8>` field with a new prominent block at the very top, right under the shop info:
+  - line: `TICKET N°` (small label, centered)
+  - line: `CS-00451` (big, bold, e.g. 26px, centered, with extra top/bottom margin)
+- Add a CSS class `.ticket-big { font-size: 26px; font-weight: 900; text-align: center; letter-spacing: 1px; margin: 4px 0 6px; }` (28px on 80mm, 22px on 58mm).
+- Keep the existing barcode at the bottom but use the new value `CS-00451` instead of `REP-00451`.
+- Same change applied to `generatePhoneLabel` (label sticker).
+
+The pipeline will receive `ticketLabel: string` (already formatted), computed in `RepairReceiptDialog.tsx` from `settings.shop_name` + `repair.ticket_number`.
+
+### 4. Search by raw number
+
+Currently `Repairs.tsx` filters only the 100 loaded rows of the current page, so typing `451` would not find a ticket on another page.
+
+- Add a `useRepairSearchByTicket(ticketNumber)` hook that, when the search query is purely numeric, runs a server-side query:
+
+  ```ts
+  supabase.from("repairs")
+    .select("…same columns as useRepairs…, customer:customers(...)")
+    .eq("user_id", effectiveUserId)
+    .eq("ticket_number", parsedNumber)
+    .limit(1)
+  ```
+
+- In `Repairs.tsx`:
+  - Detect if `searchQuery.trim()` matches `/^\d+$/`. If yes, run the server hook and merge its result into `filteredRepairs` (dedup by id).
+  - Also extend the existing client-side filter to match against `ticket_number` and the formatted `CS-451` string for partial typing.
+
+- (Optional) If you have a separate global command palette beyond `AdminCommandPalette` (which is admin-only), wire it the same way — but I did not find a shop-side global search bar to wire it into; if I missed one, point me to it.
+
+### 5. Verification
+
+After each change I'll:
+
+1. Confirm the migration applied cleanly and no duplicate `(user_id, ticket_number)` exist.
+2. Check the Repairs page renders `CS-XXX` badges on every card.
+3. Print one thermal receipt in preview and verify the big number is at the top.
+4. Search `"451"` in the repairs page and verify the corresponding card surfaces.
 
 ## Files touched
 
-- `src/components/auth/ProtectedRoute.tsx` — add a clarifying comment, no behavior change required (existing guard already works correctly).
-- Security memory — note the accepted risk.
-- Security finding — marked as ignored with rationale.
+- `supabase/migrations/<new>.sql` — backfill + unique index + advisory-lock trigger
+- `src/lib/utils.ts` — `getShopInitials`, `formatTicketNumber`
+- `src/lib/receiptPdf.ts` — big ticket header, barcode value, label
+- `src/hooks/useRepairs.ts` — include `ticket_number` in select; add `useRepairSearchByTicket`
+- `src/pages/Repairs.tsx` — pass ticket number through, server lookup on numeric search, filter update
+- `src/components/repairs/RepairCard.tsx` — header badge
+- `src/components/repairs/RepairReceiptDialog.tsx` — pass formatted label, preview update
+- `src/pages/CustomerDebts.tsx` — reference label uses `CS-XXX`
 
-## Out of scope
+## Out of scope (unless you say otherwise)
 
-No database migrations. No changes to RLS policies. No new edge functions.
+- Renaming the column to `receipt_number` (kept as `ticket_number`).
+- Sales receipts numbering (only repairs were requested).
+- Migrating existing barcodes already printed on customer copies (old `REP-XXXXX` will keep working in the customer's pocket but new prints use `CS-XXXXX`).

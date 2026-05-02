@@ -11,6 +11,7 @@ import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { generateThermalReceipt, generatePhoneLabel } from "@/lib/receiptPdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
+import { getShopInitials, formatTicketNumberPadded, formatTicketNumber } from "@/lib/utils";
 
 interface RepairReceiptDialogProps {
   repair: Repair | null;

@@ -192,7 +192,7 @@ export function useShopSettings() {
         const { data, error } = await supabase
           .from("shop_settings")
           .insert({
-            user_id: user.id,
+            user_id: targetUserId,
             shop_name: updatedSettings.shop_name,
             currency: updatedSettings.currency,
             country: updatedSettings.country,

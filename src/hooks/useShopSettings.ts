@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { toast } from "sonner";
 
 export interface ShopSettings {
@@ -68,7 +69,7 @@ const defaultSettings: ShopSettings = {
 export function useShopSettings() {
   const { user } = useAuth();
   const { impersonatedUserId } = useImpersonation();
-  const effectiveUserId = impersonatedUserId || user?.id || null;
+  const effectiveUserId = useEffectiveUserId();
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -137,6 +138,15 @@ export function useShopSettings() {
       return false;
     }
 
+    // Block employees from overwriting the owner's shop settings.
+    // Allow if it's the user's own row OR a platform admin impersonation.
+    if (effectiveUserId && effectiveUserId !== user.id && !impersonatedUserId) {
+      toast.error("Action réservée au propriétaire de la boutique");
+      return false;
+    }
+
+    const targetUserId = effectiveUserId || user.id;
+
     try {
       setSaving(true);
       const updatedSettings = { ...settings, ...newSettings };
@@ -182,7 +192,7 @@ export function useShopSettings() {
         const { data, error } = await supabase
           .from("shop_settings")
           .insert({
-            user_id: user.id,
+            user_id: targetUserId,
             shop_name: updatedSettings.shop_name,
             currency: updatedSettings.currency,
             country: updatedSettings.country,

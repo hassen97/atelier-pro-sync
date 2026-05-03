@@ -69,7 +69,7 @@ const defaultSettings: ShopSettings = {
 export function useShopSettings() {
   const { user } = useAuth();
   const { impersonatedUserId } = useImpersonation();
-  const effectiveUserId = impersonatedUserId || user?.id || null;
+  const effectiveUserId = useEffectiveUserId();
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

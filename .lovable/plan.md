@@ -1,42 +1,43 @@
 ## Problem
 
-Looking at ticket **CSS-89** in Cool Store SBZ, the DB row has both `problem_description = ""` and `category_id = NULL`. Two distinct bugs + a styling tweak.
+Employees (e.g. `ibtihelounii` under shop `coolstoresbz`) print receipts/labels showing the default `Mon Atelier`, default currency, no logo, no address, etc. — instead of inheriting the owner's `shop_settings`.
 
-## Root Causes
+## Root Cause
 
-1. **`category_id` dropped on save** — `src/pages/Repairs.tsx` `handleRepairSubmit` builds `repairData` without including `category_id`. The form collects it but it's never forwarded to the DB.
-2. **`problem_description` saves empty** — schema in `RepairDialog.tsx` has `.optional().default("")`, no `min(1)` validation.
-3. **Category never displayed** — not selected in `useRepairs`, not transformed in `Repairs.tsx`, not rendered in `RepairCard`, not in `ReceiptData`.
-4. **Ticket number font too large vs "TICKET N°" caption** — should match.
+`src/hooks/useShopSettings.ts` queries `shop_settings` using:
 
-## Plan
+```ts
+const effectiveUserId = impersonatedUserId || user?.id || null;
+```
 
-### A. Fix the save path
-- `src/pages/Repairs.tsx` `handleRepairSubmit`: add `category_id?: string` to data type and include `category_id: data.category_id || null` in `repairData`.
-- `src/components/repairs/RepairDialog.tsx`: change schema to `problem_description: z.string().min(1, "Le problème est requis")`, drop `.default("")`.
+It only handles **impersonation**, but ignores the **team membership** case. For a logged-in employee, `user.id` is the employee's own auth id, which has **no row** in `shop_settings`. The `.maybeSingle()` returns no data, so the hook silently falls back to `defaultSettings` (`shop_name: "Mon Atelier"`, `currency: "TND"`, no logo, etc.). That's exactly what shows on receipts and labels.
 
-### B. Fetch & propagate category
-- `src/hooks/useRepairs.ts`: add `category_id` and join `category:categories(id, name)` to both SELECTs (`useRepairs` and `useRepairByTicketNumber`).
-- `src/pages/Repairs.tsx`: extend `RepairWithCustomer` with `category_id` + `category {id,name}`. In `transformRepair`, pass through `category: dbRepair.category?.name || null` and `category_id`.
+Every other data hook in the project correctly uses `useEffectiveUserId()` from `useTeam.ts`, which resolves to the owner's id when the user is an active team member. `useShopSettings` is the only outlier — it predates that pattern and uses raw auth + impersonation only.
 
-### C. Display on card
-- `src/components/repairs/RepairCard.tsx`: add `category?: string | null` to `Repair` interface; render a small muted line with a Tag icon under the issue when present.
+This violates the project's core memory rule: "Always use `useEffectiveUserId()` in data hooks. Employees inherit owner's context."
 
-### D. Display on receipts
-- `src/lib/receiptPdf.ts`: add `category?: string | null` to `ReceiptData` and `PhoneLabelData`. Render `Catégorie : X` in the customer/device block of `generateThermalReceipt` and a `Catégorie:` line in `generatePhoneLabel` (between Appareil and Problème).
-- `src/components/repairs/RepairReceiptDialog.tsx`: include `category: (repair as any).category || null` in both `generateThermalReceipt` and `generatePhoneLabel` payloads.
+## Fix
 
-### E. Equalize ticket label font on receipts
-- `src/lib/receiptPdf.ts` CSS: `.ticket-big` from `28px` → `11px` (match `.ticket-label-small`); in `generatePhoneLabel` inline CSS, `.ticket-huge` from `22px` → `10px` (match `.ticket-label-tiny`). Keep bold + center.
+### 1. `src/hooks/useShopSettings.ts` — read path
+- Replace the local `effectiveUserId` computation with `useEffectiveUserId()` from `@/hooks/useTeam`.
+- Keep the same fetch logic (`shop_settings` filtered by `user_id = effectiveUserId`), so employees automatically load the owner's shop row.
+- Refetch dependency stays on `effectiveUserId`.
 
-## Files Edited
-- `src/pages/Repairs.tsx`
-- `src/components/repairs/RepairDialog.tsx`
-- `src/hooks/useRepairs.ts`
-- `src/components/repairs/RepairCard.tsx`
-- `src/components/repairs/RepairReceiptDialog.tsx`
-- `src/lib/receiptPdf.ts`
+### 2. `src/hooks/useShopSettings.ts` — write path (`saveSettings`)
+- Employees must NOT overwrite the owner's settings. Guard `saveSettings`:
+  - If `effectiveUserId !== user.id` AND not impersonating, block the save with a toast ("Action réservée au propriétaire") and return `false`.
+  - Impersonation by a platform admin keeps working (writes go to `effectiveUserId`, matching current impersonation behavior elsewhere).
+- Update both the UPDATE and INSERT branches to use `effectiveUserId` instead of `user.id` for the `user_id` column, so impersonated writes target the right shop.
 
-## Not changed
-- No DB migration (`category_id` and `problem_description` already exist).
-- Existing CSS-89 row stays empty — can be re-edited now that the form correctly saves both fields.
+### 3. No DB / RLS change needed
+Existing policy `Owner or team can view settings` already allows employees to SELECT the owner's `shop_settings`. The bug is purely client-side query filtering.
+
+### 4. No changes needed in
+- `RepairReceiptDialog.tsx`, `receiptPdf.ts`, `ShopSettingsContext.tsx` — they consume `settings` from the context, which will now contain correct data automatically.
+- Other hooks — already use `useEffectiveUserId()`.
+
+## Verification After Fix
+- Log in as an employee of `coolstoresbz` → settings page and printed receipts/labels should show `coolstoresbz` name, logo, currency, address, ticket prefix.
+- Owner login still loads own settings.
+- Platform admin impersonation continues to load the impersonated shop.
+- Employee attempting to edit settings sees a denial toast (UI for hiding the form can be tightened later if needed; this plan only fixes the data-loading bug).

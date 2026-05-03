@@ -138,6 +138,15 @@ export function useShopSettings() {
       return false;
     }
 
+    // Block employees from overwriting the owner's shop settings.
+    // Allow if it's the user's own row OR a platform admin impersonation.
+    if (effectiveUserId && effectiveUserId !== user.id && !impersonatedUserId) {
+      toast.error("Action réservée au propriétaire de la boutique");
+      return false;
+    }
+
+    const targetUserId = effectiveUserId || user.id;
+
     try {
       setSaving(true);
       const updatedSettings = { ...settings, ...newSettings };

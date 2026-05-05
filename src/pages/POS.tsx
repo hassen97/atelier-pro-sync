@@ -404,7 +404,7 @@ export default function POS() {
                   ))}
                 </div>
               </div>
-              <div className="flex-1 overflow-auto">
+              <div className="lg:flex-1 lg:overflow-auto">
                 {filteredProducts.length === 0 ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">
                     {products.length === 0 ? "Aucun produit dans l'inventaire." : "Aucun produit trouvé."}
@@ -431,7 +431,7 @@ export default function POS() {
             </TabsContent>
 
             <TabsContent value="repairs" className="flex flex-col flex-1 min-h-0 mt-0">
-              <div className="flex-1 overflow-auto">
+              <div className="lg:flex-1 lg:overflow-auto">
                 {completedRepairs.length === 0 ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">Aucune réparation terminée en attente d'encaissement.</div>
                 ) : (

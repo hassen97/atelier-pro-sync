@@ -361,8 +361,8 @@ export default function POS() {
     return (
     <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in">
         <PageHeader title="Point de Vente" description="Encaissement et ventes" />
-        <div className="grid gap-6 lg:grid-cols-3 lg:h-[calc(100%-5rem)]">
-          <div className="lg:col-span-2 min-h-[50vh] lg:min-h-0"><Skeleton className="h-10 w-full mb-4" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32" />)}</div></div>
+        <div className="grid gap-6 lg:grid-cols-4 lg:h-[calc(100%-5rem)]">
+          <div className="lg:col-span-3 min-h-[50vh] lg:min-h-0"><Skeleton className="h-10 w-full mb-4" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32" />)}</div></div>
           <Skeleton className="h-96" />
         </div>
       </div>
@@ -375,20 +375,20 @@ export default function POS() {
 
       <div className="grid gap-6 lg:grid-cols-4 lg:h-[calc(100%-5rem)]">
         {/* Products & Repairs Section - Full Width */}
-        <div className="lg:col-span-3 flex flex-col lg:min-h-0">
-          <Tabs defaultValue="products" className="flex flex-col flex-1 min-h-0">
-            <TabsList className="mb-3 w-fit">
-              <TabsTrigger value="products">Produits</TabsTrigger>
-              <TabsTrigger value="repairs" className="gap-1.5">
-                <Wrench className="h-3.5 w-3.5" />
-                Réparations terminées
-                {completedRepairs.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{completedRepairs.length}</Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
+        <Tabs defaultValue="products" className="lg:col-span-3 flex flex-col min-h-0">
+          <TabsList className="mb-3 w-fit">
+            <TabsTrigger value="products">Produits</TabsTrigger>
+            <TabsTrigger value="repairs" className="gap-1.5">
+              <Wrench className="h-3.5 w-3.5" />
+              Réparations terminées
+              {completedRepairs.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{completedRepairs.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="products" className="flex flex-col flex-1 min-h-0 mt-0">
+          <TabsContent value="products" className="flex-1 min-h-0 mt-0">
+            <div className="h-full flex flex-col">
               <div className="space-y-2 mb-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -401,7 +401,7 @@ export default function POS() {
                   ))}
                 </div>
               </div>
-              <div className="lg:flex-1 lg:overflow-auto">
+              <div className="flex-1 overflow-auto min-h-0">
                 {filteredProducts.length === 0 ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">
                     {products.length === 0 ? "Aucun produit dans l'inventaire." : "Aucun produit trouvé."}
@@ -425,49 +425,49 @@ export default function POS() {
                   </div>
                 )}
               </div>
-            </TabsContent>
+            </div>
+          </TabsContent>
 
-            <TabsContent value="repairs" className="flex flex-col flex-1 min-h-0 mt-0">
-              <div className="lg:flex-1 lg:overflow-auto">
-                {completedRepairs.length === 0 ? (
-                  <div className="flex items-center justify-center h-32 text-muted-foreground">Aucune réparation terminée en attente d'encaissement.</div>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {completedRepairs.map((repair: any) => {
-                      const remaining = repair.total_cost - repair.amount_paid;
-                      const inCart = cart.some((i) => i.id === repair.id && i.type === "repair");
-                      return (
-                        <Card key={repair.id} className={cn("cursor-pointer transition-all hover:shadow-soft", inCart && "border-primary ring-1 ring-primary/20", remaining <= 0 && "opacity-60")} onClick={() => addRepairToCart(repair)}>
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <p className="font-medium text-sm">{repair.device_model}</p>
-                                <p className="text-xs text-muted-foreground">{repair.customer?.name || "Client inconnu"}</p>
-                              </div>
-                              <Badge className="bg-success/10 text-success border-success/20 text-[10px]">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />Terminé
-                              </Badge>
+          <TabsContent value="repairs" className="flex-1 min-h-0 mt-0">
+            <div className="h-full overflow-auto">
+              {completedRepairs.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground">Aucune réparation terminée en attente d'encaissement.</div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {completedRepairs.map((repair: any) => {
+                    const remaining = repair.total_cost - repair.amount_paid;
+                    const inCart = cart.some((i) => i.id === repair.id && i.type === "repair");
+                    return (
+                      <Card key={repair.id} className={cn("cursor-pointer transition-all hover:shadow-soft", inCart && "border-primary ring-1 ring-primary/20", remaining <= 0 && "opacity-60")} onClick={() => addRepairToCart(repair)}>
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="font-medium text-sm">{repair.device_model}</p>
+                              <p className="text-xs text-muted-foreground">{repair.customer?.name || "Client inconnu"}</p>
                             </div>
-                            <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{repair.problem_description}</p>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-muted-foreground">Total: {format(repair.total_cost)}</span>
-                              {remaining > 0 ? (
-                                <Badge variant="destructive" className="text-[10px]">Reste: {format(remaining)}</Badge>
-                              ) : (
-                                <Badge className="bg-success/10 text-success text-[10px]">Payé</Badge>
-                              )}
-                            </div>
-                            {inCart && <p className="text-[10px] text-primary font-medium mt-1">✓ Ajouté au panier</p>}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+                            <Badge className="bg-success/10 text-success border-success/20 text-[10px]">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />Terminé
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{repair.problem_description}</p>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Total: {format(repair.total_cost)}</span>
+                            {remaining > 0 ? (
+                              <Badge variant="destructive" className="text-[10px]">Reste: {format(remaining)}</Badge>
+                            ) : (
+                              <Badge className="bg-success/10 text-success text-[10px]">Payé</Badge>
+                            )}
+                          </div>
+                          {inCart && <p className="text-[10px] text-primary font-medium mt-1">✓ Ajouté au panier</p>}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Mobile floating cart trigger */}
         <Button

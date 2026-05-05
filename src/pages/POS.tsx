@@ -373,12 +373,12 @@ export default function POS() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in">
+    <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in pb-24 lg:pb-0">
       <PageHeader title="Point de Vente" description="Encaissement et ventes" />
 
       <div className="grid gap-6 lg:grid-cols-3 lg:h-[calc(100%-5rem)]">
         {/* Products & Repairs Section */}
-        <div className="lg:col-span-2 flex flex-col min-h-[50vh] lg:min-h-0">
+        <div className="lg:col-span-2 flex flex-col lg:min-h-0">
           <Tabs defaultValue="products" className="flex flex-col flex-1 min-h-0">
             <TabsList className="mb-3 w-fit">
               <TabsTrigger value="products">Produits</TabsTrigger>

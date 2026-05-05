@@ -406,7 +406,7 @@ export default function POS() {
                     {products.length === 0 ? "Aucun produit dans l'inventaire." : "Aucun produit trouvé."}
                   </div>
                 ) : (
-                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                     {filteredProducts.map((product: any) => (
                       <Card key={product.id} className={cn("cursor-pointer transition-all hover:shadow-soft hover:border-primary/30", product.quantity <= 0 && "opacity-50 cursor-not-allowed")} onClick={() => addToCart(product)}>
                         <CardContent className="p-3">

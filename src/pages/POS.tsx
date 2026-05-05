@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ShoppingCart } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -50,6 +51,7 @@ export default function POS() {
   const [amountPaidInput, setAmountPaidInput] = useState<string>("");
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
   const [loyaltyPointsUsed, setLoyaltyPointsUsed] = useState(0);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const beepRef = useRef<AudioContext | null>(null);
 
@@ -368,12 +370,12 @@ export default function POS() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in">
+    <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in pb-24 lg:pb-0">
       <PageHeader title="Point de Vente" description="Encaissement et ventes" />
 
       <div className="grid gap-6 lg:grid-cols-3 lg:h-[calc(100%-5rem)]">
         {/* Products & Repairs Section */}
-        <div className="lg:col-span-2 flex flex-col min-h-[50vh] lg:min-h-0">
+        <div className="lg:col-span-2 flex flex-col lg:min-h-0">
           <Tabs defaultValue="products" className="flex flex-col flex-1 min-h-0">
             <TabsList className="mb-3 w-fit">
               <TabsTrigger value="products">Produits</TabsTrigger>
@@ -399,7 +401,7 @@ export default function POS() {
                   ))}
                 </div>
               </div>
-              <div className="flex-1 overflow-auto">
+              <div className="lg:flex-1 lg:overflow-auto">
                 {filteredProducts.length === 0 ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">
                     {products.length === 0 ? "Aucun produit dans l'inventaire." : "Aucun produit trouvé."}
@@ -426,7 +428,7 @@ export default function POS() {
             </TabsContent>
 
             <TabsContent value="repairs" className="flex flex-col flex-1 min-h-0 mt-0">
-              <div className="flex-1 overflow-auto">
+              <div className="lg:flex-1 lg:overflow-auto">
                 {completedRepairs.length === 0 ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">Aucune réparation terminée en attente d'encaissement.</div>
                 ) : (
@@ -467,12 +469,49 @@ export default function POS() {
           </Tabs>
         </div>
 
-        {/* Cart Section */}
-        <Card className={cn("flex flex-col min-h-0 transition-all", scanFlash && "ring-2 ring-success/60 bg-success/5")}>
+        {/* Mobile floating cart trigger */}
+        <Button
+          onClick={() => setMobileCartOpen(true)}
+          className="lg:hidden fixed bottom-4 inset-x-4 z-40 h-14 shadow-elevated bg-gradient-primary text-primary-foreground hover:opacity-90 flex items-center justify-between px-5"
+        >
+          <span className="flex items-center gap-2 font-semibold">
+            <ShoppingCart className="h-5 w-5" />
+            Panier
+            {cart.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-6 px-2">
+                {cart.reduce((n, i) => n + i.quantity, 0)}
+              </Badge>
+            )}
+          </span>
+          <span className="font-mono-numbers font-bold">{format(total)}</span>
+        </Button>
+
+        {/* Mobile backdrop */}
+        {mobileCartOpen && (
+          <div
+            className="lg:hidden fixed inset-0 z-40 bg-background/70 backdrop-blur-sm"
+            onClick={() => setMobileCartOpen(false)}
+          />
+        )}
+
+        {/* Cart Section (desktop inline, mobile bottom sheet) */}
+        <Card
+          className={cn(
+            "flex-col min-h-0 transition-all",
+            "lg:relative lg:flex lg:inset-auto lg:max-h-none lg:rounded-lg lg:shadow-none",
+            "fixed inset-x-0 bottom-0 z-50 max-h-[88vh] rounded-t-2xl rounded-b-none shadow-2xl",
+            mobileCartOpen ? "flex" : "hidden lg:flex",
+            scanFlash && "ring-2 ring-success/60 bg-success/5"
+          )}
+        >
           <CardHeader className="pb-3 shrink-0">
+            <div className="lg:hidden mx-auto mb-2 h-1.5 w-12 rounded-full bg-muted-foreground/30" />
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2"><Receipt className="h-4 w-4" />Panier</CardTitle>
-              {cart.length > 0 && <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive hover:text-destructive">Vider</Button>}
+              <div className="flex items-center gap-1">
+                {cart.length > 0 && <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive hover:text-destructive">Vider</Button>}
+                <Button variant="ghost" size="sm" onClick={() => setMobileCartOpen(false)} className="lg:hidden">Fermer</Button>
+              </div>
             </div>
           </CardHeader>
 

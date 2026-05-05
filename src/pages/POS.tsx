@@ -362,7 +362,7 @@ export default function POS() {
     <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in">
         <PageHeader title="Point de Vente" description="Encaissement et ventes" />
         <div className="grid gap-6 lg:grid-cols-3 lg:h-[calc(100%-5rem)]">
-          <div className="lg:col-span-2 min-h-[50vh] lg:min-h-0"><Skeleton className="h-10 w-full mb-4" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div></div>
+          <div className="lg:col-span-2 min-h-[50vh] lg:min-h-0"><Skeleton className="h-10 w-full mb-4" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32" />)}</div></div>
           <Skeleton className="h-96" />
         </div>
       </div>
@@ -373,9 +373,9 @@ export default function POS() {
     <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] animate-fade-in pb-24 lg:pb-0">
       <PageHeader title="Point de Vente" description="Encaissement et ventes" />
 
-      <div className="grid gap-6 lg:grid-cols-3 lg:h-[calc(100%-5rem)]">
-        {/* Products & Repairs Section */}
-        <div className="lg:col-span-2 flex flex-col lg:min-h-0">
+      <div className="grid gap-6 lg:grid-cols-4 lg:h-[calc(100%-5rem)]">
+        {/* Products & Repairs Section - Full Width */}
+        <div className="lg:col-span-3 flex flex-col lg:min-h-0">
           <Tabs defaultValue="products" className="flex flex-col flex-1 min-h-0">
             <TabsList className="mb-3 w-fit">
               <TabsTrigger value="products">Produits</TabsTrigger>
@@ -407,9 +407,9 @@ export default function POS() {
                     {products.length === 0 ? "Aucun produit dans l'inventaire." : "Aucun produit trouvé."}
                   </div>
                 ) : (
-                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                     {filteredProducts.map((product: any) => (
-                      <Card key={product.id} className={cn("cursor-pointer transition-all hover:shadow-soft hover:border-primary/30", product.quantity <= 0 && "opacity-50 cursor-not-allowed")} onClick={() => addToCart(product)}>
+                      <Card key={product.id} className={cn("cursor-pointer transition-all hover:shadow-soft hover:border-primary/30", product.quantity <= 0 && "opacity-50 cursor-not-allowed")} onClick={() => product.quantity > 0 && addToCart(product)}>
                         <CardContent className="p-3">
                           <div className="flex justify-between items-start mb-1">
                             <h3 className="font-medium text-sm leading-tight line-clamp-2">{product.name}</h3>
@@ -432,7 +432,7 @@ export default function POS() {
                 {completedRepairs.length === 0 ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">Aucune réparation terminée en attente d'encaissement.</div>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {completedRepairs.map((repair: any) => {
                       const remaining = repair.total_cost - repair.amount_paid;
                       const inCart = cart.some((i) => i.id === repair.id && i.type === "repair");

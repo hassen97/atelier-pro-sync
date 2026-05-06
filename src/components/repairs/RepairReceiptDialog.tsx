@@ -116,6 +116,7 @@ export function RepairReceiptDialog({ repair, open, onOpenChange }: RepairReceip
           depositDate: new Date(repair.depositDate).toLocaleDateString("fr-TN"),
           receivedBy: (repair as any).received_by || undefined,
           repairedBy: (repair as any).repaired_by || undefined,
+          unlockCode: (repair as any).device_unlock_code || undefined,
         },
         settings.shop_name,
         printerWidth

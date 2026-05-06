@@ -387,6 +387,7 @@ interface PhoneLabelData {
   depositDate: string;
   receivedBy?: string;
   repairedBy?: string;
+  unlockCode?: string;
 }
 
 export async function generatePhoneLabel(

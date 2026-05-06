@@ -1204,6 +1204,7 @@ export type Database = {
           deposit_date: string
           device_condition: string | null
           device_model: string
+          device_unlock_code: string | null
           diagnosis: string | null
           estimated_ready_date: string | null
           id: string
@@ -1234,6 +1235,7 @@ export type Database = {
           deposit_date?: string
           device_condition?: string | null
           device_model: string
+          device_unlock_code?: string | null
           diagnosis?: string | null
           estimated_ready_date?: string | null
           id?: string
@@ -1264,6 +1266,7 @@ export type Database = {
           deposit_date?: string
           device_condition?: string | null
           device_model?: string
+          device_unlock_code?: string | null
           diagnosis?: string | null
           estimated_ready_date?: string | null
           id?: string

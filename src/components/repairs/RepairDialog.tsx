@@ -72,6 +72,7 @@ const repairSchema = z.object({
   received_by: z.string().optional(),
   repaired_by: z.string().optional(),
   device_condition: z.string().optional(),
+  device_unlock_code: z.string().max(100).optional(),
 }).refine((data) => data.amount_paid <= data.total_cost, {
   message: "L'avance ne peut pas dépasser le prix total",
   path: ["amount_paid"],
@@ -100,6 +101,7 @@ interface RepairDialogProps {
     received_by?: string | null;
     repaired_by?: string | null;
     device_condition?: string | null;
+    device_unlock_code?: string | null;
   } | null;
   onSubmit: (data: RepairFormValues, selectedParts: SelectedPart[]) => Promise<void>;
   isLoading?: boolean;
@@ -191,6 +193,7 @@ export function RepairDialog({
       received_by: "",
       repaired_by: "",
       device_condition: "",
+      device_unlock_code: "",
     },
   });
 
@@ -199,7 +202,7 @@ export function RepairDialog({
     device_brand: "", device_model: "", imei: "", problem_description: "",
     diagnosis: "", labor_cost: 0, parts_cost: 0, total_cost: 0, amount_paid: 0, notes: "",
     estimated_ready_date: "", technician_note: "", received_by: "", repaired_by: "",
-    device_condition: "",
+    device_condition: "", device_unlock_code: "",
   };
 
   const { clearDraft } = useFormDraft("repair", {
@@ -253,6 +256,7 @@ export function RepairDialog({
         received_by: (repair as any).received_by || "",
         repaired_by: (repair as any).repaired_by || "",
         device_condition: (repair as any).device_condition || "",
+        device_unlock_code: (repair as any).device_unlock_code || "",
       });
     } else {
       setSelectedBrand("");
@@ -277,6 +281,7 @@ export function RepairDialog({
         received_by: "",
         repaired_by: "",
         device_condition: "",
+        device_unlock_code: "",
       });
     }
   }, [repair, form]);
@@ -904,6 +909,28 @@ export function RepairDialog({
                       </button>
                     ))}
                   </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Device unlock code (password / PIN / pattern) */}
+            <FormField
+              control={form.control}
+              name="device_unlock_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Code de déverrouillage</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Mot de passe, code PIN ou schéma (ex: 1234, L, ...)"
+                      autoComplete="off"
+                      {...field}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Stocké en privé pour le technicien. Non visible sur le suivi public.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

@@ -351,6 +351,7 @@ export default function Repairs() {
     received_by?: string;
     repaired_by?: string;
     device_condition?: string;
+    device_unlock_code?: string;
   }, selectedParts: SelectedPart[] = []) => {
     const repairData = {
       customer_id: data.customer_id || null,
@@ -369,6 +370,7 @@ export default function Repairs() {
       received_by: data.received_by || null,
       repaired_by: data.repaired_by || null,
       device_condition: data.device_condition || null,
+      device_unlock_code: data.device_unlock_code || null,
     };
 
     let repairId: string;

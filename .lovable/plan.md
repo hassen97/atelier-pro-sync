@@ -1,37 +1,55 @@
-## Problem
+## Issues to fix
 
-On mobile (POS page), the products section is capped at `min-h-[50vh]` with internal scroll, and the **Cart card** stacks directly under it. The empty cart renders as a tall gray panel that occupies a large portion of the viewport, forcing the user to scroll inside the small products area to see the rest of the products.
+### 1. Employees don't share their owner's subscription
 
-Root cause in `src/pages/POS.tsx`:
+**Root cause:** `useSubscription()` in `src/hooks/useSubscription.ts` queries `shop_subscriptions` filtered by `user.id` (the currently logged-in user). For an employee, that's the employee's own auth id — which has no subscription row — so the app behaves as if they're on the free plan. This also breaks `usePlanPermissions`, `BillingDashboard`, trial banners, etc.
 
-- Line 371: container uses `min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)]` — fixed height only on `lg+`.
-- Line 376: products column has `min-h-[50vh]` on mobile, which artificially caps it.
-- Line 471: Cart `<Card>` always renders inline below products on mobile, with its full chrome (header, scan input, customer combobox, empty state placeholder, totals, buttons) — this is the "gray box".
+**Fix:** Resolve the effective shop owner id (already implemented in `useEffectiveUserId` from `src/hooks/useTeam.ts`) and query the subscription against that id instead.
 
-## Fix
+Changes:
+- `useSubscription()` → use `useEffectiveUserId()` instead of `user.id`. Update `queryKey` to include the effective id so cache invalidation per shop still works.
+- Leave `useMyOrders()` as-is (orders are personal billing history of the owner — employees shouldn't manage billing).
+- Audit nearby callers that may rely on owner-only behavior:
+  - `BillingDashboard` — should remain owner-only (gate via `useIsOwner`); employees just need read of plan capabilities, which `useSubscription` now correctly returns.
+  - `WaitlistTrialBanner` / `TrialBanner` — fine; they read from subscription so will reflect owner's plan.
 
-Make the cart **mobile-friendly** by collapsing it into a bottom sheet/floating panel on mobile, while keeping the current desktop two-column layout intact.
+### 2. Add device unlock code (password / pattern) to the Create Repair form
 
-### Changes (single file: `src/pages/POS.tsx`)
+Add a single optional free-text field "Code de déverrouillage (mot de passe / schéma)" so the technician can store the unlock code/pattern entered by the customer at intake.
 
-1. **Remove the `50vh` cap on mobile** for the products section so products flow naturally and the user sees the full grid without inner scroll.
-   - `min-h-[50vh] lg:min-h-0` → `lg:min-h-0` only.
-   - Adjust the outer wrapper so mobile uses natural height (drop the `min-h-[calc(100vh-8rem)]` for mobile).
+Changes:
+- **DB migration:** add column `device_unlock_code text` (nullable) to `public.repairs`.
+- **Types:** auto-regenerated from Supabase.
+- **`src/components/repairs/RepairDialog.tsx`:**
+  - Extend Zod schema with `device_unlock_code: z.string().max(100).optional()`.
+  - Add to `defaultValues`, `reset()` calls (edit + create), and submit payload.
+  - Render an `<Input>` field in the device-info section, near `device_condition` / `imei`. Label: "Code de déverrouillage" with placeholder "Mot de passe, code PIN ou schéma (ex: L, 1234, ...)". Help text noting it's stored privately.
+- **`src/components/repairs/RepairCard.tsx` / detail views:** optionally surface the code in the technician-facing view (read-only). Not required for the MVP — can be done in a follow-up if you want it visible there too.
+- **Tracking page:** do NOT include the unlock code in the public `get_repair_by_token` RPC (it must stay private). No changes needed since the RPC explicitly lists fields.
 
-2. **Hide the inline Cart card on mobile** (`hidden lg:flex` on the Cart `<Card>`).
+### Technical details
 
-3. **Add a mobile cart UI**:
-   - A **sticky floating button** at the bottom of the screen (visible `lg:hidden`) showing item count + total, e.g. `🛒 3 articles • 45.00 TND`.
-   - Tapping it opens a `Sheet` (bottom drawer from `@/components/ui/sheet`) that contains the existing cart content (scan input, customer combobox, items list, discounts, loyalty, payment buttons).
-   - Reuse the exact same JSX/handlers — extract the cart body into a small inline component or render the same block inside the Sheet to avoid duplication.
+```text
+DB migration
+------------
+ALTER TABLE public.repairs
+  ADD COLUMN device_unlock_code text;
+```
 
-4. Add bottom padding on mobile (`pb-24 lg:pb-0`) so the floating button never overlaps the last product card.
+Subscription hook diff (conceptual):
+```ts
+// before
+const { user } = useAuth();
+queryKey: ["my-subscription", user?.id]
+.eq("user_id", user.id)
 
-### Result
-
-- Mobile: full product grid is visible, no gray empty panel. A compact floating "Panier" button reveals the cart on demand.
-- Desktop (`lg+`): unchanged — two-column layout with cart on the right.
+// after
+const effectiveUserId = useEffectiveUserId();
+queryKey: ["my-subscription", effectiveUserId]
+.eq("user_id", effectiveUserId)
+enabled: !!effectiveUserId
+```
 
 ### Out of scope
-
-No backend, schema, or other page changes.
+- No change to billing/order management UI (still owner-only).
+- No change to RLS — `shop_settings`/`shop_subscriptions` already allow team members to read owner data via existing policies (subscription read is unrestricted for authenticated, and team policies cover related tables).

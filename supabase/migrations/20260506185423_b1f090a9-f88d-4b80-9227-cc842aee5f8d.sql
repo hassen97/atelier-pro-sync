@@ -1,0 +1,1 @@
+ALTER TABLE public.repairs ADD COLUMN IF NOT EXISTS device_unlock_code text;

@@ -428,6 +428,7 @@ ${data.category ? `<p class="field"><span class="bold">Catégorie:</span> ${escH
 
 <p class="field"><span class="bold">Dépôt:</span> ${escHtml(data.depositDate)}</p>
 ${data.receivedBy ? `<p class="field"><span class="bold">Reçu par:</span> ${escHtml(data.receivedBy)}</p>` : ""}
+${data.unlockCode ? `<p class="field"><span class="bold">Code déverr.:</span> ${escHtml(data.unlockCode)}</p>` : ""}
 ${data.repairedBy ? `<p class="field"><span class="bold">Tech:</span> ${escHtml(data.repairedBy)}</p>` : ""}
 
 

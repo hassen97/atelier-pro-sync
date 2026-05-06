@@ -914,6 +914,28 @@ export function RepairDialog({
               )}
             />
 
+            {/* Device unlock code (password / PIN / pattern) */}
+            <FormField
+              control={form.control}
+              name="device_unlock_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Code de déverrouillage</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Mot de passe, code PIN ou schéma (ex: 1234, L, ...)"
+                      autoComplete="off"
+                      {...field}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Stocké en privé pour le technicien. Non visible sur le suivi public.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
               <div className="grid grid-cols-2 gap-4">
                 <FormField

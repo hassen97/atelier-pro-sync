@@ -140,9 +140,10 @@ export function EmployeeDetailSheet({ open, onOpenChange, employee }: Props) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
+                      <TableHead>Date</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead className="text-right">Montant</TableHead>
+                        <TableHead className="w-10"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -170,6 +171,26 @@ export function EmployeeDetailSheet({ open, onOpenChange, employee }: Props) {
                             </TableCell>
                             <TableCell className={`text-right font-medium ${meta.sign === 1 ? "text-success" : "text-warning"}`}>
                               {meta.sign === 1 ? "+" : "-"} {format(Number(t.amount))}
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setEditTx(t)}>
+                                    <Pencil className="h-4 w-4 mr-2" /> Modifier
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => setDeleteTx(t)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableCell>
                           </TableRow>
                         );

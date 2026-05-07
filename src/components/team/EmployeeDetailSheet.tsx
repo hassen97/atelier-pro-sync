@@ -288,6 +288,38 @@ export function EmployeeDetailSheet({ open, onOpenChange, employee }: Props) {
           defaultAmount={dialogType === "salary_payment" && netToPay > 0 ? netToPay : undefined}
         />
       )}
+
+      <EditEmployeeTransactionDialog
+        open={!!editTx}
+        onOpenChange={(v) => !v && setEditTx(null)}
+        transaction={editTx}
+      />
+
+      <AlertDialog open={!!deleteTx} onOpenChange={(v) => !v && setDeleteTx(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette transaction ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible.
+              {deleteTx?.expense_id && " L'écriture liée dans la caisse sera également supprimée."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (deleteTx) {
+                  await deleteMutation.mutateAsync(deleteTx.id);
+                  setDeleteTx(null);
+                }
+              }}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -91,6 +91,7 @@ function transformRepair(dbRepair: RepairWithCustomer, shopInitials: string) {
     technician_note: dbRepair.technician_note || null,
     ticket_number: ticketNum,
     ticket_label: formatTicketNumber(shopInitials, ticketNum),
+    device_unlock_code: (dbRepair as any).device_unlock_code || null,
     // Original data for editing
     _original: dbRepair,
   };

@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Banknote, Gift, Receipt as ReceiptIcon, Wallet, Wrench, ShoppingCart, Pencil, Check } from "lucide-react";
+import { Banknote, Gift, Receipt as ReceiptIcon, Wallet, Wrench, ShoppingCart, Pencil, Check, MoreHorizontal, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useEmployeeTransactions, useEmployeeMonthlyStats, useUpdateTeamMemberHr, type EmployeeTxType } from "@/hooks/useEmployeeTransactions";
+import { useEmployeeTransactions, useEmployeeMonthlyStats, useUpdateTeamMemberHr, useDeleteEmployeeTransaction, type EmployeeTxType, type EmployeeTransaction } from "@/hooks/useEmployeeTransactions";
 import { EmployeeTransactionDialog } from "./EmployeeTransactionDialog";
+import { EditEmployeeTransactionDialog } from "./EditEmployeeTransactionDialog";
 import type { TeamMember } from "@/hooks/useTeam";
 
 interface Props {

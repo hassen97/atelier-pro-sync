@@ -108,9 +108,40 @@ export default function CustomerDebts() {
     } catch (error) { console.error("Error recording payment:", error); toast.error("Erreur lors de l'enregistrement"); }
   };
 
+  const submitNewDebt = async () => {
+    if (!newDebtCustomerId) { toast.error("Choisissez un client"); return; }
+    const amount = parseFloat(newDebtAmount);
+    if (isNaN(amount) || amount <= 0) { toast.error("Montant invalide"); return; }
+    const customer = customers.find((c) => c.id === newDebtCustomerId);
+    if (!customer) { toast.error("Client introuvable"); return; }
+    setCreatingDebt(true);
+    try {
+      await updateCustomer.mutateAsync({
+        id: customer.id,
+        balance: Number(customer.balance) + amount,
+        notes: newDebtNote.trim()
+          ? `${customer.notes ? customer.notes + "\n" : ""}[Dette ${new Date().toLocaleDateString("fr-FR")}] ${newDebtNote.trim()} (+${amount})`
+          : customer.notes,
+      });
+      toast.success("Dette ajoutée");
+      setNewDebtOpen(false);
+      setNewDebtCustomerId(""); setNewDebtAmount(""); setNewDebtNote("");
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur lors de l'ajout");
+    } finally {
+      setCreatingDebt(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader title="Dettes Clients" description="Suivi des créances et paiements partiels" />
+      <PageHeader title="Dettes Clients" description="Suivi des créances et paiements partiels">
+        <Button onClick={() => setNewDebtOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Nouvelle dette
+        </Button>
+      </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard title="Total créances" value={format(totalDebts)} icon={CreditCard} variant="warning" />

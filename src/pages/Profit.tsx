@@ -83,7 +83,7 @@ export default function Profit() {
 
     const content = `
 RAPPORT PROFIT & COMPTABILITÉ - ${settings.shop_name}
-Période: ${period === "today" ? "Aujourd'hui" : period === "week" ? "Cette semaine" : period === "month" ? "Ce mois" : period === "quarter" ? "Ce trimestre" : "Cette année"}
+Période: ${periodLabel}
 Date: ${new Date().toLocaleDateString("fr-TN")}
 ================================
 
@@ -153,7 +153,7 @@ Généré le ${new Date().toLocaleString("fr-TN")}
         description="Analyse des revenus, dépenses et marges"
       >
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -162,8 +162,60 @@ Généré le ${new Date().toLocaleString("fr-TN")}
             <SelectItem value="month">Ce mois</SelectItem>
             <SelectItem value="quarter">Ce trimestre</SelectItem>
             <SelectItem value="year">Cette année</SelectItem>
+            <SelectItem value="specific_month">Mois spécifique</SelectItem>
+            <SelectItem value="custom">Période personnalisée</SelectItem>
           </SelectContent>
         </Select>
+
+        {period === "specific_month" && (
+          <div className="flex items-center gap-2">
+            <Select value={String(pickedMonth)} onValueChange={(v) => setPickedMonth(Number(v))}>
+              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MONTHS_FR.map((m, i) => (
+                  <SelectItem key={i} value={String(i)}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(pickedYear)} onValueChange={(v) => setPickedYear(Number(v))}>
+              <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 6 }).map((_, idx) => {
+                  const y = now.getFullYear() - idx;
+                  return <SelectItem key={y} value={String(y)}>{y}</SelectItem>;
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {period === "custom" && (
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("justify-start text-left font-normal", !customFrom && "text-muted-foreground")}>
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  {customFrom ? formatDate(customFrom, "dd/MM/yyyy") : "Du"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground">→</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("justify-start text-left font-normal", !customTo && "text-muted-foreground")}>
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  {customTo ? formatDate(customTo, "dd/MM/yyyy") : "Au"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={customTo} onSelect={setCustomTo} disabled={(d) => customFrom ? d < customFrom : false} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
         <Button variant="outline" onClick={handleExport}>
           <Download className="h-4 w-4 mr-2" />
           Exporter

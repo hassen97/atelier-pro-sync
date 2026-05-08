@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -9,7 +9,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Download,
+  CalendarIcon,
 } from "lucide-react";
+import { format as formatDate, startOfMonth, endOfMonth } from "date-fns";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -22,17 +24,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useProfit } from "@/hooks/useProfit";
 import { useShopSettingsContext } from "@/contexts/ShopSettingsContext";
 import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 
+const MONTHS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
 export default function Profit() {
   const [period, setPeriod] = useState("month");
-  const { data: profitData, isLoading } = useProfit(period);
+  const now = new Date();
+  const [pickedMonth, setPickedMonth] = useState(now.getMonth());
+  const [pickedYear, setPickedYear] = useState(now.getFullYear());
+  const [customFrom, setCustomFrom] = useState<Date | undefined>(startOfMonth(now));
+  const [customTo, setCustomTo] = useState<Date | undefined>(now);
+
+  const profitParam = useMemo(() => {
+    if (period === "specific_month") {
+      const from = startOfMonth(new Date(pickedYear, pickedMonth, 1));
+      const to = endOfMonth(from);
+      return { from, to };
+    }
+    if (period === "custom" && customFrom && customTo) {
+      return { from: customFrom, to: customTo };
+    }
+    return period;
+  }, [period, pickedMonth, pickedYear, customFrom, customTo]);
+
+  const { data: profitData, isLoading } = useProfit(profitParam as any);
   const { settings } = useShopSettingsContext();
   const { format } = useCurrency();
+
+  const periodLabel = useMemo(() => {
+    switch (period) {
+      case "today": return "Aujourd'hui";
+      case "week": return "Cette semaine";
+      case "month": return "Ce mois";
+      case "quarter": return "Ce trimestre";
+      case "year": return "Cette année";
+      case "specific_month": return `${MONTHS_FR[pickedMonth]} ${pickedYear}`;
+      case "custom":
+        if (customFrom && customTo)
+          return `${formatDate(customFrom, "dd/MM/yyyy")} → ${formatDate(customTo, "dd/MM/yyyy")}`;
+        return "Période personnalisée";
+      default: return period;
+    }
+  }, [period, pickedMonth, pickedYear, customFrom, customTo]);
 
   const handleExport = () => {
     if (!profitData) {

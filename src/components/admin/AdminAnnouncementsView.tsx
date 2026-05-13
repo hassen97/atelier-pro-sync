@@ -103,6 +103,28 @@ export function AdminAnnouncementsView() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-7 w-7 text-slate-400 hover:bg-white/10 hover:text-[#00D4FF]"
+                  title="Copier pour Facebook"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        formatForFacebook({
+                          title: a.title,
+                          newFeatures: a.new_features,
+                          changesFixes: a.changes_fixes,
+                        })
+                      );
+                      toast.success("Copié — collez sur Facebook");
+                    } catch {
+                      toast.error("Impossible de copier");
+                    }
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-7 w-7 text-red-400 hover:bg-red-500/10"
                   onClick={() => deleteAnnouncement.mutate(a.id)}
                 >

@@ -18,15 +18,21 @@ const quickCommands = [
   { label: "Réparations", icon: Wrench, view: "shops", hint: "Voir les réparations" },
 ];
 
-export function AdminCommandPalette({ open, onClose, onNavigate }: AdminCommandPaletteProps) {
+export function AdminCommandPalette({ open, onClose, onNavigate, onPublishChangelog }: AdminCommandPaletteProps) {
   const [query, setQuery] = useState("");
   const { data } = useAdminData();
 
   const handleSelect = useCallback((view: string) => {
+    if (view === "__changelog__") {
+      onClose();
+      setQuery("");
+      onPublishChangelog?.();
+      return;
+    }
     onNavigate?.(view);
     onClose();
     setQuery("");
-  }, [onNavigate, onClose]);
+  }, [onNavigate, onClose, onPublishChangelog]);
 
   useEffect(() => {
     if (!open) setQuery("");

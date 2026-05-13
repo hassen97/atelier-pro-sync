@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Megaphone, Sparkles, Bug, Globe, Store } from "lucide-react";
+import { Plus, Trash2, Megaphone, Sparkles, Bug, Globe, Store, Copy } from "lucide-react";
+import { formatForFacebook } from "@/lib/changelogFormat";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,

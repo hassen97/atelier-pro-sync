@@ -257,7 +257,10 @@ const AdminDashboard = () => {
         open={cmdOpen}
         onClose={() => setCmdOpen(false)}
         onNavigate={handleNavigate}
+        onPublishChangelog={() => setChangelogOpen(true)}
       />
+
+      <QuickChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
     </div>
   );
 };

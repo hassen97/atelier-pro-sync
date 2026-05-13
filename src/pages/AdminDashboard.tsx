@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Menu, Search, Bell, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Menu, Search, Bell, ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
+import { QuickChangelogDialog } from "@/components/admin/QuickChangelogDialog";
 import { useAdminData } from "@/hooks/useAdmin";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";

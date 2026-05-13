@@ -25,15 +25,20 @@ export function PaymentConfirmDialog({ open, onOpenChange, repair, pendingStatus
   const [partialAmount, setPartialAmount] = useState("");
   const { format } = useCurrency();
 
-  const remaining = repair ? repair.total - repair.paid : 0;
+  const remaining = repair ? Math.max(0, repair.total - repair.paid) : 0;
+  const isAlreadyPaid = remaining <= 0;
   const hasCustomer = repair?.customer_id != null;
 
   useEffect(() => { if (open) { setPaymentOption("full"); setPartialAmount(""); } }, [open]);
 
   const handleConfirm = () => {
     if (!repair) return;
-    const paymentAmount = paymentOption === "full" ? remaining : Math.min(Number(partialAmount) || 0, remaining);
-    onConfirm({ paymentAmount, isFullPayment: paymentOption === "full" });
+    const paymentAmount = isAlreadyPaid
+      ? 0
+      : paymentOption === "full"
+        ? remaining
+        : Math.min(Number(partialAmount) || 0, remaining);
+    onConfirm({ paymentAmount, isFullPayment: isAlreadyPaid || paymentOption === "full" });
   };
 
   const debtAmount = paymentOption === "partial" ? remaining - (Number(partialAmount) || 0) : 0;

@@ -62,6 +62,7 @@ const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const isMobile = useIsMobile();
   useAdminSignupNotifier();
 

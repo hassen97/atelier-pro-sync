@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Megaphone, Sparkles, Bug, Globe, Store } from "lucide-react";
+import { Plus, Trash2, Megaphone, Sparkles, Bug, Globe, Store, Copy } from "lucide-react";
+import { formatForFacebook } from "@/lib/changelogFormat";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -98,6 +100,28 @@ export function AdminAnnouncementsView() {
                 <span className="text-xs text-slate-500">
                   {format(new Date(a.published_at), "dd MMM yyyy", { locale: fr })}
                 </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-slate-400 hover:bg-white/10 hover:text-[#00D4FF]"
+                  title="Copier pour Facebook"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        formatForFacebook({
+                          title: a.title,
+                          newFeatures: a.new_features,
+                          changesFixes: a.changes_fixes,
+                        })
+                      );
+                      toast.success("Copié — collez sur Facebook");
+                    } catch {
+                      toast.error("Impossible de copier");
+                    }
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"

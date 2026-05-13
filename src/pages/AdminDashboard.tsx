@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Menu, Search, Bell, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Menu, Search, Bell, ChevronLeft, ChevronRight, Megaphone } from "lucide-react";
+import { QuickChangelogDialog } from "@/components/admin/QuickChangelogDialog";
 import { useAdminData } from "@/hooks/useAdmin";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -61,6 +62,7 @@ const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const isMobile = useIsMobile();
   useAdminSignupNotifier();
 
@@ -117,6 +119,13 @@ const AdminDashboard = () => {
             <span className="font-semibold text-sm">Centre de Commande</span>
           </div>
           <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => setChangelogOpen(true)}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              title="Publier un changelog"
+            >
+              <Megaphone className="h-4 w-4 text-[#00D4FF]" />
+            </button>
             <button onClick={() => setCmdOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
               <Search className="h-4 w-4 text-slate-400" />
             </button>
@@ -200,6 +209,16 @@ const AdminDashboard = () => {
                 <kbd className="ml-2 text-[10px] text-slate-700 border border-white/[0.06] rounded px-1.5 py-0.5 font-mono">⌘K</kbd>
               </button>
 
+              {/* Quick changelog */}
+              <button
+                onClick={() => setChangelogOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#00D4FF]/20 bg-[#00D4FF]/10 text-[#00D4FF] hover:bg-[#00D4FF]/20 transition-all text-xs font-medium"
+                title="Publier un changelog (visible par tous les owners + employés)"
+              >
+                <Megaphone className="h-3.5 w-3.5" />
+                Changelog
+              </button>
+
               {/* Notifications bell */}
               <button className="relative w-9 h-9 rounded-lg border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] flex items-center justify-center transition-all">
                 <Bell className="h-4 w-4 text-slate-400" />
@@ -238,7 +257,10 @@ const AdminDashboard = () => {
         open={cmdOpen}
         onClose={() => setCmdOpen(false)}
         onNavigate={handleNavigate}
+        onPublishChangelog={() => setChangelogOpen(true)}
       />
+
+      <QuickChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
     </div>
   );
 };

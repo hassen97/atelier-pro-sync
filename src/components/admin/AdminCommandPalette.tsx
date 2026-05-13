@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Store, Users, Wrench, X } from "lucide-react";
+import { Search, Store, Users, Wrench, X, Megaphone } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdminData } from "@/hooks/useAdmin";
 
@@ -7,24 +7,32 @@ interface AdminCommandPaletteProps {
   open: boolean;
   onClose: () => void;
   onNavigate?: (view: string) => void;
+  onPublishChangelog?: () => void;
 }
 
 const quickCommands = [
+  { label: "Publier un changelog", icon: Megaphone, view: "__changelog__", hint: "Annoncer une mise à jour à toutes les boutiques" },
   { label: "Dashboard", icon: Store, view: "overview", hint: "Vue globale" },
   { label: "Boutiques", icon: Store, view: "shops", hint: "Gérer les boutiques" },
   { label: "Employés", icon: Users, view: "employees", hint: "Gérer les employés" },
   { label: "Réparations", icon: Wrench, view: "shops", hint: "Voir les réparations" },
 ];
 
-export function AdminCommandPalette({ open, onClose, onNavigate }: AdminCommandPaletteProps) {
+export function AdminCommandPalette({ open, onClose, onNavigate, onPublishChangelog }: AdminCommandPaletteProps) {
   const [query, setQuery] = useState("");
   const { data } = useAdminData();
 
   const handleSelect = useCallback((view: string) => {
+    if (view === "__changelog__") {
+      onClose();
+      setQuery("");
+      onPublishChangelog?.();
+      return;
+    }
     onNavigate?.(view);
     onClose();
     setQuery("");
-  }, [onNavigate, onClose]);
+  }, [onNavigate, onClose, onPublishChangelog]);
 
   useEffect(() => {
     if (!open) setQuery("");

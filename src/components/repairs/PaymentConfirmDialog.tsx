@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { AlertTriangle, Smartphone, User } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Smartphone, User } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 import { type RepairStatus } from "./RepairStatusSelect";
 

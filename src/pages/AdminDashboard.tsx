@@ -119,6 +119,13 @@ const AdminDashboard = () => {
             <span className="font-semibold text-sm">Centre de Commande</span>
           </div>
           <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => setChangelogOpen(true)}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              title="Publier un changelog"
+            >
+              <Megaphone className="h-4 w-4 text-[#00D4FF]" />
+            </button>
             <button onClick={() => setCmdOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
               <Search className="h-4 w-4 text-slate-400" />
             </button>

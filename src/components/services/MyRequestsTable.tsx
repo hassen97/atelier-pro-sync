@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { KeyValueList } from "@/components/services/KeyValueList";
 
 const statusVariant = (s: ServiceRequestRow["status"]) => {
   switch (s) {
@@ -78,8 +79,10 @@ export function MyRequestsTable() {
               <div><span className="text-muted-foreground">Service :</span> <strong>{detail.service_name_snapshot}</strong></div>
               <div><span className="text-muted-foreground">Statut :</span> {statusVariant(detail.status).label}</div>
               <div>
-                <div className="text-muted-foreground mb-1">Données envoyées :</div>
-                <pre className="rounded bg-muted/50 p-2 text-xs overflow-auto">{JSON.stringify(detail.input_data, null, 2)}</pre>
+                <div className="text-muted-foreground mb-1.5">Données envoyées :</div>
+                <div className="rounded bg-muted/50 p-3">
+                  <KeyValueList data={detail.input_data} />
+                </div>
               </div>
               {detail.admin_note && (
                 <div>
@@ -89,8 +92,10 @@ export function MyRequestsTable() {
               )}
               {detail.result_data && Object.keys(detail.result_data).length > 0 && (
                 <div>
-                  <div className="text-muted-foreground mb-1">Résultat :</div>
-                  <pre className="rounded bg-emerald-500/10 border border-emerald-500/30 p-2 text-xs overflow-auto">{JSON.stringify(detail.result_data, null, 2)}</pre>
+                  <div className="text-muted-foreground mb-1.5">Résultat :</div>
+                  <div className="rounded bg-emerald-500/10 border border-emerald-500/30 p-3">
+                    <KeyValueList data={detail.result_data} />
+                  </div>
                 </div>
               )}
             </div>

@@ -9,6 +9,7 @@ import { useAdminServiceRequests, useUpdateServiceRequest, type AdminServiceRequ
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { MessageCircle, Phone, Search } from "lucide-react";
+import { KeyValueList } from "@/components/services/KeyValueList";
 
 const STATUS_BADGE: Record<AdminServiceRequest["status"], { label: string; cls: string }> = {
   pending:     { label: "En attente", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
@@ -168,9 +169,20 @@ export function AdminServiceRequestsView() {
                 </div>
 
                 <div>
-                  <div className="text-xs text-slate-500 mb-1">Données envoyées</div>
-                  <pre className="rounded bg-white/5 border border-white/10 p-2 text-xs overflow-auto">{JSON.stringify(selected.input_data, null, 2)}</pre>
+                  <div className="text-xs text-slate-500 mb-1.5">Données envoyées</div>
+                  <div className="rounded bg-white/5 border border-white/10 p-3">
+                    <KeyValueList data={selected.input_data} />
+                  </div>
                 </div>
+
+                {selected.result_data && Object.keys(selected.result_data).length > 0 && (
+                  <div>
+                    <div className="text-xs text-slate-500 mb-1.5">Résultat actuel (vu par la boutique)</div>
+                    <div className="rounded bg-emerald-500/10 border border-emerald-500/30 p-3">
+                      <KeyValueList data={selected.result_data} />
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <div className="text-xs text-slate-500">Note admin (visible par la boutique)</div>
@@ -188,7 +200,7 @@ export function AdminServiceRequestsView() {
                     value={resultText}
                     onChange={(e) => setResultText(e.target.value)}
                     rows={4}
-                    placeholder='{"code":"123456"}'
+                    placeholder={'Texte simple ou JSON, ex: {"code":"123456","link":"https://..."}'}
                     className="bg-white/5 border-white/10 text-white font-mono text-xs"
                   />
                 </div>

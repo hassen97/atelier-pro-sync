@@ -199,10 +199,15 @@ export default function RepairTracking() {
   const history = (data.status_history || []);
 
   return (
-    <div
+    <main
       className="min-h-screen"
       style={{ backgroundColor: "#f8fafc" }}
     >
+      <SEO
+        title={`Suivi réparation ${data.device_model || ""} — RepairPro`}
+        description={`Suivez l'état de votre réparation ${data.device_model || ""} en temps réel.`}
+        path={`/track/${data.tracking_token}`}
+      />
       {/* ——————————————————— HEADER ——————————————————— */}
       <div
         className="relative text-white px-4 pt-12 pb-14 overflow-hidden"

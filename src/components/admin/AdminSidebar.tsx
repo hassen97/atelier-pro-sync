@@ -2,15 +2,17 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Store, Megaphone, MessageSquare, LogOut, KeyRound,
   Settings, Users, CreditCard, Tags, ClipboardList, Shield,
-  ChevronLeft, ChevronRight, Users2, BarChart3, ListChecks, Flag,
+  ChevronLeft, ChevronRight, Users2, BarChart3, ListChecks, Flag, Cloud, Inbox,
 } from "lucide-react";
+import { usePendingServiceRequestCount } from "@/hooks/useAdminServiceRequests";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type AdminView =
   | "overview" | "shops" | "announcements" | "feedback" | "reset_requests"
   | "settings" | "employees" | "plans" | "gateways" | "feature_flags"
-  | "waitlist" | "signup_attempts" | "orders" | "community" | "reports";
+  | "waitlist" | "signup_attempts" | "orders" | "community" | "reports"
+  | "services_catalog" | "services_requests";
 
 interface AdminSidebarProps {
   active: AdminView;
@@ -25,6 +27,7 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   badge?: string;
+  showPendingDot?: boolean;
 };
 
 const navSections: { label: string; items: NavItem[] }[] = [
@@ -43,6 +46,13 @@ const navSections: { label: string; items: NavItem[] }[] = [
       { id: "plans",    label: "Tarifs & Plans", icon: Tags },
       { id: "orders",   label: "Commandes",      icon: ClipboardList },
       { id: "gateways", label: "Paiements",      icon: CreditCard },
+    ],
+  },
+  {
+    label: "Services & Outils",
+    items: [
+      { id: "services_catalog",  label: "Catalogue services", icon: Cloud },
+      { id: "services_requests", label: "Demandes entrantes", icon: Inbox, showPendingDot: true },
     ],
   },
   {

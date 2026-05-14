@@ -21,6 +21,7 @@ import {
   Camera,
   Bell,
 } from "lucide-react";
+import { SEO } from "@/components/seo/SEO";
 
 interface StatusHistoryEntry {
   id: string;

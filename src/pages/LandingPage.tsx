@@ -99,7 +99,12 @@ export default function LandingPage() {
   const displayPlans = plans || [];
 
   return (
-    <div className="landing-page min-h-screen relative" style={{ scrollBehavior: "smooth" }}>
+    <main className="landing-page min-h-screen relative" style={{ scrollBehavior: "smooth" }}>
+      <SEO
+        title="RepairPro — Gestion d'atelier de réparation mobile"
+        description="SaaS tout-en-un pour ateliers de réparation mobile : inventaire, réparations, facturation et suivi clients."
+        path="/"
+      />
       <div className="lp-mesh-gradient" />
 
       {/* ─── Floating Navbar ─── */}

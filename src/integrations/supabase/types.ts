@@ -1162,6 +1162,39 @@ export type Database = {
           },
         ]
       }
+      repair_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string | null
+          id: string
+          note: string | null
+          recorded_by: string | null
+          repair_id: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          note?: string | null
+          recorded_by?: string | null
+          repair_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          note?: string | null
+          recorded_by?: string | null
+          repair_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       repair_status_history: {
         Row: {
           created_at: string

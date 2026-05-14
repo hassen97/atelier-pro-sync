@@ -24,6 +24,7 @@ import {
   REPAIRS_PAGE_SIZE,
 } from "@/hooks/useRepairs";
 import { useAllCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -124,6 +125,7 @@ export default function Repairs() {
   const totalPages = Math.ceil(totalCount / REPAIRS_PAGE_SIZE);
 
   const { data: customers = [] } = useAllCustomers();
+  const effectiveUserId = useEffectiveUserId();
   const createRepair = useCreateRepair();
   const updateRepair = useUpdateRepair();
   const updateStatus = useUpdateRepairStatus();
@@ -294,6 +296,25 @@ export default function Repairs() {
         status: pendingStatus,
         delivery_date: pendingStatus === "delivered" ? new Date().toISOString() : undefined,
       });
+
+      // 1b. Log payment attempt in history (only when an amount was received)
+      if (data.paymentAmount > 0) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          await supabase.from("repair_payments").insert({
+            user_id: effectiveUserId!,
+            repair_id: repair.id,
+            customer_id: repair.customer_id,
+            amount: data.paymentAmount,
+            note: data.isFullPayment
+              ? `Paiement complet (statut: ${pendingStatus})`
+              : `Paiement partiel (statut: ${pendingStatus})`,
+            recorded_by: user?.id ?? null,
+          });
+        } catch (e) {
+          console.error("Failed to log repair payment:", e);
+        }
+      }
 
       // 2. If partial payment and customer exists, add debt to customer balance
       if (debtAmount > 0 && repair.customer_id) {

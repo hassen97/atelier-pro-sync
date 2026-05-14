@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { KeyValueList } from "@/components/services/KeyValueList";
 
 const statusVariant = (s: ServiceRequestRow["status"]) => {
   switch (s) {

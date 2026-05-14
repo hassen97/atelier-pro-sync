@@ -13,6 +13,7 @@ import {
   Shield, BarChart3, Users, Zap, ArrowRight,
   Sparkles, Mail, Loader2
 } from "lucide-react";
+import { SEO } from "@/components/seo/SEO";
 
 /* ── animation variants ── */
 const fadeUp = {

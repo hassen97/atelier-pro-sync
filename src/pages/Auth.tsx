@@ -625,6 +625,6 @@ export default function Auth() {
           © 2024 RepairPro Tunisie. Tous droits réservés.
         </p>
       </div>
-    </div>
+    </main>
   );
 }

@@ -200,7 +200,7 @@ export function AdminServiceRequestsView() {
                     value={resultText}
                     onChange={(e) => setResultText(e.target.value)}
                     rows={4}
-                    placeholder='{"code":"123456"}'
+                    placeholder={'Texte simple ou JSON, ex: {"code":"123456","link":"https://..."}'}
                     className="bg-white/5 border-white/10 text-white font-mono text-xs"
                   />
                 </div>

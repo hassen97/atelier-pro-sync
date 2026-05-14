@@ -300,7 +300,7 @@ export default function Repairs() {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           await supabase.from("repair_payments").insert({
-            user_id: repair.user_id,
+            user_id: repair._original.user_id,
             repair_id: repair.id,
             customer_id: repair.customer_id,
             amount: data.paymentAmount,

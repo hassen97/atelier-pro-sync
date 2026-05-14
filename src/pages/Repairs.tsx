@@ -24,6 +24,7 @@ import {
   REPAIRS_PAGE_SIZE,
 } from "@/hooks/useRepairs";
 import { useAllCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
+import { useEffectiveUserId } from "@/hooks/useTeam";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

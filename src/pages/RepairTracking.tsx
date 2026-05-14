@@ -604,6 +604,10 @@ export default function RepairTracking() {
         </p>
       </div>
     </main>
+  );
+}
+
+function DetailRow({
   label,
   value,
   highlight,

@@ -295,6 +295,25 @@ export default function Repairs() {
         delivery_date: pendingStatus === "delivered" ? new Date().toISOString() : undefined,
       });
 
+      // 1b. Log payment attempt in history (only when an amount was received)
+      if (data.paymentAmount > 0) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          await supabase.from("repair_payments").insert({
+            user_id: repair.user_id,
+            repair_id: repair.id,
+            customer_id: repair.customer_id,
+            amount: data.paymentAmount,
+            note: data.isFullPayment
+              ? `Paiement complet (statut: ${pendingStatus})`
+              : `Paiement partiel (statut: ${pendingStatus})`,
+            recorded_by: user?.id ?? null,
+          });
+        } catch (e) {
+          console.error("Failed to log repair payment:", e);
+        }
+      }
+
       // 2. If partial payment and customer exists, add debt to customer balance
       if (debtAmount > 0 && repair.customer_id) {
         const customer = customers.find((c) => c.id === repair.customer_id);

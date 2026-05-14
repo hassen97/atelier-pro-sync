@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { SEO } from "@/components/seo/SEO";
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY || "";
 const REMEMBER_ME_KEY = "repairpro_remember_me";

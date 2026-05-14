@@ -298,7 +298,12 @@ export default function Auth() {
   const effectiveTab = loginRole === "employee" ? "login" : authTab;
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-zinc-950 p-4">
+    <main className="min-h-screen flex items-center justify-center relative overflow-hidden bg-zinc-950 p-4">
+      <SEO
+        title="Connexion / Inscription — RepairPro"
+        description="Connectez-vous à RepairPro ou créez votre compte d'atelier de réparation mobile."
+        path="/auth"
+      />
       {/* Subtle grid */}
       <div className="absolute inset-0 auth-grid-bg opacity-30" />
       {/* Blue radial glows */}

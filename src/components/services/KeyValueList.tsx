@@ -45,6 +45,15 @@ function renderValue(v: any) {
   );
 }
 
+function FragmentRow({ label, value }: { label: string; value: any }) {
+  return (
+    <>
+      <dt className="text-xs uppercase tracking-wide text-muted-foreground pt-0.5">{label}</dt>
+      <dd className="font-medium">{renderValue(value)}</dd>
+    </>
+  );
+}
+
 export function KeyValueList({
   data,
   className,

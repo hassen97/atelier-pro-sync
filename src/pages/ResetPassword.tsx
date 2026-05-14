@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Wrench, ArrowLeft, Send, AtSign, CheckCircle, Phone, MessageCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { SEO } from "@/components/seo/SEO";
 
 export default function ResetPassword() {
   const navigate = useNavigate();

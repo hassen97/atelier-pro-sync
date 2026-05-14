@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { SEO } from "@/components/seo/SEO";
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY || "";
 const REMEMBER_ME_KEY = "repairpro_remember_me";
@@ -298,7 +299,12 @@ export default function Auth() {
   const effectiveTab = loginRole === "employee" ? "login" : authTab;
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-zinc-950 p-4">
+    <main className="min-h-screen flex items-center justify-center relative overflow-hidden bg-zinc-950 p-4">
+      <SEO
+        title="Connexion / Inscription — RepairPro"
+        description="Connectez-vous à RepairPro ou créez votre compte d'atelier de réparation mobile."
+        path="/auth"
+      />
       {/* Subtle grid */}
       <div className="absolute inset-0 auth-grid-bg opacity-30" />
       {/* Blue radial glows */}
@@ -620,6 +626,6 @@ export default function Auth() {
           © 2024 RepairPro Tunisie. Tous droits réservés.
         </p>
       </div>
-    </div>
+    </main>
   );
 }

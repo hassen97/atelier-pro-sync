@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Wrench, ArrowLeft, Send, AtSign, CheckCircle, Phone, MessageCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { SEO } from "@/components/seo/SEO";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -64,7 +65,12 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
+      <SEO
+        title="Mot de passe oublié — RepairPro"
+        description="Réinitialisez votre mot de passe RepairPro en contactant l'équipe support."
+        path="/reset-password"
+      />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-primary mb-4">
@@ -204,6 +210,6 @@ export default function ResetPassword() {
           © 2024 RepairPro Tunisie. Tous droits réservés.
         </p>
       </div>
-    </div>
+    </main>
   );
 }

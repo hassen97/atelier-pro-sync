@@ -66,7 +66,7 @@ export function RepairCard({ repair, onViewDetails, onEdit, onPrint, onCancel, o
             {repair.phone && <p className="text-sm text-muted-foreground mt-0.5">{repair.phone}</p>}
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Actions sur la réparation"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onViewDetails(repair)}>Voir détails</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onEdit(repair)}>Modifier</DropdownMenuItem>

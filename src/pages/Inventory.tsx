@@ -470,7 +470,7 @@ export default function Inventory() {
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLocked}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLocked} aria-label="Actions sur le produit">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>

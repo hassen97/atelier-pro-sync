@@ -227,7 +227,7 @@ export default function RepairTracking() {
           <p className="text-white/60 text-xs uppercase tracking-widest mb-1 font-medium">
             Suivi de réparation
           </p>
-          <h1 className="text-2xl font-bold tracking-tight">{data.shop_name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Suivi de votre réparation chez {data.shop_name}</h1>
           <p className="text-white/85 text-base mt-1 font-medium">
             Bonjour {data.customer_name} 👋
           </p>

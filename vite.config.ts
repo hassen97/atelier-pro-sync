@@ -74,4 +74,45 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (
+            id.includes("node_modules/react-dom") ||
+            id.match(/node_modules\/react\//) ||
+            id.includes("node_modules/scheduler")
+          ) {
+            return "vendor-react";
+          }
+          if (id.includes("react-router")) return "vendor-router";
+          if (id.includes("@radix-ui")) return "vendor-radix";
+          if (id.includes("@supabase")) return "vendor-supabase";
+          if (id.includes("@tanstack")) return "vendor-query";
+          if (id.includes("framer-motion")) return "vendor-motion";
+          if (id.includes("lucide-react")) return "vendor-icons";
+          if (
+            id.includes("react-hook-form") ||
+            id.includes("@hookform") ||
+            id.includes("/zod/")
+          ) {
+            return "vendor-forms";
+          }
+          if (id.includes("date-fns")) return "vendor-date";
+          if (
+            id.includes("/sonner/") ||
+            id.includes("/vaul/") ||
+            id.includes("/cmdk/") ||
+            id.includes("class-variance-authority") ||
+            id.includes("tailwind-merge") ||
+            id.includes("/clsx/")
+          ) {
+            return "vendor-ui";
+          }
+        },
+      },
+    },
+  },
 }));

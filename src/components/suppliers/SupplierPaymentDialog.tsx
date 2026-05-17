@@ -138,7 +138,7 @@ export function SupplierPaymentDialog({ open, onOpenChange, supplier }: Supplier
                 <div className="relative rounded-lg overflow-hidden border border-border">
                   <img
                     src={proofPreviewUrl}
-                    alt="Preuve"
+                    alt="Preuve de paiement du fournisseur"
                     className="w-full max-h-40 object-contain bg-muted/30"
                   />
                   <button

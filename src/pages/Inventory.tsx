@@ -358,6 +358,7 @@ export default function Inventory() {
         </TabsList>
 
         <TabsContent value="stock" className="space-y-6">
+          <h2 className="sr-only">Vue d'ensemble du stock</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard title="Total produits" value={totalCount} icon={Package} variant="default" />
             <StatCard title="Unités en stock" value={totalStockUnits} icon={Package} variant="success" />
@@ -398,6 +399,7 @@ export default function Inventory() {
             </Select>
           </div>
 
+          <h2 className="sr-only">Liste des produits</h2>
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -470,7 +472,7 @@ export default function Inventory() {
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLocked}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLocked} aria-label="Actions sur le produit">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>

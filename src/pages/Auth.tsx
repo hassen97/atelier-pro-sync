@@ -317,7 +317,7 @@ export default function Auth() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-primary p-3.5 mb-3 auth-glow">
             <Wrench className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">RepairPro Tunisie</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Connexion à votre atelier RepairPro</h1>
           <p className="text-zinc-500 mt-1 text-sm">Gestion d'atelier moderne</p>
         </div>
 

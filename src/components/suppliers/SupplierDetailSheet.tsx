@@ -109,7 +109,7 @@ export function SupplierDetailSheet({
         <p class="field">Date : ${format(new Date(tx.created_at), "dd/MM/yyyy", { locale: fr })}</p>
         <p class="field">Type : ${tx.type === "purchase" ? "Achat" : "Paiement"}</p>
         <p class="field">Description : ${thermalEscape(tx.description || "—")}</p>
-        ${proofViewUrl ? `<p class="field">Preuve jointe</p><img src="${thermalEscape(proofViewUrl)}" style="display:block;max-width:60mm;margin:2mm auto;height:auto;" alt="preuve" />` : ""}
+        ${proofViewUrl ? `<p class="field">Preuve jointe</p><img src="${thermalEscape(proofViewUrl)}" style="display:block;max-width:60mm;margin:2mm auto;height:auto;" alt="Preuve de paiement du fournisseur" />` : ""}
         <div class="sep-bold"></div>
         <div class="total-row grand"><span>Montant :</span><span class="val">${formatCurrency(tx.amount)}</span></div>
         <div class="total-row"><span>Solde :</span><span class="val">${formatCurrency(Math.abs(tx.computedBalance))}</span></div>

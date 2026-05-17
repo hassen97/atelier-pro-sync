@@ -175,7 +175,7 @@ export default function OnboardingSetup() {
                   {logoPreview ? (
                     <img
                       src={logoPreview}
-                      alt="Logo"
+                      alt="Aperçu du logo de la boutique"
                       className="w-16 h-16 rounded-xl object-cover border border-border"
                     />
                   ) : (

@@ -1,84 +1,73 @@
-# Reduce PWA precache to fix publish failures
+# Split the main bundle with manualChunks
 
 ## Goal
 
-Publishing currently fails because the PWA service worker precaches everything the build emits (~140 files / ~3.9 MB), including very large libraries that are already lazy-loaded and don't need to be cached upfront:
+The main `index.js` chunk is ~680 kB (gzip 201 kB) because all eagerly-imported vendor libraries land in it. Splitting vendors into their own chunks reduces the size of any single asset uploaded during publish and helps the deploy pipeline succeed reliably. It also improves runtime caching (vendor chunks rarely change between deploys).
 
-- `xlsx` ~425 kB
-- `jspdf.es.min` ~416 kB
-- `html2canvas.esm` ~201 kB
-- `BarChart` (recharts) ~368 kB
-- `purify.es`, `index.es` (pdf deps) ~170 kB combined
-- `JsBarcode` ~61 kB
+## Change
 
-Shrinking the precache manifest makes the deploy upload smaller and faster, which should let publishing succeed.
-
-## Changes
-
-### 1. `vite.config.ts` — exclude heavy chunks from Workbox precache
-
-Add `globIgnores` to the Workbox config so these chunks ship normally (still lazy-loadable at runtime) but are NOT baked into the service worker's precache list. Also raise `maximumFileSizeToCacheInBytes` as a safety net for any other large chunk, and keep the existing `NetworkFirst` HTML strategy.
+Edit `vite.config.ts` only. Add `build.rollupOptions.output.manualChunks` to group eagerly-loaded vendors into stable chunks, and bump `chunkSizeWarningLimit` to silence the cosmetic 500 kB warning.
 
 ```ts
-workbox: {
-  importScripts: ["/sw-custom.js"],
-  navigateFallback: "/index.html",
-  navigateFallbackDenylist: [/^\/~oauth/, /^\/api/, /^\/functions/],
-  globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
-  globIgnores: [
-    "**/xlsx-*.js",
-    "**/jspdf*.js",
-    "**/html2canvas*.js",
-    "**/purify.es-*.js",
-    "**/index.es-*.js",
-    "**/JsBarcode-*.js",
-    "**/BarChart-*.js",
-    "**/PieChart-*.js",
-    "**/receiptPdf-*.js",
-  ],
-  maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-  cleanupOutdatedCaches: true,
-  skipWaiting: true,
-  clientsClaim: true,
-  runtimeCaching: [
-    {
-      urlPattern: ({ request }) => request.destination === "document",
-      handler: "NetworkFirst",
-      options: { cacheName: "html-cache", networkTimeoutSeconds: 3 },
+build: {
+  chunkSizeWarningLimit: 800,
+  rollupOptions: {
+    output: {
+      manualChunks(id) {
+        if (!id.includes("node_modules")) return;
+        if (id.includes("react-dom") || id.match(/node_modules\/react\//) || id.includes("scheduler")) {
+          return "vendor-react";
+        }
+        if (id.includes("react-router")) return "vendor-router";
+        if (id.includes("@radix-ui")) return "vendor-radix";
+        if (id.includes("@supabase")) return "vendor-supabase";
+        if (id.includes("@tanstack")) return "vendor-query";
+        if (id.includes("framer-motion")) return "vendor-motion";
+        if (id.includes("lucide-react")) return "vendor-icons";
+        if (id.includes("react-hook-form") || id.includes("@hookform") || id.includes("zod")) {
+          return "vendor-forms";
+        }
+        if (id.includes("date-fns")) return "vendor-date";
+        if (id.includes("sonner") || id.includes("vaul") || id.includes("cmdk") || id.includes("class-variance-authority") || id.includes("tailwind-merge") || id.includes("clsx")) {
+          return "vendor-ui";
+        }
+      },
     },
-    // Cache excluded heavy chunks on first use instead of precaching them
-    {
-      urlPattern: /\/assets\/(xlsx|jspdf|html2canvas|purify\.es|index\.es|JsBarcode|BarChart|PieChart|receiptPdf)-.*\.js$/,
-      handler: "StaleWhileRevalidate",
-      options: { cacheName: "heavy-libs", expiration: { maxEntries: 20 } },
-    },
-  ],
+  },
 },
 ```
 
-### Why this is safe
+### Why these groups
 
-- These libs are already loaded via dynamic `import()` only when needed (export to Excel, generate PDF receipt, render a chart). They were never required for first paint.
-- `StaleWhileRevalidate` runtime caching still gives offline access after first use.
-- HTML stays `NetworkFirst`, so updates propagate normally.
-- No app code changes — only `vite.config.ts`.
+- **vendor-react**: react + react-dom + scheduler — required on first paint, stable across releases, big win for browser caching.
+- **vendor-router**: react-router-dom — loaded on every page, stable.
+- **vendor-radix**: all `@radix-ui/*` primitives — collectively ~150 kB.
+- **vendor-supabase**: the supabase client.
+- **vendor-query**: @tanstack/react-query.
+- **vendor-motion**: framer-motion (~100 kB).
+- **vendor-icons**: lucide-react — many icons, isolating helps cache.
+- **vendor-forms**: react-hook-form + @hookform/resolvers + zod.
+- **vendor-date**: date-fns.
+- **vendor-ui**: small UI helpers grouped together.
+
+Libraries already lazy-loaded (`xlsx`, `jspdf`, `html2canvas`, `recharts`, `jsbarcode`, `qrcode`) keep their existing per-route chunks — not touched here.
 
 ## Expected impact
 
-- Precache manifest drops from ~3.9 MB / 140 entries to roughly ~1.6 MB / ~125 entries.
-- Smaller `sw.js` precache list → smaller publish payload → publish should succeed.
-- First load of POS/Inventory/Statistics is unaffected (libs were already lazy).
-- First export/PDF/chart action fetches the chunk over network once, then is cached.
+- `index.js` drops from ~680 kB → roughly ~150–200 kB.
+- Vendor chunks become ~50–150 kB each, cached separately, rarely re-downloaded on updates.
+- Smaller individual files → faster, more reliable publish uploads.
+- Initial page load: same number of bytes total (or slightly more due to chunk headers), but parallel fetched and cacheable across deploys.
 
 ## Out of scope
 
-- No business logic changes.
-- No removal of `vite-plugin-pwa` (PWA stays enabled).
-- No changes to `public/sw-custom.js`.
-- Chunk-splitting via `manualChunks` (only do this if publish still fails after step above).
+- No PWA config changes (kept from previous step).
+- No removal/changing of existing lazy imports.
+- No code or business logic changes.
 
 ## Verification
 
-After approval and implementation:
-1. Run a local production build and confirm the PWA summary shows fewer precache entries / smaller total size.
-2. Ask you to click Publish — it should now succeed.
+1. Run a production build.
+2. Confirm `index.js` is significantly smaller and several `vendor-*.js` chunks appear.
+3. Smoke-check the preview loads (login page renders).
+4. Ask you to click Publish.

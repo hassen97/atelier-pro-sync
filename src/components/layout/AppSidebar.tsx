@@ -43,7 +43,7 @@ const navigation = [
   { nameKey: "nav.repairs" as const, href: "/repairs", icon: Wrench },
   { nameKey: "nav.inventory" as const, href: "/inventory", icon: Package },
   { nameKey: "nav.customers" as const, href: "/customers", icon: Users },
-  { nameKey: "nav.customers" as const, href: "/vault", icon: KeyRound },
+  { nameKey: "nav.customers" as const, href: "/vault", icon: KeyRound, labelOverride: "Coffre-fort" },
   { nameKey: "nav.suppliers" as const, href: "/suppliers", icon: Truck },
   { nameKey: "nav.expenses" as const, href: "/expenses", icon: Receipt },
   { nameKey: "nav.debts" as const, href: "/customer-debts", icon: CreditCard },
@@ -86,10 +86,10 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onMobileClose }: App
     return location.pathname.startsWith(path);
   };
 
-  const NavItem = ({ item }: { item: { nameKey: string; href: string; icon: any } }) => {
+  const NavItem = ({ item }: { item: { nameKey: string; href: string; icon: any; labelOverride?: string } }) => {
     const active = isActive(item.href);
     const Icon = item.icon;
-    const name = t(item.nameKey as any);
+    const name = item.labelOverride ?? t(item.nameKey as any);
     const hasUnread = item.href === "/messages" && unreadCount > 0;
 
     const linkContent = (

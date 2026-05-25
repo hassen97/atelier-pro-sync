@@ -207,6 +207,39 @@ export type Database = {
           },
         ]
       }
+      customer_vault: {
+        Row: {
+          account_type: string
+          created_at: string
+          customer_id: string
+          email_id: string
+          id: string
+          password: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_type: string
+          created_at?: string
+          customer_id: string
+          email_id: string
+          id?: string
+          password: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_type?: string
+          created_at?: string
+          customer_id?: string
+          email_id?: string
+          id?: string
+          password?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null

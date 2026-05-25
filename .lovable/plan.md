@@ -1,37 +1,69 @@
-# Assouplir l'inscription : mots de passe faibles + email non requis
+# Account Vault — Plan
 
-## Problèmes constatés
+A new module to securely store customer device accounts (iCloud / Google / Samsung) linked to the existing customer database, with a smart entry modal and a masked dashboard.
 
-1. **Mot de passe "faible" refusé à l'inscription** — la protection « Leaked Password » (HIBP) est activée côté backend, ce qui rejette tout mot de passe jugé compromis/faible.
-2. **« Email not confirmed » au login** — la confirmation d'email est obligatoire côté backend, alors que l'email est optionnel dans ce produit (auth par username).
+## 1. Database (migration)
 
-## Changements proposés
+New table `public.customer_vault`:
+- `id uuid PK default gen_random_uuid()`
+- `user_id uuid not null` (shop owner — matches RLS pattern used everywhere else, "shop_id")
+- `customer_id uuid not null` (links to `customers.id`, ON DELETE CASCADE via trigger-safe check)
+- `account_type text not null check in ('icloud','google','samsung')`
+- `email_id text not null`
+- `password text not null` (stored as-is in DB; see security note)
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+- Index on `(user_id, customer_id)`
 
-### 1. Backend — paramètres d'authentification
+RLS (mirrors `customers` policies):
+- Owner or team can manage / view: `auth.uid() = user_id OR is_team_member(user_id, auth.uid())`
+- Platform admin can view all
+- Trigger: `update_updated_at_column` on UPDATE
 
-Modifier la configuration auth pour :
-- **Désactiver** la vérification HIBP (mots de passe faibles autorisés).
-- **Activer** l'auto-confirmation des emails (plus de blocage « Email not confirmed »).
-- Garder les inscriptions ouvertes et les comptes anonymes désactivés (inchangé).
+Security note: Postgres column encryption requires `pgsodium`/Vault setup. To stay consistent with the current project (passwords elsewhere handled by Supabase Auth, proofs stored in private buckets), I'll store the password in plaintext in a row that is **only accessible to the shop owner + their team via RLS**. The bucket pattern isn't a fit (it's a single string). If you want true at-rest encryption with a per-shop key, that's a follow-up (would need a master secret + edge function for encrypt/decrypt).
 
-Effet : tout nouvel inscrit peut se connecter immédiatement, même avec un mot de passe simple, sans étape de vérification email.
+## 2. New files
 
-### 2. Frontend — feedback utilisateur (optionnel mais recommandé)
+- `src/hooks/useCustomerVault.ts` — React Query hooks (`useVaultEntries`, `useCreateVaultEntry`, `useUpdateVaultEntry`, `useDeleteVaultEntry`) using `useEffectiveUserId()` (per project Core rule).
+- `src/components/vault/VaultEntryDialog.tsx` — Smart modal:
+  - Reuses `CustomerCombobox` (already exists) for search + select.
+  - "+ Create New Client" inline: expands `Full Name` + `Phone` inputs; on save, creates customer via `useCustomers` mutation then inserts vault row in a single flow.
+  - Bottom section: `account_type` Select (iCloud/Google/Samsung), `email_id` input, `password` input with eye-toggle + "Générer" button (12-char strong password, e.g. `Apple2026!xyz`-style: word + year + symbol + 3 random chars).
+  - Zod validation.
+- `src/components/vault/VaultTable.tsx` — Data table:
+  - Columns: Client (name + phone from join), Type (badge), Email/ID, Password (masked `••••••••`, eye to reveal per row), Created at, Actions (edit/delete).
+  - "Export CSV" button (client-side blob, no taxes/VAT per project rule — N/A here anyway).
+  - Search/filter by customer name/phone/email.
+- `src/pages/Vault.tsx` — Page wrapper with `PageHeader`, SEO, and the table + "New entry" button.
 
-Sur le formulaire d'inscription (`src/pages/Auth.tsx`) :
-- Garder la règle minimale technique (≥ 6 caractères, déjà gérée par Supabase).
-- Afficher un petit indicateur visuel non bloquant si le mot de passe est court/simple, du style « Mot de passe faible — recommandé : 8+ caractères avec chiffres ». L'utilisateur peut quand même valider.
+## 3. Routing & nav
 
-Aucune autre logique métier n'est touchée.
+- Add route `/vault` in `src/App.tsx` (lazy via `lazyWithRetry` like other pages).
+- Add sidebar entry in `src/components/layout/AppSidebar.tsx` (icon: `KeyRound` from lucide), positioned near Customers.
+- Respect read-only impersonation guard (`useReadOnlyGuard`) on mutations.
 
-## Notes techniques
+## 4. UX details
 
-- L'appel `supabase--configure_auth` couvre les deux corrections backend en une seule opération.
-- Les comptes déjà créés mais bloqués sur "email not confirmed" seront automatiquement confirmés à la prochaine connexion une fois l'auto-confirm activé (à confirmer ; sinon, un petit script SQL `UPDATE auth.users SET email_confirmed_at = now() WHERE email_confirmed_at IS NULL` peut être lancé via migration).
-- Aucun changement au flow de signup côté code (`AuthContext.signUp`) n'est nécessaire.
+- Modal reuses existing shadcn `Dialog`, `Combobox`, `Select`, `Input`, `Label`.
+- Password generator: 12 chars, guaranteed upper/lower/digit/symbol.
+- Toasts via `sonner` on success/error (French copy, matching project tone).
+- Empty state in table with CTA to create first entry.
 
-## Sécurité
+## 5. Out of scope (flagged for confirmation)
 
-Désactiver HIBP réduit la sécurité des comptes. Acceptable ici car :
-- Le produit cible des commerces avec auth par username interne (`@repairpro.local`), pas d'email réel exposé.
-- Les comptes admin restent protégés par d'autres mécanismes (rôles RLS, kill switch).
+- True at-rest encryption with pgsodium/Vault (default: plaintext + RLS).
+- Sharing vault entries between shops (not requested).
+- Audit log of password reveals (can add if desired — there's an `activity_log` table available).
+
+## Technical summary
+
+```text
+DB:           +customer_vault (RLS owner/team + admin view)
+Hook:         useCustomerVault.ts (React Query + useEffectiveUserId)
+UI:           VaultEntryDialog (combobox + inline create + creds)
+              VaultTable (masked passwords, CSV export)
+Page/Route:   /vault + sidebar link
+Reused:       CustomerCombobox, useCustomers, useReadOnlyGuard
+```
+
+Confirm and I'll implement.

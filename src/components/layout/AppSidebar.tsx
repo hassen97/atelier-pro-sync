@@ -21,6 +21,7 @@ import {
   Users2,
   MessageCircle,
   Cloud,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ const navigation = [
   { nameKey: "nav.repairs" as const, href: "/repairs", icon: Wrench },
   { nameKey: "nav.inventory" as const, href: "/inventory", icon: Package },
   { nameKey: "nav.customers" as const, href: "/customers", icon: Users },
+  { nameKey: "nav.customers" as const, href: "/vault", icon: KeyRound },
   { nameKey: "nav.suppliers" as const, href: "/suppliers", icon: Truck },
   { nameKey: "nav.expenses" as const, href: "/expenses", icon: Receipt },
   { nameKey: "nav.debts" as const, href: "/customer-debts", icon: CreditCard },
